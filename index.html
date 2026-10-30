@@ -123,7 +123,7 @@
   .card[aria-pressed="true"] {
     border-color: #535353;   /* 배경은 흰색 유지: 미리보기 캔버스의 흰 바탕과 맞춘다 */
   }
-  /* 스타일·배속 토글: 한 줄에 두 묶음 */
+  /* 배속 토글 */
   .opts {
     display: flex;
     flex-wrap: wrap;
@@ -150,6 +150,16 @@
     border-color: #535353;
     background: #535353;
     color: #FFFFFF;
+  }
+  /* 상단 배속 버튼: 캔버스 밖에 두어 점프 입력(캔버스 탭)과 섞이지 않는다 */
+  #top-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .seg.small {
+    padding: 3px 9px;
+    font-size: 13px;
   }
   .actions {
     display: flex;
@@ -213,7 +223,14 @@
 <div id="stage">
   <header id="top">
     <h1>티노코코 달리기</h1>
-    <button id="mute" class="round" type="button" aria-label="소리 끄기">🔊</button>
+    <div id="top-right">
+      <div class="seg-group" role="group" aria-label="배속">
+        <button class="seg small" type="button" data-speed="0.7" aria-pressed="false">0.7배</button>
+        <button class="seg small" type="button" data-speed="1" aria-pressed="true">1배</button>
+        <button class="seg small" type="button" data-speed="1.4" aria-pressed="false">1.4배</button>
+      </div>
+      <button id="mute" class="round" type="button" aria-label="소리 끄기">🔊</button>
+    </div>
   </header>
   <div id="wrap">
     <canvas id="game" role="img" aria-label="캐릭터 한 명이 달리며 돌멩이를 넘는 게임 화면"></canvas>
@@ -234,10 +251,6 @@
           </button>
         </div>
         <div class="opts">
-          <div class="seg-group" role="group" aria-label="캐릭터 스타일">
-            <button class="seg" type="button" data-style="sil" aria-pressed="true">실루엣</button>
-            <button class="seg" type="button" data-style="gray" aria-pressed="false">실사 흑백</button>
-          </div>
           <div class="seg-group" role="group" aria-label="배속">
             <button class="seg" type="button" data-speed="0.7" aria-pressed="false">0.7배</button>
             <button class="seg" type="button" data-speed="1" aria-pressed="true">1배</button>
@@ -257,7 +270,7 @@
     </div>
     <div id="test-badge" hidden></div>
   </div>
-  <p id="hint">스페이스바 · ↑ · 화면 탭 = 점프</p>
+  <p id="hint">스페이스바 · ↑ · 화면 탭 = 점프 · 배속은 위의 버튼 또는 1 · 2 · 3 키</p>
 </div>
 
 <script>
@@ -269,9 +282,9 @@
   const WORLD_H = 400;
   const GROUND_Y = 320;        // 땅 기준선 (발끝이 닿는 y)
   const DISPLAY_H = 72;        // 캐릭터 표시 높이 (월드 px). 화면에서 대략 68~76px
-  const BOX_W = 110;           // 스프라이트 드로잉 박스 (110 x 84, 발끝 y=84)
-  const BOX_H = 84;
-  const CHAR_W = DISPLAY_H * BOX_W / BOX_H; // 표시 너비 ≈ 94
+  const PREVIEW_W = 110;       // 실사 그림의 기준 비율 (110 x 84, 발끝 y=84). 선택 카드 미리보기에 쓴다
+  const PREVIEW_H = 84;
+  const CHAR_W = DISPLAY_H * PREVIEW_W / PREVIEW_H; // 판정 박스 폭 ≈ 94
   const PLAYER_X = 120;        // 캐릭터 x 위치 (한 명만 달리므로 한 자리)
 
   // 속도 (1배 기준): 거리 점수에 비례해 서서히 오르고 최고 속도에서 고정 (v4 상한 480 유지)
@@ -307,7 +320,7 @@
 
   // 충돌 판정: 시각보다 안쪽으로 좁힌다. 발끝(아래쪽)은 줄이지 않는다. 땅 장애물과 닿아야 하기 때문.
   // 캐릭터: 좌우 31%씩 → 판정 폭 38%, 위쪽 35%. 돌멩이: 좌우 25%씩 → 폭 50%, 위쪽 25%
-  // 실루엣·실사 흑백 모두 이 박스를 쓴다 (스타일을 바꿔도 판정은 같다)
+  // 실사 그림은 이 박스와 같은 높이·가운데 기준으로 맞춘다
   const PLAYER_INSET = { x: 0.31, top: 0.35 };
   const ROCK_INSET = { x: 0.25, top: 0.25 };
 
@@ -326,13 +339,26 @@
     len: 4 + Math.random() * 12,
   }));
 
+  // 중간 장치 (별 · 하트 방패). 보너스·보호만 있고 새 사망 조건은 없다
+  // 장치는 한 번에 하나만 나오고, 8~15초 간격. 장애물과는 ITEM_SAFE 이상 떨어진 자리에서만 나온다.
+  const ITEM_GAP_SEC = [8, 15];
+  const ITEM_SAFE = 40;        // 장애물과 장치 사이 최소 여유 (월드 px)
+  const STAR_SIZE = 26;
+  const STAR_Y = GROUND_Y - 110; // 별 중심 높이: 달리기 자세의 몸에는 닿지 않고, 점프 중에만 닿는다
+  const HEART_SIZE = 30;       // 하트는 지면 위에 놓인다 (달리다가 닿으면 방패)
+  const STAR_POINTS = 50;      // 별 1개 = +50점 (거리 점수에 더한다)
+  const INVULN_SEC = 1.0;      // 방패가 깨진 뒤 짧은 무적 시간(초). 이 동안 돌멩이는 깨지며 지나간다
+  const STAR_COLOR = '#F5B82E';
+  const STAR_EDGE = '#B9800F';
+  const HEART_COLOR = '#E5484D';
+  const SPEED_KEYS = { Digit1: '0.7', Digit2: '1', Digit3: '1.4', Numpad1: '0.7', Numpad2: '1', Numpad3: '1.4' };
+
   const RESTART_LOCK_MS = 500; // 풍덩 직후 연타로 바로 재시작되는 것을 막는 짧은 대기
   const BEST_KEY = 'tinokoko-dino-best';
   const CHAR_KEY = 'tinokoko-dino-char';
   const CHAR_IDS = ['tino', 'coco'];
-  const STYLE_KEY = 'tinokoko-dino-style';
+  const CHAR_NAMES = { tino: '티노', coco: '코코' };
   const SPEED_KEY = 'tinokoko-dino-speed';
-  const STYLE_IDS = ['sil', 'gray'];        // 실루엣 · 실사 흑백
   const SPEED_IDS = ['0.7', '1', '1.4'];    // 배속 (문자열로 저장·비교)
 
   // 자동 테스트 (?test=1): 장애물 왼쪽 끝이 판정 오른쪽 끝에서 속도×AUTOPILOT_LEAD 초 안쪽이면 점프
@@ -340,74 +366,12 @@
   const TEST_TIMEOUT = 60;     // 게임 시간(초) 안에 못 넘으면 FAIL
   const TEST_GOAL = 5;         // 장애물 5개를 충돌 없이 넘으면 PASS
 
-  // ===== 캐릭터 스프라이트 (코드 드로잉, 옆모습, 우향) =====
-  // 박스 110 x 84, 발끝은 y=84. drawBody가 자세마다 다리만 바꾼다.
-  // 순서: ① 다리 → ② 몸통 패스(외곽·등뼈·팔·지느러미, 모든 자세 동일 좌표) → ③ 배경색(PAPER)으로 눈·턱선·배를 비움.
-  // 몸통 외곽은 원·타원 조각을 겹쳐 만든다 (모서리 없이 둥글게). 등지느러미만 작은 삼각형이고 모서리는 스트로크로 둥글린다.
-  // 몸통이 다리 위에 덮이므로 몸통 픽셀은 자세와 무관하게 같고, 다리가 몸 밖으로 나온 부분만 달라진다.
+  // 캐릭터·돌멩이·배경은 INK 한 색, 바탕은 PAPER. 장치(별·하트)만 컬러로 그린다.
   const INK = '#535353';
   const PAPER = '#FFFFFF';
 
-  // 다리 자세 [무릎, 발목, 발끝]. 발끝 중심 y=80.5 에 선 두께 7이면 땅(84)에 닿는다.
-  // 달리기 2프레임은 "두 다리의 자세 집합"이 달라야 움직여 보인다 (같은 색이라 앞뒤만 바꾸면 픽셀이 같다).
-  // 프레임A: 앞다리 땅 + 뒷다리 들림 / 프레임B: 앞다리 들림 + 뒷다리 땅
-  const LEG_FWD = [[61, 70], [65, 80.5], [71, 80.5]];       // 앞다리 땅
-  const LEG_FWD_UP = [[62, 69], [68, 74], [74, 74]];        // 앞다리 들림
-  const LEG_BACK = [[45, 70], [38, 80.5], [44, 80.5]];      // 뒷다리 땅
-  const LEG_BACK_UP = [[45, 69], [37, 74], [43, 74]];       // 뒷다리 들림
-  const LEG_TUCK_NEAR = [[68, 68], [60, 75], [66, 75]];   // 점프: 무릎을 앞으로 접고 발은 뒤로 빼서 떨어뜨린다
-  const LEG_TUCK_FAR = [[57, 68], [48, 76], [54, 76]];
-
-  // 몸통 조각: { circle: [x, y, r] } · { ellipse: [x, y, rx, ry] } · { poly: [...] }. extras는 다각형(등뼈·팔·지느러미).
-  const SPRITES = {
-    tino: {
-      name: '티노',
-      hip: [52, 60],
-      body: [ // 큰 둥근 머리 · 짧은 둥근 주둥이 · 통통한 몸통 · 목 · 짧은 꼬리(끝 둥글게)
-        { circle: [84, 24, 22] },             // 큰 머리 (몸통 길이의 절반 이상)
-        { circle: [101, 33, 7] },             // 짧고 둥근 주둥이
-        { ellipse: [50, 52, 30, 16] },        // 통통한 몸통 (배는 아래로 살짝 볼록)
-        { circle: [72, 40, 14] },             // 머리와 몸통을 잇는 목
-        { circle: [22, 46, 10] },             // 꼬리 밑동
-        { circle: [11, 52, 7] },              // 꼬리 중간
-        { circle: [5, 56, 4.5] },             // 꼬리 끝 (둥글게)
-        { circle: [84, 50, 4.5] },            // 작은 앞 팔
-      ],
-      extras: [ // 등뼈 3개: 끝이 둥근 작은 삼각형
-        [[28, 42], [36, 36], [33, 28]],
-        [[40, 37], [49, 33], [45, 25]],
-        [[52, 35], [61, 29], [57, 21]],
-      ],
-      paper: [{ circle: [90, 19, 3.4] }],   // 눈 (조금 큰 흰 점)
-      paperLines: [[[108, 36], [96, 37]]],  // 아래턱 구분선
-      eye: [90, 19],
-    },
-    coco: {
-      name: '코코',
-      hip: [50, 60],
-      body: [ // 큰 둥근 머리 · 통통한 몸통 · 목 · 둥근 꼬리지느러미(위·아래 둥근 로브)
-        { circle: [82, 30, 24] },             // 큰 머리
-        { ellipse: [50, 50, 30, 18] },        // 몸통
-        { circle: [66, 42, 16] },             // 머리와 몸통을 잇는 목
-        { circle: [16, 50, 12] },             // 꼬리 밑동
-      ],
-      extras: [ // 등지느러미: 작고 끝이 둥근 삼각형 · 꼬리지느러미: 위·아래 둥근 갈래
-        [[42, 38], [58, 34], [52, 22]],
-        [[20, 44], [6, 34], [9, 50], [6, 66], [20, 56]],
-      ],
-      paper: [
-        { ellipse: [84, 25, 10, 7] },         // 눈 뒤쪽 큰 타원 패치 (검은 몸 위 흰 패치)
-        { ellipse: [54, 57, 24, 7] },         // 흰 배: 넓게 (아래 검은 테두리 약 4 남김)
-      ],
-      late: [                                 // 흰 배 위에 그리는 검은 가슴지느러미
-        [[62, 58], [76, 52], [78, 64]],
-      ],
-      ink: [[89, 24, 2]],                     // 패치 안의 검은 눈
-      eye: [89, 24],
-    },
-  };
-
-  // 실사 흑백 스타일: 승인 일러스트의 흑백본 (assets/*_gray.png, 알파 유지, 높이 512).
+  // ===== 캐릭터 그림 =====
+  // 실사 흑백 그림: 승인 일러스트의 흑백본 (assets/*_gray.png, 알파 유지, 높이 512).
   // 달리기는 run 1장만 쓰고 bobbing으로 움직인다. 점프 = jump, 충돌 = crash(laugh).
   const PHOTO_FILES = {
     tino: { run: 'tino_run_flip_gray.png', jump: 'tino_jump_v2_gray.png', crash: 'tino_laugh_v2_gray.png' },
@@ -429,6 +393,8 @@
   const TEST_MODE = params.get('test') === '1';
   const NO_JUMP = TEST_MODE && params.get('nojump') === '1';          // 점프 입력을 모두 막는다
   const TEST_MAX_SPEED = TEST_MODE && params.get('speed') === 'max';  // 처음부터 최고 속도로 달린다
+  // 스크린샷용: 시작할 때 이 장치를 화면에 띄운다 (테스트 모드에서는 무시)
+  const FORCE_ITEM = TEST_MODE ? null : pickParam('forceitem', ['star', 'heart'], null);
 
   // ===== DOM =====
   const canvas = document.getElementById('game');
@@ -439,7 +405,6 @@
   const readyPanel = document.getElementById('ready-panel');
   const overPanel = document.getElementById('over-panel');
   const cards = document.querySelectorAll('.card');
-  const styleBtns = document.querySelectorAll('.seg[data-style]');
   const speedBtns = document.querySelectorAll('.seg[data-speed]');
   const startBtn = document.getElementById('start-btn');
   const retryBtn = document.getElementById('retry-btn');
@@ -451,8 +416,7 @@
   let scale = 1;               // CSS px / 월드 px
   let worldW = 900;            // 현재 화면 너비에 해당하는 월드 너비
   let state = 'ready';         // 'ready' 시작 화면 | 'playing' 진행 중 | 'crashed' 부딪힘
-  // 스타일·배속: 시작 화면에서만 바뀌고 진행 중에는 고정. 배속은 시작·최고 속도와 가속에 곱한다.
-  let style = TEST_MODE ? pickParam('style', STYLE_IDS, 'sil') : loadPref(STYLE_KEY, STYLE_IDS, 'sil'); // 'sil' | 'gray'
+  // 배속: 시작 패널 · 상단 버튼 · 1/2/3 키로 언제든 바꾼다 (setSpeed). 시작·최고 속도와 가속에 곱한다.
   let speedId = TEST_MODE ? pickParam('speedmul', SPEED_IDS, '1') : loadPref(SPEED_KEY, SPEED_IDS, '1');
   let speedMul = Number(speedId);
   let distance = 0;            // 달린 거리 (월드 px)
@@ -476,6 +440,14 @@
   let muted = false;
   let audioCtx = null;         // 첫 사용자 입력 뒤에만 만든다
   let selected = loadChoice(); // 'tino' | 'coco' | null (아직 안 고름)
+  // 중간 장치 상태 (이번 판 기준. startGame에서 초기화)
+  let stars = 0;               // 모은 별 개수
+  let shield = 0;              // 보유한 방패 (최대 1)
+  let invulnLeft = 0;          // 방패가 깨진 뒤 무적 남은 시간
+  let items = [];              // 화면 위 장치 { kind: 'star' | 'heart', x, y, w, h, taken }
+  let itemClock = 0;           // 다음 장치가 나올 때까지 남은 시간
+  let effects = [];            // 깨짐·반짝임 조각 { x, y, vx, vy, life, color }
+  let clockT = 0;              // 애니메이션 시계 (반짝임·깜빡임용)
 
   // 자동 테스트 결과
   let testDone = false;
@@ -540,7 +512,7 @@
     }
   }
 
-  // 스타일·배속 설정 (저장된 값이 없거나 이상하면 기본값)
+  // 배속 설정 (저장된 값이 없거나 이상하면 기본값)
   function loadPref(key, allowed, fallback) {
     try {
       const saved = localStorage.getItem(key);
@@ -604,6 +576,9 @@
   const sfxJump = () => tone('triangle', 520, 980, 0.16, 0.25);  // 점프
   const sfxBlip = () => tone('square', 1320, 1320, 0.09, 0.08);  // 100점 블립
   const sfxCrash = () => tone('sawtooth', 320, 60, 0.45, 0.2);   // 충돌
+  const sfxStar = () => tone('triangle', 900, 1800, 0.14, 0.22); // 별 수집
+  const sfxHeart = () => tone('sine', 660, 990, 0.22, 0.25);     // 방패 획득
+  const sfxBreak = () => tone('square', 480, 120, 0.2, 0.14);    // 방패 파손 · 돌멩이 깨짐
 
   // ===== 물리 (v4 코어 유지) =====
   // 배속: 시작·최고 속도와 가속(속도 곡선 전체)에 곱한다. 체공 시간은 그대로라 점프 수평거리만 속도에 비례해 커진다.
@@ -617,6 +592,18 @@
 
   function speedEase() {
     return SPEED_EASE * speedMul;
+  }
+
+  // 배속 변경 (시작 패널 · 상단 버튼 · 1/2/3 키 공통). 진행 중이면 현재 속도도 같은 비율로 바꾼다.
+  // 속도가 배속과 같은 비율로 움직이므로 체공 시간은 그대로이고 점프 수평거리만 속도에 비례해 달라진다.
+  function setSpeed(id) {
+    if (id === speedId) return;
+    const next = Number(id);
+    speed = speed * next / speedMul;
+    speedMul = next;
+    speedId = id;
+    savePref(SPEED_KEY, id);
+    renderChoice();
   }
 
   // 속도 → 체공 시간: 시작 속도 AIR_T_START에서 최고 속도 AIR_T_MAX까지 직선으로
@@ -717,9 +704,6 @@
     for (const card of cards) {
       card.setAttribute('aria-pressed', String(card.dataset.char === selected));
     }
-    for (const btn of styleBtns) {
-      btn.setAttribute('aria-pressed', String(btn.dataset.style === style));
-    }
     for (const btn of speedBtns) {
       btn.setAttribute('aria-pressed', String(btn.dataset.speed === speedId));
     }
@@ -742,6 +726,13 @@
     nextGap = 0;
     spawnDelay = FIRST_DELAY;
     jumpBuffer = 0;
+    stars = 0;
+    shield = 0;
+    invulnLeft = 0;
+    effects = [];
+    items = [];
+    itemClock = randomItemGap();
+    if (FORCE_ITEM) spawnItem(FORCE_ITEM, worldW * 0.7); // 스크린샷용: 화면 안쪽에 미리 띄운다
     showPanel(null);
   }
 
@@ -792,7 +783,7 @@
       dx += w - CLUSTER_OVERLAP;
     }
     const last = pieces[pieces.length - 1];
-    return { x: x, w: last.dx + last.w, pieces: pieces, cleared: false, arrived: false };
+    return { x: x, w: last.dx + last.w, pieces: pieces, cleared: false, arrived: false, broken: false };
   }
 
   // 시간 기준 스폰: 앞 장애물 꼬리가 지나간 뒤 다음 장애물 머리가 오기까지 nextGap초 이상.
@@ -804,8 +795,74 @@
       const need = nextGap * speed + 0.5 * speedEase() * nextGap * nextGap;
       if (worldW + 10 - (last.x + last.w) < need) return;
     }
+    // 방금 나온 장치가 스폰 지점에서 충분히 떨어질 때까지 기다린다 (장치와 겹쳐 나오지 않게)
+    if (items.some(i => i.x + i.w + ITEM_SAFE > worldW + 10)) return;
     obstacles.push(makeRock(worldW + 10));
     nextGap = GAP_MIN_SEC + Math.random() * GAP_RANDOM_SEC;
+  }
+
+  // ===== 중간 장치 =====
+  function randomItemGap() {
+    return ITEM_GAP_SEC[0] + Math.random() * (ITEM_GAP_SEC[1] - ITEM_GAP_SEC[0]);
+  }
+
+  // 별은 점프 궤적 위(공중), 하트는 지면 위. 장치 판정 박스 = 그림 크기
+  function spawnItem(kind, x) {
+    const isStar = kind === 'star';
+    const size = isStar ? STAR_SIZE : HEART_SIZE;
+    const y = isStar ? STAR_Y - STAR_SIZE / 2 : GROUND_Y - HEART_SIZE;
+    items.push({ kind: kind, x: x, y: y, w: size, h: size, taken: false });
+  }
+
+  // 장치는 화면에 하나뿐이고, 직전 장애물이 스폰 지점에서 떨어져 있을 때만 나온다. 테스트 모드에서는 내지 않는다.
+  function maybeSpawnItem(dt) {
+    if (TEST_MODE) return;
+    itemClock -= dt;
+    if (itemClock > 0 || items.length) return;
+    const last = obstacles[obstacles.length - 1];
+    if (last && worldW + 10 - (last.x + last.w) < ITEM_SAFE) return;
+    spawnItem(Math.random() < 0.5 ? 'star' : 'heart', worldW + 10);
+    itemClock = randomItemGap();
+  }
+
+  function takeItem(it) {
+    it.taken = true;
+    if (it.kind === 'star') {
+      stars += 1;
+      distance += STAR_POINTS * SCORE_PX; // 점수에 더한다
+      burst(it.x + it.w / 2, it.y + it.h / 2, STAR_COLOR, 12);
+      sfxStar();
+    } else {
+      shield = 1;
+      burst(it.x + it.w / 2, it.y + it.h / 2, HEART_COLOR, 10);
+      sfxHeart();
+    }
+  }
+
+  // 돌멩이가 깨진다: 조각이 흩어지고 더 이상 판정되지 않는다
+  function breakRock(o) {
+    o.broken = true;
+    burst(o.x + o.w / 2, GROUND_Y - 20, INK, 10);
+    sfxBreak();
+  }
+
+  // 조각·반짝임 (짧게 사라진다). 게임이 달리는 동안에는 세계와 같이 흐른다
+  function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = 80 + Math.random() * 140;
+      effects.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, life: 0.45, color: color });
+    }
+  }
+
+  function updateEffects(dt) {
+    for (const e of effects) {
+      e.life -= dt;
+      e.vy += 600 * dt;
+      e.x += e.vx * dt - (state === 'playing' ? speed * dt : 0);
+      e.y += e.vy * dt;
+    }
+    effects = effects.filter(e => e.life > 0);
   }
 
   // 달리기 프레임 교체. 빠를수록 교체 주기가 짧다
@@ -843,6 +900,7 @@
     spawnDelay = Math.max(0, spawnDelay - dt);
     maybeSpawn();
     for (const o of obstacles) o.x -= d;
+    for (const it of items) it.x -= d;
 
     const hit = playerHit();
     for (const o of obstacles) {
@@ -851,8 +909,15 @@
         o.arrived = true;
         if (lastClearAt !== null) gapLog.push(+(testElapsed - lastClearAt).toFixed(3));
       }
-      for (const p of o.pieces) {
-        if (overlap(hit, pieceHit(o, p))) {
+      if (!o.broken && o.pieces.some(p => overlap(hit, pieceHit(o, p)))) {
+        if (invulnLeft > 0) {
+          breakRock(o);                       // 무적 중: 돌멩이가 깨지며 지나간다
+        } else if (shield > 0) {
+          shield = 0;                         // 방패가 대신 깨지고 짧은 무적이 시작된다
+          invulnLeft = INVULN_SEC;
+          burst(hit.x + hit.w / 2, hit.y + hit.h / 2, HEART_COLOR, 10);
+          breakRock(o);
+        } else {
           crash();
           return;
         }
@@ -865,16 +930,24 @@
         if (TEST_MODE && !testDone && passedCount >= TEST_GOAL) finishTest('PASS', '충돌 없이 ' + passedCount + '개 넘음');
       }
     }
+    for (const it of items) {
+      if (!it.taken && overlap(hit, it)) takeItem(it);
+    }
     obstacles = obstacles.filter(o => o.x + o.w > -20);
+    items = items.filter(it => !it.taken && it.x + it.w > -20);
     if (blinkLeft > 0) blinkLeft = Math.max(0, blinkLeft - dt);
+    if (invulnLeft > 0) invulnLeft = Math.max(0, invulnLeft - dt);
   }
 
   function update(dt) {
     updateJump(dt);
     if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - dt);
+    clockT += dt;
+    updateEffects(dt);
     if (state === 'playing') {
       autoPilot();
       updatePlaying(dt);
+      maybeSpawnItem(dt);
       updateStep(dt);
       if (TEST_MODE && !testDone) {
         testElapsed += dt;
@@ -937,7 +1010,6 @@
     testDone = true;
     testResult.status = status;
     testResult.char = selected;
-    testResult.style = style;
     testResult.speedMul = speedMul;
     testResult.score = score;
     testResult.passed = passedCount;
@@ -946,7 +1018,7 @@
     testResult.speedNow = Math.round(speed);
     testResult.physics = physicsReport();
     window.__TEST_RESULT = Object.assign({}, testResult);
-    const line = '[TEST ' + status + '] ' + SPRITES[selected].name + ' 통과 ' + passedCount + '/' + TEST_GOAL + ' · ' + reason;
+    const line = '[TEST ' + status + '] ' + CHAR_NAMES[selected] + ' 통과 ' + passedCount + '/' + TEST_GOAL + ' · ' + reason;
     document.title = line;
     badge.textContent = line;
     badge.dataset.status = status;
@@ -971,6 +1043,10 @@
   }
 
   window.addEventListener('keydown', e => {
+    if (SPEED_KEYS[e.code]) {                 // 1 · 2 · 3 = 배속 (점프와 무관)
+      if (!e.repeat) setSpeed(SPEED_KEYS[e.code]);
+      return;
+    }
     if (!isJumpKey(e)) return;
     e.preventDefault(); // 페이지 스크롤 방지
     // 포커스된 버튼(카드·다시 하기 등)이 스페이스바로 한 번 더 눌리지 않게 포커스를 뺀다
@@ -999,21 +1075,8 @@
     });
   }
 
-  for (const btn of styleBtns) {
-    btn.addEventListener('click', () => {
-      style = btn.dataset.style;
-      savePref(STYLE_KEY, style);
-      renderChoice();
-    });
-  }
-
   for (const btn of speedBtns) {
-    btn.addEventListener('click', () => {
-      speedId = btn.dataset.speed;
-      speedMul = Number(speedId);
-      savePref(SPEED_KEY, speedId);
-      renderChoice();
-    });
+    btn.addEventListener('click', () => setSpeed(btn.dataset.speed));
   }
 
   startBtn.addEventListener('click', beginRun);
@@ -1028,96 +1091,7 @@
     muteBtn.blur(); // 포커스가 남아 스페이스바가 버튼을 누르지 않도록
   });
 
-  // ===== 스프라이트 그리기 =====
-  function polyPath(c, pts) {
-    c.beginPath();
-    c.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
-    c.closePath();
-  }
-
-  // 배경색으로 비우거나 검게 채우는 도형 하나 (원 · 타원 · 다각형)
-  function fillShape(c, s) {
-    c.beginPath();
-    if (s.circle) {
-      c.arc(s.circle[0], s.circle[1], s.circle[2], 0, Math.PI * 2);
-    } else if (s.ellipse) {
-      const e = s.ellipse;
-      c.ellipse(e[0], e[1], e[2], e[3], 0, 0, Math.PI * 2);
-    } else {
-      polyPath(c, s.poly);
-    }
-    c.fill();
-  }
-
-  function strokeLeg(c, hip, pose) {
-    c.beginPath();
-    c.moveTo(hip[0], hip[1]);
-    for (const p of pose) c.lineTo(p[0], p[1]);
-    c.stroke();
-  }
-
-  // 캐릭터 한 명을 박스 좌표(110 x 84)로 그린다. legPhase 0/1 = 달리기 2프레임, mode = run / jump / crash
-  function drawBody(c, who, legPhase, mode) {
-    const def = SPRITES[who];
-    const jumping = mode === 'jump';
-    c.save();
-    c.strokeStyle = INK;
-    c.fillStyle = INK;
-    c.lineWidth = 7;
-    c.lineJoin = 'round';
-    c.lineCap = 'round';
-
-    // ① 다리: 뒷다리 → 앞다리. 점프 중에는 접는다
-    const nearPose = jumping ? LEG_TUCK_NEAR : (legPhase === 0 ? LEG_FWD : LEG_FWD_UP);
-    const farPose = jumping ? LEG_TUCK_FAR : (legPhase === 0 ? LEG_BACK_UP : LEG_BACK);
-    strokeLeg(c, def.hip, farPose);
-    strokeLeg(c, def.hip, nearPose);
-
-    // ② 몸통 패스 (모든 자세 같은 좌표): 둥근 조각을 겹쳐 외곽을 만들고, 등뼈·지느러미는 모서리를 스트로크로 둥글린다
-    for (const s of def.body) fillShape(c, s);
-    c.lineWidth = 4.2;
-    for (const tri of def.extras) {
-      polyPath(c, tri);
-      c.fill();
-      c.stroke();
-    }
-
-    // ③ 배경색으로 비우는 부분: 눈 패치·배 띠·턱선, 그다음 검은 눈 점
-    c.fillStyle = PAPER;
-    c.strokeStyle = PAPER;
-    for (const s of def.paper) fillShape(c, s);
-    c.lineWidth = 1.2;
-    for (const line of def.paperLines || []) {
-      c.beginPath();
-      c.moveTo(line[0][0], line[0][1]);
-      c.lineTo(line[1][0], line[1][1]);
-      c.stroke();
-    }
-    c.fillStyle = INK;
-    for (const d of def.ink || []) fillShape(c, { circle: d });
-    for (const fin of def.late || []) {
-      polyPath(c, fin);
-      c.fill();
-    }
-
-    // 충돌: 눈 자리에 X
-    if (mode === 'crash') {
-      const ex = def.eye[0];
-      const ey = def.eye[1];
-      c.strokeStyle = INK;
-      c.lineWidth = 1.6;
-      c.beginPath();
-      c.moveTo(ex - 2.4, ey - 2.4);
-      c.lineTo(ex + 2.4, ey + 2.4);
-      c.moveTo(ex + 2.4, ey - 2.4);
-      c.lineTo(ex - 2.4, ey + 2.4);
-      c.stroke();
-    }
-    c.restore();
-  }
-
-  // 실사 흑백 그림이 준비됐는지 (로드 전에는 실루엣으로 대신 그린다)
+  // 실사 흑백 그림이 준비됐는지 (로드 전에는 그리지 않는다)
   function photoReady(who, mode) {
     const img = PHOTOS[who][mode];
     return img.complete && img.naturalWidth > 0;
@@ -1133,33 +1107,20 @@
   }
 
   // 게임 좌표에서 캐릭터를 그린다. x = 박스 왼쪽, footY = 발끝 y (땅이면 GROUND_Y)
-  // 실사 흑백도 판정 박스(CHAR_W x DISPLAY_H)와 같은 높이·가운데 기준으로 맞춘다
+  // 판정 박스(CHAR_W x DISPLAY_H)와 같은 높이·가운데 기준으로 맞춘다
   function drawCharacter(c, x, footY, who, legPhase, mode) {
-    if (style === 'gray' && photoReady(who, mode)) {
-      drawPhoto(c, who, mode, legPhase, x + CHAR_W / 2, footY, DISPLAY_H);
-      return;
-    }
-    const s = DISPLAY_H / BOX_H;
-    c.save();
-    c.translate(x, footY - DISPLAY_H);
-    c.scale(s, s);
-    drawBody(c, who, legPhase, mode);
-    c.restore();
+    if (photoReady(who, mode)) drawPhoto(c, who, mode, legPhase, x + CHAR_W / 2, footY, DISPLAY_H);
   }
 
-  // 시작 패널 미리보기: 현재 스타일 그대로 작은 canvas에 그린다 (2배 해상도)
+  // 시작 패널 미리보기: 달리기 자세의 실사 흑백 그림 (2배 해상도)
   function drawPreviews() {
     for (const pv of document.querySelectorAll('canvas.preview')) {
       const pc = pv.getContext('2d');
       const who = pv.dataset.preview;
       pc.setTransform(2, 0, 0, 2, 0, 0);
       pc.fillStyle = PAPER;
-      pc.fillRect(0, 0, BOX_W, BOX_H);
-      if (style === 'gray' && photoReady(who, 'run')) {
-        drawPhoto(pc, who, 'run', 0, BOX_W / 2, BOX_H, BOX_H);
-      } else {
-        drawBody(pc, who, 0, 'run');
-      }
+      pc.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
+      if (photoReady(who, 'run')) drawPhoto(pc, who, 'run', 0, PREVIEW_W / 2, PREVIEW_H, PREVIEW_H);
     }
   }
 
@@ -1195,8 +1156,86 @@
     }
   }
 
+  // 별 모양 · 하트 모양 경로 (중심 cx, cy)
+  function starPath(cx, cy, outer, inner) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? outer : inner;
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  function heartPath(cx, cy, s) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + s * 0.42);
+    ctx.bezierCurveTo(cx - s * 0.62, cy + s * 0.02, cx - s * 0.5, cy - s * 0.5, cx, cy - s * 0.18);
+    ctx.bezierCurveTo(cx + s * 0.5, cy - s * 0.5, cx + s * 0.62, cy + s * 0.02, cx, cy + s * 0.42);
+    ctx.closePath();
+  }
+
+  // 장치: 별(공중) · 하트(지면). 흑백 세계에서 유일하게 컬러로 그린다. 살짝 맥동한다
+  function drawItem(it) {
+    const cx = it.x + it.w / 2;
+    const cy = it.y + it.h / 2;
+    const pulse = 1 + 0.08 * Math.sin(clockT * 6);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(pulse, pulse);
+    if (it.kind === 'star') {
+      starPath(0, 0, 13, 5.6);
+      ctx.fillStyle = STAR_COLOR;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = STAR_EDGE;
+      ctx.stroke();
+    } else {
+      heartPath(0, 0, 28);
+      ctx.fillStyle = HEART_COLOR;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 방패 보유: 캐릭터를 감싸는 분홍 고리. 무적 중: 주변을 도는 별 반짝임 (캐릭터 깜빡임은 drawPlayer)
+  function drawAura() {
+    const cx = PLAYER_X + CHAR_W / 2;
+    const cy = GROUND_Y - lift - DISPLAY_H / 2;
+    if (shield > 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = HEART_COLOR;
+      ctx.globalAlpha = 0.5 + 0.25 * Math.sin(clockT * 5);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (invulnLeft > 0) {
+      for (let i = 0; i < 4; i++) {
+        const a = clockT * 3 + i * Math.PI / 2;
+        starPath(cx + Math.cos(a) * 50, cy + Math.sin(a) * 42, 6, 2.5);
+        ctx.fillStyle = STAR_COLOR;
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawEffects() {
+    for (const e of effects) {
+      ctx.globalAlpha = Math.max(0, e.life / 0.45);
+      ctx.fillStyle = e.color;
+      ctx.fillRect(e.x - 2.5, e.y - 2.5, 5, 5);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // 점수: 우상단 5자리 + 그 왼쪽 HI 최고기록. 100점마다 현재 점수가 깜빡인다.
   // HI 왼쪽에 현재 배속을 작게 표시한다 (1배·0.7배·1.4배)
+  // 왼쪽 위: 모은 별 개수, 방패를 들고 있으면 옆에 하트
   function drawHud() {
     ctx.fillStyle = INK;
     ctx.textBaseline = 'top';
@@ -1207,20 +1246,40 @@
     ctx.fillText('HI ' + pad5(best), worldW - 86, 16);
     ctx.font = '700 12px "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.fillText(speedId + '배', worldW - 180, 19);
+
+    starPath(22, 25, 9, 4);
+    ctx.fillStyle = STAR_COLOR;
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = INK;
+    ctx.font = '700 18px ui-monospace, Menlo, Consolas, monospace';
+    ctx.fillText(String(stars), 36, 16);
+    if (shield > 0) {
+      heartPath(80, 25, 18);
+      ctx.fillStyle = HEART_COLOR;
+      ctx.fill();
+    }
   }
 
   // 캐릭터: 준비 화면은 선택한 캐릭터가 서 있고, 진행 중에는 달리기 2프레임 (점프·충돌 자세 포함)
+  // 무적 중에는 깜빡인다
   function drawPlayer() {
     const mode = state === 'crashed' ? 'crash' : (grounded ? 'run' : 'jump');
+    const blinkOff = invulnLeft > 0 && Math.floor(clockT * 12) % 2 === 1;
+    ctx.globalAlpha = blinkOff ? 0.35 : 1;
     drawCharacter(ctx, PLAYER_X, GROUND_Y - lift, selected || 'tino', stepFrame, mode);
+    ctx.globalAlpha = 1;
+    drawAura();
   }
 
   function draw() {
     ctx.fillStyle = PAPER;
     ctx.fillRect(0, 0, worldW, WORLD_H);
     drawGround();
-    for (const o of obstacles) drawRock(o);
+    for (const o of obstacles) if (!o.broken) drawRock(o);
+    for (const it of items) drawItem(it);
     drawPlayer();
+    drawEffects();
     drawHud();
   }
 
@@ -1242,13 +1301,11 @@
   renderChoice();
   if (TEST_MODE) {
     // 테스트 전용: 같은 드로잉 함수를 외부에서 호출해 자세별 몸통 픽셀을 비교한다
-    window.__drawBody = drawBody;
     testResult.char = selected;
-    testResult.style = style;
     testResult.speedMul = speedMul;
     window.__TEST_RESULT = Object.assign({}, testResult);
     badge.hidden = false;
-    badge.textContent = '자동 테스트 진행 중 · ' + SPRITES[selected].name;
+    badge.textContent = '자동 테스트 진행 중 · ' + CHAR_NAMES[selected];
     showPanel(null);
   } else {
     showPanel('ready');
