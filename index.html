@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>티노코코 동시점프 러너</title>
+<title>티노코코 점프 러너 · 흑백</title>
 <style>
   [hidden] { display: none !important; }
   html, body {
     margin: 0;
-    background: #EAF1E6;
-    color: #5A4636;
+    background: #FFFFFF;
+    color: #535353;
     font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   }
   #stage {
@@ -17,9 +17,9 @@
     margin: 20px auto;
     padding: 14px 16px 12px;
     box-sizing: border-box;
-    background: #FFFBF2;
+    background: #FFFFFF;
     border-radius: 20px;
-    box-shadow: 0 8px 24px rgba(90, 70, 54, 0.10);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
   }
   #top {
     display: flex;
@@ -43,7 +43,7 @@
     padding: 6px 12px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 1px 3px rgba(90, 70, 54, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     font-size: 14px;
     white-space: nowrap;
   }
@@ -55,7 +55,7 @@
     width: 36px;
     height: 36px;
     padding: 0;
-    border: 1px solid #E0CFA8;
+    border: 1px solid #CCCCCC;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.9);
     font-size: 16px;
@@ -69,7 +69,7 @@
   #game {
     display: block;
     border-radius: 16px;
-    background: #FFF6E0;
+    background: #F7F7F7;
     touch-action: none; /* 모바일에서 탭해도 페이지가 스크롤·확대되지 않게 */
     user-select: none;
     -webkit-user-select: none;
@@ -91,7 +91,7 @@
     padding: 16px 20px 18px;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 8px 22px rgba(90, 70, 54, 0.16);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
     text-align: center;
     pointer-events: auto;
   }
@@ -114,9 +114,9 @@
   }
   .card {
     padding: 10px 8px;
-    border: 2px solid #E8D6B0;
+    border: 2px solid #CCCCCC;
     border-radius: 16px;
-    background: #FFFCF5;
+    background: #FFFFFF;
     color: inherit;
     font: inherit;
     cursor: pointer;
@@ -137,9 +137,9 @@
     opacity: 0.8;
   }
   .card[aria-pressed="true"] {
-    border-color: #6FB39A;
-    background: #E6F4EC;
-    box-shadow: 0 0 0 3px rgba(111, 179, 154, 0.22);
+    border-color: #535353;
+    background: #EFEFEF;
+    box-shadow: 0 0 0 3px rgba(83, 83, 83, 0.22);
   }
   .actions {
     display: flex;
@@ -151,18 +151,19 @@
     padding: 11px 24px;
     border: none;
     border-radius: 999px;
-    background: #DDEBE0;
-    color: #5A4636;
+    background: #EFEFEF;
+    color: #535353;
     font: inherit;
     font-size: 16px;
     font-weight: 700;
-    box-shadow: 0 4px 0 #B9CFC0, 0 6px 12px rgba(90, 70, 54, 0.12);
+    box-shadow: 0 4px 0 #C9C9C9, 0 6px 12px rgba(0, 0, 0, 0.12);
     cursor: pointer;
     transition: transform 0.08s, box-shadow 0.08s, filter 0.08s;
   }
   .btn.primary {
-    background: #F4B98E;
-    box-shadow: 0 4px 0 #D99A6D, 0 6px 12px rgba(90, 70, 54, 0.14);
+    background: #535353;
+    color: #FFFFFF;
+    box-shadow: 0 4px 0 #2F2F2F, 0 6px 12px rgba(0, 0, 0, 0.14);
   }
   #start-btn {
     width: 100%;
@@ -172,10 +173,10 @@
   }
   .btn:active:not(:disabled) {
     transform: translateY(3px);
-    box-shadow: 0 1px 0 #B9CFC0, 0 2px 6px rgba(90, 70, 54, 0.12);
+    box-shadow: 0 1px 0 #C9C9C9, 0 2px 6px rgba(0, 0, 0, 0.12);
   }
   .btn.primary:active:not(:disabled) {
-    box-shadow: 0 1px 0 #D99A6D, 0 2px 6px rgba(90, 70, 54, 0.14);
+    box-shadow: 0 1px 0 #2F2F2F, 0 2px 6px rgba(0, 0, 0, 0.14);
   }
   .btn:disabled {
     opacity: 0.45;
@@ -184,7 +185,7 @@
   .card:focus-visible,
   .btn:focus-visible,
   .round:focus-visible {
-    outline: 3px solid #6FB39A;
+    outline: 3px solid #535353;
     outline-offset: 2px;
   }
   #test-badge {
@@ -210,11 +211,11 @@
 <body>
 <div id="stage">
   <header id="top">
-    <h1>티노코코 동시점프 러너</h1>
+    <h1>티노코코 점프 러너 · 흑백</h1>
     <div id="pills">
-      <span class="pill">⭐ <b id="score">0</b>개</span>
-      <span class="pill">최고 ⭐ <b id="best">0</b>개</span>
-      <button id="mute" class="round" type="button" aria-label="소리 끄기">🔊</button>
+      <span class="pill">점수 <b id="score">0</b></span>
+      <span class="pill">최고 <b id="best">0</b></span>
+      <button id="mute" class="round" type="button" aria-label="소리 끄기">♪</button>
     </div>
   </header>
   <div id="wrap">
@@ -225,12 +226,12 @@
         <p class="sub">고른 친구 한 명만 달려요. 언제든 바꿀 수 있어요.</p>
         <div class="cards">
           <button class="card" type="button" data-char="tino" aria-pressed="false">
-            <img src="assets/tino_run_flip.png" alt="">
+            <img src="assets/tino_run_sil.png" alt="">
             <strong>티노</strong>
             <span>아기 티라노</span>
           </button>
           <button class="card" type="button" data-char="coco" aria-pressed="false">
-            <img src="assets/coco_run_flip.png" alt="">
+            <img src="assets/coco_run_sil.png" alt="">
             <strong>코코</strong>
             <span>아기 범고래</span>
           </button>
@@ -239,7 +240,7 @@
       </section>
       <section id="over-panel" class="panel" hidden>
         <h2>풍덩! 다시 해볼까?</h2>
-        <p class="sub">넘은 장애물 ⭐ <b id="final-score">0</b>개</p>
+        <p class="sub">넘은 장애물 <b id="final-score">0</b>개</p>
         <div class="actions">
           <button id="retry-btn" class="btn primary" type="button">다시 하기</button>
           <button id="change-btn" class="btn" type="button">캐릭터 바꾸기</button>
@@ -318,8 +319,8 @@
     tino: {
       name: '티노',
       sprites: {
-        run: 'assets/tino_run_flip.png', walk: 'assets/tino_walk_flip.png',
-        jump: 'assets/tino_jump_v2.png', laugh: 'assets/tino_laugh_v2.png',
+        run: 'assets/tino_run_sil.png', walk: 'assets/tino_walk_sil.png',
+        jump: 'assets/tino_jump_sil.png', laugh: 'assets/tino_laugh_sil.png',
       },
     },
     coco: {
@@ -327,8 +328,8 @@
       // walk 원본은 같은 높이로 맞추면 머리가 run보다 작게 보여서(머리 폭 233 vs 264px) 표시만 키운다
       walkScale: 1.12,
       sprites: {
-        run: 'assets/coco_run_flip.png', walk: 'assets/coco_walk_flip.png',
-        jump: 'assets/coco_jump_v2.png', laugh: 'assets/coco_laugh_v2.png',
+        run: 'assets/coco_run_sil.png', walk: 'assets/coco_walk_sil.png',
+        jump: 'assets/coco_jump_sil.png', laugh: 'assets/coco_laugh_sil.png',
       },
     },
   };
@@ -342,13 +343,13 @@
   // 2겹 언덕: 뒤쪽 층이 더 느리게 흐른다 (패럴랙스, 게임 속도 배율 평균 0.25)
   const HILL_LAYERS = [
     { speed: 0.18, tile: 760, hills: [
-      { x: 90, rx: 170, ry: 70, color: '#DCEAD9' },
-      { x: 400, rx: 130, ry: 55, color: '#D6E7E8' },
-      { x: 610, rx: 190, ry: 80, color: '#DCEAD9' },
+      { x: 90, rx: 170, ry: 70, color: '#E9E9E9' },
+      { x: 400, rx: 130, ry: 55, color: '#E9E9E9' },
+      { x: 610, rx: 190, ry: 80, color: '#E9E9E9' },
     ] },
     { speed: 0.32, tile: 620, hills: [
-      { x: 150, rx: 150, ry: 40, color: '#F1DCCB' },
-      { x: 430, rx: 120, ry: 34, color: '#EBD3C0' },
+      { x: 150, rx: 150, ry: 40, color: '#DDDDDD' },
+      { x: 430, rx: 120, ry: 34, color: '#DDDDDD' },
     ] },
   ];
   // 땅의 대시·점 패턴 (게임 속도 그대로 흐름). v3보다 촘촘하고 길게
@@ -1017,7 +1018,7 @@
   muteBtn.addEventListener('click', e => {
     e.stopPropagation();
     muted = !muted;
-    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.textContent = muted ? '✕' : '♪';
     muteBtn.setAttribute('aria-label', muted ? '소리 켜기' : '소리 끄기');
     muteBtn.blur(); // 포커스가 남아 스페이스바가 버튼을 누르지 않도록
   });
@@ -1037,14 +1038,11 @@
 
   function drawBackground() {
     // 크림색 세로 그라데이션 하늘
-    const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    sky.addColorStop(0, '#FBF7EC');
-    sky.addColorStop(1, '#F7EBD5');
-    ctx.fillStyle = sky;
+    ctx.fillStyle = '#F7F7F7';
     ctx.fillRect(0, 0, worldW, GROUND_Y);
 
     // 구름 (느리게 흐름)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillStyle = '#E2E2E2';
     for (const c of CLOUDS) {
       for (let x = wrapX(c.x, scroll * CLOUD_SPEED, CLOUD_TILE) - CLOUD_TILE; x < worldW + 200; x += CLOUD_TILE) {
         drawCloud(x, c.y, c.s);
@@ -1064,9 +1062,9 @@
     }
 
     // 땅
-    ctx.fillStyle = '#EEDFBE';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, GROUND_Y, worldW, WORLD_H - GROUND_Y);
-    ctx.strokeStyle = '#CDB68C';
+    ctx.strokeStyle = '#535353';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y);
@@ -1074,13 +1072,13 @@
     ctx.stroke();
 
     // 땅 대시·점 패턴 (게임 속도 그대로 흐름)
-    ctx.fillStyle = 'rgba(150, 120, 80, 0.28)';
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.30)';
     for (const row of GROUND_LINES) {
       for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
         ctx.fillRect(x, row.y, row.len, row.h);
       }
     }
-    ctx.fillStyle = 'rgba(150, 120, 80, 0.32)';
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.35)';
     for (const row of GROUND_DOTS) {
       for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
         ctx.fillRect(x, row.y, 3, 3);
@@ -1088,7 +1086,7 @@
     }
 
     // 잔디 점 (땅과 같은 속도로 흐름)
-    ctx.fillStyle = '#B8D3A4';
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.25)';
     for (const g of GRASS) {
       for (let x = wrapX(g.x, scroll, GRASS_TILE) - GRASS_TILE; x < worldW + 20; x += GRASS_TILE) {
         ctx.beginPath();
@@ -1104,18 +1102,18 @@
     const cy = GROUND_Y - o.h / 2;
     ctx.beginPath();
     ctx.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#A8DCEB';
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.18)';
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#6AAFC9';
+    ctx.strokeStyle = '#535353';
     ctx.stroke();
     ctx.beginPath();
     ctx.ellipse(cx - o.w * 0.15, cy - o.h * 0.12, o.w * 0.16, o.h * 0.14, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
     ctx.fill();
   }
 
-  // 돌멩이: 회색 울퉁불퉁한 도형
+  // 돌멩이: 각진 폴리곤 실루엣 (크롬 공룡 스타일)
   function drawRock(o) {
     const x = o.x;
     const y = GROUND_Y - o.h;
@@ -1123,16 +1121,14 @@
     const h = o.h;
     ctx.beginPath();
     ctx.moveTo(x, GROUND_Y);
-    ctx.lineTo(x + w * 0.05, y + h * 0.55);
-    ctx.quadraticCurveTo(x + w * 0.2, y, x + w * 0.55, y + h * 0.02);
-    ctx.quadraticCurveTo(x + w * 0.95, y + h * 0.1, x + w, y + h * 0.6);
-    ctx.lineTo(x + w * 0.9, GROUND_Y);
+    ctx.lineTo(x + w * 0.06, y + h * 0.38);
+    ctx.lineTo(x + w * 0.30, y);
+    ctx.lineTo(x + w * 0.60, y + h * 0.10);
+    ctx.lineTo(x + w * 0.88, y + h * 0.32);
+    ctx.lineTo(x + w * 0.96, GROUND_Y);
     ctx.closePath();
-    ctx.fillStyle = '#BDC3C9';
+    ctx.fillStyle = '#535353';
     ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#838B93';
-    ctx.stroke();
   }
 
   function drawObstacles() {
@@ -1153,7 +1149,7 @@
 
   function drawDust() {
     for (const p of dust) {
-      ctx.fillStyle = 'rgba(190, 160, 115, ' + (0.6 * p.life / p.max).toFixed(3) + ')';
+      ctx.fillStyle = 'rgba(83, 83, 83, ' + (0.6 * p.life / p.max).toFixed(3) + ')';
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fill();
@@ -1164,7 +1160,7 @@
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     for (const s of speedLines) {
-      ctx.strokeStyle = 'rgba(160, 135, 105, ' + Math.min(0.28, s.life).toFixed(3) + ')';
+      ctx.strokeStyle = 'rgba(83, 83, 83, ' + Math.min(0.28, s.life).toFixed(3) + ')';
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
       ctx.lineTo(s.x + s.len, s.y);
@@ -1173,8 +1169,8 @@
   }
 
   function drawDrops() {
-    ctx.fillStyle = '#A8DCEB';
-    ctx.strokeStyle = '#6AAFC9';
+    ctx.fillStyle = '#8A8A8A';
+    ctx.strokeStyle = '#8A8A8A';
     ctx.lineWidth = 1.5;
     for (const p of drops) {
       ctx.beginPath();
@@ -1197,7 +1193,7 @@
   }
 
   function drawStatus() {
-    ctx.fillStyle = '#5A4636';
+    ctx.fillStyle = '#535353';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = '400 18px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
