@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>티노코코 점프 러너 · 흑백</title>
+<title>티노코코 점프 러너 · 선화</title>
 <style>
   [hidden] { display: none !important; }
   html, body {
@@ -69,7 +69,7 @@
   #game {
     display: block;
     border-radius: 16px;
-    background: #F7F7F7;
+    background: #FFFFFF;
     touch-action: none; /* 모바일에서 탭해도 페이지가 스크롤·확대되지 않게 */
     user-select: none;
     -webkit-user-select: none;
@@ -122,8 +122,9 @@
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
   }
-  .card img {
+  .card canvas {
     display: block;
+    width: 120px;
     height: 84px;
     margin: 0 auto 6px;
   }
@@ -211,7 +212,7 @@
 <body>
 <div id="stage">
   <header id="top">
-    <h1>티노코코 점프 러너 · 흑백</h1>
+    <h1>티노코코 점프 러너 · 선화</h1>
     <div id="pills">
       <span class="pill">점수 <b id="score">0</b></span>
       <span class="pill">최고 <b id="best">0</b></span>
@@ -226,12 +227,12 @@
         <p class="sub">고른 친구 한 명만 달려요. 언제든 바꿀 수 있어요.</p>
         <div class="cards">
           <button class="card" type="button" data-char="tino" aria-pressed="false">
-            <img src="assets/tino_run_sil.png" alt="">
+            <canvas width="240" height="168" aria-hidden="true"></canvas>
             <strong>티노</strong>
             <span>아기 티라노</span>
           </button>
           <button class="card" type="button" data-char="coco" aria-pressed="false">
-            <img src="assets/coco_run_sil.png" alt="">
+            <canvas width="240" height="168" aria-hidden="true"></canvas>
             <strong>코코</strong>
             <span>아기 범고래</span>
           </button>
@@ -260,7 +261,7 @@
   // 월드(논리) 높이 400. 실제 화면 높이는 360~420px 사이에서 비율에 맞춰 축소·확대된다.
   const WORLD_H = 400;
   const GROUND_Y = 320;        // 땅 기준선 (발끝이 닿는 y)
-  const DISPLAY_H = 120;       // 캐릭터 표시 높이 (티노·코코 공통, 폭은 원본 비율대로)
+  const DISPLAY_H = 120;       // 캐릭터 높이 (충돌 박스 높이로도 쓴다)
   const PLAYER_X = 120;        // 선택한 캐릭터의 x 위치 (한 명만 달리므로 한 자리)
 
   // 속도: 별 개수에 따라 완만히 빨라지고 최고 속도에서 고정
@@ -294,13 +295,15 @@
   const OBSTACLE_INSET = { x: 0.25, puddleTop: 0.5, rockTop: 0.25 };
   const DROP_COUNT = 10;       // 물웅덩이를 밟을 때 튀는 물방울 수
   const DROP_GRAVITY = 900;    // 물방울·먼지가 떨어지는 중력 (점프 중력과 별개, 천천히 보이게)
-  const SPLASH_SECONDS = 0.35; // 물웅덩이를 밟은 뒤 웃음 포즈 유지 시간
 
   // 속도감 연출
-  const STEP_SLOW = 0.16;      // 시작 속도에서 run/walk 포즈 교체 주기(초)
+  const STEP_SLOW = 0.16;      // 시작 속도에서 다리 패턴 교체 주기(초)
   const STEP_FAST = 0.09;      // 최고 속도에서 교체 주기(초)
-  const STEP_LIFT = 2;         // walk 포즈일 때 살짝 떠 보이는 높이(px)
   const SPEED_LINE_FROM = 380; // 이 속도 이상에서 화면 가장자리에 스피드 라인
+
+  // 선화 스타일: 캐릭터·오브젝트의 선은 전부 이 색·이 굵기 하나로 통일
+  const LINE = '#535353';
+  const LINE_W = 4;
 
   const RESTART_LOCK_MS = 500; // 풍덩 직후 연타로 바로 재시작되는 것을 막는 짧은 대기
   const BEST_KEY = 'tinokoko-dino-best';
@@ -311,65 +314,23 @@
   const AUTOPILOT_LEAD = 0.2;
   const TEST_TIMEOUT = 60;     // 게임 시간(초) 안에 못 넘으면 FAIL
 
-  const CLOUD_TILE = 820;      // 구름 반복 간격
-  const CLOUD_SPEED = 0.1;     // 구름 흐름 속도 (게임 속도 배율)
-  const GRASS_TILE = 600;      // 잔디 점 반복 간격
-
+  // w = 판정 폭 기준 (충돌 박스 가로). 그림은 이 폭 안에 들어가도록 그린다.
   const CHARACTERS = {
-    tino: {
-      name: '티노',
-      sprites: {
-        run: 'assets/tino_run_sil.png', walk: 'assets/tino_walk_sil.png',
-        jump: 'assets/tino_jump_sil.png', laugh: 'assets/tino_laugh_sil.png',
-      },
-    },
-    coco: {
-      name: '코코',
-      // walk 원본은 같은 높이로 맞추면 머리가 run보다 작게 보여서(머리 폭 233 vs 264px) 표시만 키운다
-      walkScale: 1.12,
-      sprites: {
-        run: 'assets/coco_run_sil.png', walk: 'assets/coco_walk_sil.png',
-        jump: 'assets/coco_jump_sil.png', laugh: 'assets/coco_laugh_sil.png',
-      },
-    },
+    tino: { name: '티노', w: 96.8 },
+    coco: { name: '코코', w: 85.1 },
   };
 
-  // 배경 장식 (고정 배치, 반복해서 흐름)
-  const CLOUDS = [
-    { x: 120, y: 70, s: 1.0 },
-    { x: 430, y: 48, s: 0.8 },
-    { x: 640, y: 92, s: 1.1 },
+  // 다리: 엉덩이(near·far)는 고정, 발끝 패턴만 바뀐다. a·b = 달리기 교대 2패턴, tuck = 공중 (발끝은 [앞다리, 뒷다리])
+  const LEGS = {
+    tino: { near: [50, -36], far: [38, -36], a: [[62, 0], [26, 0]], b: [[36, 0], [66, 0]], tuck: [[60, -14], [52, -14]] },
+    coco: { near: [52, -30], far: [38, -30], a: [[58, 0], [30, 0]], b: [[32, 0], [60, 0]], tuck: [[58, -12], [48, -12]] },
+  };
+
+  // 지면: 가로선 1개 + 그 아래 짧은 대시 줄만 (게임 속도 그대로 흐른다)
+  const GROUND_DASHES = [
+    { y: 338, x: 0, tile: 80, len: 18, h: 3 },
+    { y: 358, x: 40, tile: 120, len: 30, h: 3 },
   ];
-  // 2겹 언덕: 뒤쪽 층이 더 느리게 흐른다 (패럴랙스, 게임 속도 배율 평균 0.25)
-  const HILL_LAYERS = [
-    { speed: 0.18, tile: 760, hills: [
-      { x: 90, rx: 170, ry: 70, color: '#E9E9E9' },
-      { x: 400, rx: 130, ry: 55, color: '#E9E9E9' },
-      { x: 610, rx: 190, ry: 80, color: '#E9E9E9' },
-    ] },
-    { speed: 0.32, tile: 620, hills: [
-      { x: 150, rx: 150, ry: 40, color: '#DDDDDD' },
-      { x: 430, rx: 120, ry: 34, color: '#DDDDDD' },
-    ] },
-  ];
-  // 땅의 대시·점 패턴 (게임 속도 그대로 흐름). v3보다 촘촘하고 길게
-  const GROUND_LINES = [
-    { y: 327, x: 0, tile: 46, len: 22, h: 2 },
-    { y: 338, x: 14, tile: 70, len: 34, h: 1.5 },
-    { y: 352, x: 40, tile: 58, len: 18, h: 1.5 },
-    { y: 366, x: 5, tile: 90, len: 44, h: 1.5 },
-    { y: 380, x: 30, tile: 52, len: 12, h: 1.5 },
-    { y: 392, x: 60, tile: 76, len: 30, h: 1.5 },
-  ];
-  const GROUND_DOTS = [
-    { y: 332, x: 8, tile: 38 },
-    { y: 359, x: 25, tile: 44 },
-    { y: 386, x: 3, tile: 34 },
-  ];
-  const GRASS = Array.from({ length: 36 }, () => ({
-    x: Math.random() * GRASS_TILE,
-    y: GROUND_Y + 14 + Math.random() * (WORLD_H - GROUND_Y - 26),
-  }));
 
   // ===== 자동 테스트 모드 여부 (?test=1) =====
   const params = new URLSearchParams(window.location.search);
@@ -404,15 +365,14 @@
   let best = readBest();
   let speed = START_SPEED;
   let scroll = 0;              // 배경 흐름 거리
-  let stepClock = 0;           // 다음 run/walk 포즈 교체까지 남은 시간
-  let stepFrame = 0;           // 0 = run 포즈, 1 = walk 포즈
+  let stepClock = 0;           // 다음 다리 패턴 교체까지 남은 시간
+  let stepFrame = 0;           // 0 = 패턴 a, 1 = 패턴 b
   let obstacles = [];          // { type, x, w, h, cleared }
   let nextGap = 0;             // 마지막 장애물 뒤로 필요한 간격(초)
   let spawnDelay = 0;          // 재시작 후 첫 장애물까지 남은 대기 시간
   let drops = [];              // 물방울 파티클 { x, y, vx, vy, life }
   let dust = [];               // 발밑 먼지 파티클 { x, y, vx, vy, r, life, max }
   let speedLines = [];         // 고속 구간 스피드 라인 { x, y, len, life }
-  let splashLeft = 0;          // 웃음 포즈(물웅덩이를 밟은 뒤) 남은 시간
   let jumpBuffer = 0;          // 공중에서 누른 점프 입력이 남은 시간
   let lift = 0;                // 땅에서 떠 있는 높이
   let vy = 0;                  // 수직 속도
@@ -431,33 +391,6 @@
   const measuredJumps = [];    // 테스트 중 실제 점프 실측 기록
   const gapLog = [];           // 테스트 중 장애물 사이 시간 간격 실측(초)
   let lastClearAt = null;
-
-  // 스프라이트 (캐릭터별 자세별 이미지)
-  const sprites = { tino: {}, coco: {} };
-  let spriteError = false;
-
-  // ===== 이미지 로딩 =====
-  function loadSprites() {
-    for (const who of Object.keys(CHARACTERS)) {
-      for (const pose of Object.keys(CHARACTERS[who].sprites)) {
-        const img = new Image();
-        img.onerror = () => { spriteError = true; };
-        img.src = CHARACTERS[who].sprites[pose];
-        sprites[who][pose] = img;
-      }
-    }
-  }
-
-  function spritesReady() {
-    return Object.values(sprites).every(group =>
-      Object.values(group).every(img => img.complete && img.naturalWidth > 0));
-  }
-
-  // 표시 너비: 높이는 DISPLAY_H로 통일하고 원본 비율대로 넓이를 정한다
-  function spriteWidth(img) {
-    if (!img || !img.complete || !img.naturalHeight) return DISPLAY_H * 0.8;
-    return DISPLAY_H * img.naturalWidth / img.naturalHeight;
-  }
 
   // 지금 달리는 캐릭터 (시작 화면에서는 고른 캐릭터를 미리 보여 준다)
   function activeChar() {
@@ -619,7 +552,7 @@
     jumpLog = null;
   }
 
-  // 발밑 먼지: 착지·스텝 교체 때 뒤쪽(왼쪽)으로 흩어지는 작은 알갱이
+  // 발밑 먼지: 착지·다리 패턴 교체 때 뒤쪽(왼쪽)으로 흩어지는 작은 알갱이
   function kickDust(count) {
     const feetX = PLAYER_X + playerBox().w * 0.35;
     for (let i = 0; i < count; i++) {
@@ -638,11 +571,10 @@
 
   // ===== 충돌 박스 =====
   function playerBox() {
-    const who = activeChar();
     return {
       x: PLAYER_X,
       y: GROUND_Y - lift - DISPLAY_H,
-      w: spriteWidth(sprites[who].run),
+      w: CHARACTERS[activeChar()].w,
       h: DISPLAY_H,
     };
   }
@@ -707,7 +639,6 @@
     speedLines = [];
     nextGap = 0;
     spawnDelay = FIRST_DELAY;
-    splashLeft = 0;
     jumpBuffer = 0;
     showPanel(null);
   }
@@ -726,7 +657,7 @@
 
   // 캐릭터를 고른 뒤에만 출발한다 (첫 점프까지 함께)
   function beginRun() {
-    if (!spritesReady() || !selected) return;
+    if (!selected) return;
     initAudio();
     startGame();
     jump();
@@ -766,10 +697,9 @@
     nextGap = GAP_MIN_SEC + Math.random() * GAP_RANDOM_SEC;
   }
 
-  // 물웅덩이를 지상에서 밟았을 때: 첨벙 소리, 물방울, 잠깐 웃음 포즈 (게임은 계속)
+  // 물웅덩이를 지상에서 밟았을 때: 첨벙 소리, 물방울 점 (몸통은 그대로, 게임은 계속)
   function splash(o) {
     o.splashed = true;
-    splashLeft = SPLASH_SECONDS;
     const feetX = PLAYER_X + playerBox().w / 2;
     for (let i = 0; i < DROP_COUNT; i++) {
       drops.push({
@@ -819,7 +749,7 @@
     });
   }
 
-  // 달리기 애니메이션: run/walk 포즈 교체. 빠를수록 교체 주기가 짧다
+  // 달리기 애니메이션: 다리 패턴 a·b 교체. 빠를수록 교체 주기가 짧다
   function updateStep(dt) {
     if (!grounded) return;
     stepClock -= dt;
@@ -884,7 +814,6 @@
   function update(dt) {
     updateJump(dt);
     updateDrops(dt);
-    if (splashLeft > 0) splashLeft = Math.max(0, splashLeft - dt);
     if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - dt);
     if (state === 'playing') {
       autoPilot();
@@ -966,7 +895,6 @@
 
   // ===== 입력 =====
   function onAction() {
-    if (!spritesReady()) return;
     initAudio();
     if (state === 'ready') {
       beginRun();
@@ -1023,97 +951,175 @@
     muteBtn.blur(); // 포커스가 남아 스페이스바가 버튼을 누르지 않도록
   });
 
+  // ===== 선화 캐릭터 =====
+  // 몸통·머리·눈·등뼈/지느러미는 좌표가 고정이고 다리 패턴만 바뀐다 (같은 함수로 그리므로 프레임마다 동일).
+  // 채우기는 배경과 같은 흰색이라 시각적으로는 "채우기 없음"이고, 겹친 선만 가려 준다.
+  // 좌표: x = 캐릭터 왼쪽 끝, y = 발끝 기준선 (위로 갈수록 음수)
+  function inkStyle(g) {
+    g.strokeStyle = LINE;
+    g.lineWidth = LINE_W;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.fillStyle = '#FFFFFF';
+  }
+
+  function triangle(g, x1, y1, x2, y2, x3, y3) {
+    g.beginPath();
+    g.moveTo(x1, y1);
+    g.lineTo(x2, y2);
+    g.lineTo(x3, y3);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  }
+
+  // 눈: 점 1개 (충돌 때는 X)
+  function drawEye(g, cx, cy, eyes) {
+    g.beginPath();
+    if (eyes === 'x') {
+      g.moveTo(cx - 5, cy - 5);
+      g.lineTo(cx + 5, cy + 5);
+      g.moveTo(cx + 5, cy - 5);
+      g.lineTo(cx - 5, cy + 5);
+      g.stroke();
+    } else {
+      g.arc(cx, cy, 3.5, 0, Math.PI * 2);
+      g.fillStyle = LINE;
+      g.fill();
+    }
+  }
+
+  // 다리 2개 (엉덩이 → 발끝 선). 패턴 이름은 LEGS 참고
+  function drawLegs(g, who, x, y, pose) {
+    const L = LEGS[who];
+    const feet = L[pose];
+    g.beginPath();
+    g.moveTo(x + L.far[0], y + L.far[1]);
+    g.lineTo(x + feet[1][0], y + feet[1][1]);
+    g.moveTo(x + L.near[0], y + L.near[1]);
+    g.lineTo(x + feet[0][0], y + feet[0][1]);
+    g.stroke();
+  }
+
+  function drawTino(g, x, y, legs, eyes) {
+    inkStyle(g);
+    // 꼬리: 뒤로 흘러내리는 선 하나
+    g.beginPath();
+    g.moveTo(x + 18, y - 56);
+    g.quadraticCurveTo(x + 4, y - 54, x + 6, y - 30);
+    g.stroke();
+    drawLegs(g, 'tino', x, y, legs);
+    // 등뼈 삼각형 3개 (몸통 뒤에 깔려서 밑변은 몸통에 가려진다)
+    triangle(g, x + 17, y - 76, x + 27, y - 76, x + 21, y - 91);
+    triangle(g, x + 28, y - 80, x + 38, y - 80, x + 32, y - 97);
+    triangle(g, x + 39, y - 83, x + 49, y - 83, x + 43, y - 100);
+    // 몸통 + 큰 머리
+    g.beginPath();
+    g.ellipse(x + 42, y - 60, 30, 29, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.arc(x + 72, y - 92, 21, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // 작은 팔
+    g.beginPath();
+    g.moveTo(x + 60, y - 62);
+    g.lineTo(x + 76, y - 56);
+    g.lineTo(x + 72, y - 48);
+    g.stroke();
+    drawEye(g, x + 80, y - 96, eyes);
+  }
+
+  function drawCoco(g, x, y, legs, eyes) {
+    inkStyle(g);
+    // 꼬리지느러미: 가른 삼각 모양 하나 (몸통 뒤)
+    g.beginPath();
+    g.moveTo(x + 22, y - 52);
+    g.lineTo(x + 2, y - 68);
+    g.lineTo(x + 8, y - 52);
+    g.lineTo(x + 2, y - 36);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    drawLegs(g, 'coco', x, y, legs);
+    // 머리 위 작은 삼각 등지느러미 (머리에 가려지는 밑변)
+    triangle(g, x + 57, y - 92, x + 69, y - 92, x + 60, y - 111);
+    // 몸통
+    g.beginPath();
+    g.ellipse(x + 44, y - 54, 30, 26, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // 머리
+    g.beginPath();
+    g.arc(x + 64, y - 80, 19, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // 배를 가르는 완만한 곡선 1개
+    g.beginPath();
+    g.moveTo(x + 22, y - 46);
+    g.quadraticCurveTo(x + 44, y - 34, x + 66, y - 46);
+    g.stroke();
+    // 눈패치 타원 1개 + 눈 점
+    g.beginPath();
+    g.ellipse(x + 76, y - 82, 7, 5.5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    drawEye(g, x + 77, y - 82, eyes);
+  }
+
+  function drawCharacter(g, who, x, y, legs, eyes) {
+    if (who === 'coco') drawCoco(g, x, y, legs, eyes);
+    else drawTino(g, x, y, legs, eyes);
+  }
+
+  // 선택 카드 미리보기: 같은 그림을 작은 canvas에 그린다 (2배 해상도 240×168, 카드에는 120×84)
+  function drawCardArts() {
+    for (const card of cards) {
+      const who = card.dataset.char;
+      const g = card.querySelector('canvas').getContext('2d');
+      const w = CHARACTERS[who].w;
+      const k = 1.4;               // 2배 해상도 × 그림 0.7배
+      g.clearRect(0, 0, 240, 168);
+      g.setTransform(k, 0, 0, k, 120 - 0.7 * w, 0); // 가운데 맞춤
+      drawCharacter(g, who, 0, DISPLAY_H - 4, 'a', 'dot');
+    }
+  }
+
   // ===== 그리기 =====
-  function wrapX(base, offset, tile) {
-    return ((base - offset) % tile + tile) % tile;
-  }
-
-  function drawCloud(x, y, s) {
-    ctx.beginPath();
-    ctx.ellipse(x, y, 34 * s, 18 * s, 0, 0, Math.PI * 2);
-    ctx.ellipse(x - 26 * s, y + 4 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2);
-    ctx.ellipse(x + 26 * s, y + 4 * s, 24 * s, 13 * s, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   function drawBackground() {
-    // 크림색 세로 그라데이션 하늘
-    ctx.fillStyle = '#F7F7F7';
-    ctx.fillRect(0, 0, worldW, GROUND_Y);
-
-    // 구름 (느리게 흐름)
-    ctx.fillStyle = '#E2E2E2';
-    for (const c of CLOUDS) {
-      for (let x = wrapX(c.x, scroll * CLOUD_SPEED, CLOUD_TILE) - CLOUD_TILE; x < worldW + 200; x += CLOUD_TILE) {
-        drawCloud(x, c.y, c.s);
-      }
-    }
-
-    // 2겹 언덕 (뒤쪽 층이 더 느리게)
-    for (const layer of HILL_LAYERS) {
-      for (const h of layer.hills) {
-        ctx.fillStyle = h.color;
-        for (let x = wrapX(h.x, scroll * layer.speed, layer.tile) - layer.tile; x < worldW + 200; x += layer.tile) {
-          ctx.beginPath();
-          ctx.ellipse(x, GROUND_Y, h.rx, h.ry, 0, Math.PI, 0);
-          ctx.fill();
-        }
-      }
-    }
-
-    // 땅
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, GROUND_Y, worldW, WORLD_H - GROUND_Y);
-    ctx.strokeStyle = '#535353';
-    ctx.lineWidth = 2;
+    ctx.fillRect(0, 0, worldW, WORLD_H);
+
+    // 지면: 가로선 1개
+    ctx.strokeStyle = LINE;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y);
     ctx.lineTo(worldW, GROUND_Y);
     ctx.stroke();
 
-    // 땅 대시·점 패턴 (게임 속도 그대로 흐름)
-    ctx.fillStyle = 'rgba(83, 83, 83, 0.30)';
-    for (const row of GROUND_LINES) {
-      for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
+    // 그 아래 짧은 대시 줄 (게임 속도 그대로 흐른다)
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.45)';
+    for (const row of GROUND_DASHES) {
+      for (let x = ((row.x - scroll) % row.tile + row.tile) % row.tile - row.tile; x < worldW; x += row.tile) {
         ctx.fillRect(x, row.y, row.len, row.h);
       }
     }
-    ctx.fillStyle = 'rgba(83, 83, 83, 0.35)';
-    for (const row of GROUND_DOTS) {
-      for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
-        ctx.fillRect(x, row.y, 3, 3);
-      }
-    }
-
-    // 잔디 점 (땅과 같은 속도로 흐름)
-    ctx.fillStyle = 'rgba(83, 83, 83, 0.25)';
-    for (const g of GRASS) {
-      for (let x = wrapX(g.x, scroll, GRASS_TILE) - GRASS_TILE; x < worldW + 20; x += GRASS_TILE) {
-        ctx.beginPath();
-        ctx.ellipse(x, g.y, 4, 1.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
   }
 
-  // 물웅덩이: 파란 타원
+  // 물웅덩이: 납작한 타원 아웃라인
   function drawPuddle(o) {
-    const cx = o.x + o.w / 2;
-    const cy = GROUND_Y - o.h / 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(83, 83, 83, 0.18)';
+    ctx.ellipse(o.x + o.w / 2, GROUND_Y - o.h / 2, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
     ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#535353';
+    ctx.strokeStyle = LINE;
+    ctx.lineWidth = LINE_W;
     ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(cx - o.w * 0.15, cy - o.h * 0.12, o.w * 0.16, o.h * 0.14, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.fill();
   }
 
-  // 돌멩이: 각진 폴리곤 실루엣 (크롬 공룡 스타일)
+  // 돌멩이: 각진 아웃라인 (채우기 없음 = 흰 배경)
   function drawRock(o) {
     const x = o.x;
     const y = GROUND_Y - o.h;
@@ -1127,8 +1133,12 @@
     ctx.lineTo(x + w * 0.88, y + h * 0.32);
     ctx.lineTo(x + w * 0.96, GROUND_Y);
     ctx.closePath();
-    ctx.fillStyle = '#535353';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fill();
+    ctx.strokeStyle = LINE;
+    ctx.lineWidth = LINE_W;
+    ctx.lineJoin = 'miter';
+    ctx.stroke();
   }
 
   function drawObstacles() {
@@ -1136,15 +1146,6 @@
       if (o.type === 'puddle') drawPuddle(o);
       else drawRock(o);
     }
-  }
-
-  // 포즈마다 폭이 달라도 run 포즈(판정 기준) 가운데에 맞춰 그린다
-  function drawSprite(img, x, liftPx, baseW, size) {
-    if (!img || !img.complete || !img.naturalHeight) return;
-    const k = size || 1;
-    const w = spriteWidth(img) * k;
-    const h = DISPLAY_H * k;
-    ctx.drawImage(img, x + (baseW - w) / 2, GROUND_Y - liftPx - h, w, h);
   }
 
   function drawDust() {
@@ -1169,48 +1170,25 @@
   }
 
   function drawDrops() {
-    ctx.fillStyle = '#8A8A8A';
-    ctx.strokeStyle = '#8A8A8A';
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = 'rgba(83, 83, 83, 0.75)';
     for (const p of drops) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
     }
   }
 
-  // 자세: 부딪힘 = 웃음, 땅에서 물웅덩이를 밟은 직후 = 웃음, 공중 = 점프,
-  // 땅 = run/walk 포즈를 번갈아 (다리가 움직이는 것처럼). 한 명만 그린다.
+  // 자세: 공중 = 다리를 모음, 땅 = 다리 패턴 a·b 교대. 충돌하면 눈만 X (몸통은 어떤 경우에도 그대로)
   function drawTeam() {
     const who = activeChar();
-    let pose = stepFrame === 1 ? 'walk' : 'run';
-    if (state === 'crashed' || (grounded && splashLeft > 0)) pose = 'laugh';
-    else if (!grounded) pose = 'jump';
-    const step = pose === 'walk' ? STEP_LIFT : 0;
-    const size = pose === 'walk' ? (CHARACTERS[who].walkScale || 1) : 1;
-    drawSprite(sprites[who][pose], PLAYER_X, lift + step, spriteWidth(sprites[who].run), size);
-  }
-
-  function drawStatus() {
-    ctx.fillStyle = '#535353';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '400 18px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
-    ctx.fillText(
-      spriteError ? '이미지를 불러오지 못했어요 (assets 폴더를 확인해 주세요)' : '불러오는 중…',
-      worldW / 2,
-      WORLD_H / 2
-    );
+    const legs = !grounded ? 'tuck' : (stepFrame === 1 ? 'b' : 'a');
+    const eyes = state === 'crashed' ? 'x' : 'dot';
+    drawCharacter(ctx, who, PLAYER_X, GROUND_Y - lift, legs, eyes);
   }
 
   function draw() {
     ctx.clearRect(0, 0, worldW, WORLD_H);
     drawBackground();
-    if (!spritesReady()) {
-      drawStatus();
-      return;
-    }
     drawSpeedLines();
     drawObstacles();
     drawDust();
@@ -1222,20 +1200,18 @@
   function frame(ts) {
     const dt = lastTs === null ? 0 : Math.min(0.05, (ts - lastTs) / 1000);
     lastTs = ts;
-    if (spritesReady()) {
-      if (TEST_MODE && state === 'ready') startGame(); // 테스트는 시작 화면 없이 바로 달린다
-      update(dt);
-    }
+    if (TEST_MODE && state === 'ready') startGame(); // 테스트는 시작 화면 없이 바로 달린다
+    update(dt);
     draw();
     requestAnimationFrame(frame);
   }
 
   // ===== 시작 =====
-  loadSprites();
   resize();
   window.addEventListener('resize', resize);
   setScore();
   setBest();
+  drawCardArts();
   renderChoice();
   if (TEST_MODE) {
     testResult.char = activeChar();
