@@ -263,30 +263,37 @@
   const PLAYER_X = 120;        // 선택한 캐릭터의 x 위치 (한 명만 달리므로 한 자리)
 
   // 점프 물리: 중력은 약하게, 점프는 높게, 착지 때 살짝 통통
-  const GRAVITY = 1000;                             // 중력 (월드 px/s²)
-  const JUMP_H = 140;                              // 점프 최고 높이 (월드 px)
+  const GRAVITY = 780;                             // 중력 (월드 px/s²)
+  const JUMP_H = 175;                              // 점프 최고 높이 (월드 px)
   const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_H);  // 점프 초기 속도
   const BOUNCE_RATIO = 0.2;                        // 착지 반동 세기 (착지 속도의 20%)
   const BOUNCE_MIN_IMPACT = 80;                    // 이 속도 이상으로 떨어졌을 때만 통통 튐
+  const JUMP_BUFFER = 0.18;                        // 공중에서 누른 점프를 기억하는 시간(초). 착지하자마자 실행
   // 반동까지 포함한 공중 체류 시간(초)
   const AIR_TIME = (2 * JUMP_V + 2 * BOUNCE_RATIO * JUMP_V) / GRAVITY;
 
-  // 속도와 장애물 간격: 느리게 시작, 아주 완만하게 가속
-  const START_SPEED = 170;     // 시작 속도 (월드 px/s)
-  const MAX_SPEED = 360;       // 최고 속도
-  const ACCEL = 3;             // 가속도 (px/s²)
-  // 최고 속도에서도 한 번의 점프로 넘을 수 있도록 장애물 사이 최소 간격을 보장
-  const MIN_GAP = Math.ceil(MAX_SPEED * AIR_TIME + 60);
-  const EXTRA_GAP = 180;       // 최소 간격 위에 더해지는 랜덤 여유
-  const FIRST_GAP = 300;       // 첫 장애물까지 여유
+  // 속도와 장애물 간격: 아주 느리게 시작, 아주 완만하게 가속
+  const START_SPEED = 105;     // 시작 속도 (월드 px/s)
+  const MAX_SPEED = 175;       // 최고 속도
+  const ACCEL = 0.8;           // 가속도 (px/s²)
+  // 장애물 사이 최소 간격 = max(속도 × 2.2초, 420px). 랜덤 상한은 최소 간격의 1.6배
+  const GAP_SECONDS = 2.2;
+  const GAP_MIN_PX = 420;
+  const GAP_RANDOM_MAX = 1.6;
+  const FIRST_DELAY = 1.2;     // 재시작 후 첫 장애물이 나오기까지 최소 시간(초)
 
   // 장애물 크기 (표시 px). 물웅덩이 44~60, 돌멩이 32~44 범위 안
   const PUDDLE = { w: 52, h: 16 };
   const ROCK = { w: 38, h: 40 };
+  const ROCK_RATIO = 0.35;     // 전체 장애물 중 돌멩이 비율 (나머지는 물웅덩이)
 
-  // 충돌 판정: 표시 크기의 좌우·위쪽 25%씩 안쪽 → 캐릭터 판정 폭은 표시 폭의 50%
-  // 발끝(아래쪽)은 안쪽으로 줄이지 않는다. 땅 장애물과 닿아야 하기 때문.
-  const HIT_INSET = 0.25;
+  // 충돌 판정: 표시 크기에서 안쪽을 줄인다. 발끝(아래쪽)은 줄이지 않는다. 땅 장애물과 닿아야 하기 때문.
+  // 캐릭터: 좌우 31%씩 → 판정 폭 38%, 위쪽 35%
+  const PLAYER_INSET = { x: 0.31, top: 0.35 };
+  // 장애물: 좌우 25%씩 → 판정 폭 50%. 물웅덩이는 높이 판정을 절반(위쪽 50%), 돌멩이는 위쪽 25%
+  const OBSTACLE_INSET = { x: 0.25, puddleTop: 0.5, rockTop: 0.25 };
+  const DROP_COUNT = 10;       // 물웅덩이를 밟을 때 튀는 물방울 수
+  const SPLASH_SECONDS = 0.35; // 물웅덩이를 밟은 뒤 웃음 포즈 유지 시간
 
   const RESTART_LOCK_MS = 500; // 풍덩 직후 연타로 바로 재시작되는 것을 막는 짧은 대기
   const BOB_AMP = 3.5;         // 달릴 때 위아래로 흔들리는 폭(px)
@@ -297,7 +304,6 @@
 
   // 자동 테스트 (?test=1): 장애물 왼쪽 끝이 판정 오른쪽 끝에서 속도×AUTOPILOT_LEAD 초 안쪽이면 점프
   const AUTOPILOT_LEAD = 0.2;
-  const TEST_GOAL = 5;         // 충돌 없이 이 점수에 도달하면 PASS
   const TEST_TIMEOUT = 60;     // 게임 시간(초) 안에 못 넘으면 FAIL
 
   const CLOUD_TILE = 820;      // 구름 반복 간격
@@ -348,6 +354,9 @@
   // ===== 자동 테스트 모드 여부 (?test=1) =====
   const params = new URLSearchParams(window.location.search);
   const TEST_MODE = params.get('test') === '1';
+  const FORCE_PUDDLE = TEST_MODE && params.get('force') === 'puddle'; // 물웅덩이만 나온다
+  const NO_JUMP = TEST_MODE && params.get('nojump') === '1';          // 점프 입력을 모두 막는다
+  const TEST_GOAL = FORCE_PUDDLE ? 3 : 5; // 충돌 없이 이 점수에 도달하면 PASS
 
   // ===== DOM =====
   const canvas = document.getElementById('game');
@@ -376,7 +385,11 @@
   let scroll = 0;              // 배경 흐름 거리
   let runClock = 0;            // 달리기 애니메이션 시간
   let obstacles = [];          // { type, x, w, h, cleared }
-  let nextGap = FIRST_GAP;
+  let nextGap = 0;             // 마지막 장애물 뒤로 필요한 간격
+  let spawnDelay = 0;          // 재시작 후 첫 장애물까지 남은 대기 시간
+  let drops = [];              // 물방울 파티클 { x, y, vx, vy, life }
+  let splashLeft = 0;          // 웃음 포즈(물웅덩이를 밟은 뒤) 남은 시간
+  let jumpBuffer = 0;          // 공중에서 누른 점프 입력이 남은 시간
   let lift = 0;                // 땅에서 떠 있는 높이
   let vy = 0;                  // 수직 속도
   let grounded = true;
@@ -526,6 +539,13 @@
     lift += vy * dt;
     if (lift <= 0) {
       lift = 0;
+      if (jumpBuffer > 0) {
+        // 착지 직전에 누른 입력: 튕기지 않고 바로 다시 점프
+        jumpBuffer = 0;
+        grounded = true;
+        jump();
+        return;
+      }
       const impact = -vy;
       if (!bounced && impact > BOUNCE_MIN_IMPACT) {
         vy = impact * BOUNCE_RATIO; // 착지 반동 (한 번만)
@@ -539,7 +559,7 @@
   }
 
   function jump() {
-    if (!grounded) return;
+    if (!grounded || NO_JUMP) return;
     grounded = false;
     bounced = false;
     vy = JUMP_V;
@@ -561,14 +581,23 @@
     return { x: o.x, y: GROUND_Y - o.h, w: o.w, h: o.h };
   }
 
-  // 좌우·위쪽 25% 안쪽으로 줄인 판정 박스 (발끝은 그대로)
-  function hitBox(r) {
+  // 판정 박스: 왼쪽·오른쪽·위쪽을 주어진 비율만큼 안쪽으로 줄인다 (발끝은 그대로)
+  function hitBox(r, insetX, insetTop) {
     return {
-      x: r.x + r.w * HIT_INSET,
-      y: r.y + r.h * HIT_INSET,
-      w: r.w * (1 - 2 * HIT_INSET),
-      h: r.h * (1 - HIT_INSET),
+      x: r.x + r.w * insetX,
+      y: r.y + r.h * insetTop,
+      w: r.w * (1 - 2 * insetX),
+      h: r.h * (1 - insetTop),
     };
+  }
+
+  function playerHit() {
+    return hitBox(playerBox(), PLAYER_INSET.x, PLAYER_INSET.top);
+  }
+
+  function obstacleHit(o) {
+    const top = o.type === 'puddle' ? OBSTACLE_INSET.puddleTop : OBSTACLE_INSET.rockTop;
+    return hitBox(obstacleBox(o), OBSTACLE_INSET.x, top);
   }
 
   function overlap(a, b) {
@@ -603,7 +632,11 @@
     setScore();
     speed = START_SPEED;
     obstacles = [];
-    nextGap = FIRST_GAP;
+    drops = [];
+    nextGap = 0;
+    spawnDelay = FIRST_DELAY;
+    splashLeft = 0;
+    jumpBuffer = 0;
     showPanel(null);
   }
 
@@ -613,7 +646,8 @@
     score = 0;
     setScore();
     obstacles = [];
-    nextGap = FIRST_GAP;
+    nextGap = 0;
+    jumpBuffer = 0;
     showPanel('ready');
     renderChoice();
   }
@@ -629,6 +663,7 @@
   function crash() {
     state = 'crashed';
     crashedAt = performance.now();
+    jumpBuffer = 0;
     if (score > best) {
       best = score;
       writeBest(best);
@@ -641,24 +676,53 @@
   }
 
   function maybeSpawn() {
+    if (spawnDelay > 0) return;
     const last = obstacles[obstacles.length - 1];
     const lastRight = last ? last.x + last.w : 0;
     if (worldW - lastRight < nextGap) return;
-    if (Math.random() < 0.5) {
-      obstacles.push({ type: 'puddle', x: worldW + 10, w: PUDDLE.w, h: PUDDLE.h, cleared: false });
+    if (!FORCE_PUDDLE && Math.random() < ROCK_RATIO) {
+      obstacles.push({ type: 'rock', x: worldW + 10, w: ROCK.w, h: ROCK.h, cleared: false, splashed: false });
     } else {
-      obstacles.push({ type: 'rock', x: worldW + 10, w: ROCK.w, h: ROCK.h, cleared: false });
+      obstacles.push({ type: 'puddle', x: worldW + 10, w: PUDDLE.w, h: PUDDLE.h, cleared: false, splashed: false });
     }
-    nextGap = MIN_GAP + Math.random() * EXTRA_GAP;
+    const minGap = Math.max(speed * GAP_SECONDS, GAP_MIN_PX);
+    nextGap = minGap + Math.random() * (GAP_RANDOM_MAX - 1) * minGap;
   }
 
-  // 자동 테스트 조종사: 가장 가까운 장애물이 가까워지면 점프 (?test=1 전용)
+  // 물웅덩이를 지상에서 밟았을 때: 첨벙 소리, 물방울, 잠깐 웃음 포즈 (게임은 계속)
+  function splash(o) {
+    o.splashed = true;
+    splashLeft = SPLASH_SECONDS;
+    const feetX = PLAYER_X + playerBox().w / 2;
+    for (let i = 0; i < DROP_COUNT; i++) {
+      drops.push({
+        x: feetX + (Math.random() - 0.5) * 30,
+        y: GROUND_Y - 4,
+        vx: (Math.random() - 0.5) * 120,
+        vy: -(150 + Math.random() * 150),
+        life: 0.5 + Math.random() * 0.2,
+      });
+    }
+    sfxSplash();
+  }
+
+  function updateDrops(dt) {
+    for (const p of drops) {
+      p.vy += GRAVITY * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+    }
+    drops = drops.filter(p => p.life > 0 && p.y < GROUND_Y);
+  }
+
+  // 자동 테스트 조종사: 가장 가까운 장애물이 가까워지면 점프 (?test=1 전용, nojump 모드에서는 끔)
   function autoPilot() {
-    if (!TEST_MODE || testDone || !grounded) return;
+    if (!TEST_MODE || NO_JUMP || testDone || !grounded) return;
     const next = obstacles.find(o => !o.cleared);
     if (!next) return;
-    const hit = hitBox(playerBox());
-    const ob = hitBox(obstacleBox(next));
+    const hit = playerHit();
+    const ob = obstacleHit(next);
     const dist = ob.x - (hit.x + hit.w);
     if (dist <= speed * AUTOPILOT_LEAD) jump();
   }
@@ -667,14 +731,20 @@
     speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
     const d = speed * dt;
     scroll += d;
+    spawnDelay = Math.max(0, spawnDelay - dt);
     maybeSpawn();
     for (const o of obstacles) o.x -= d;
+    for (const p of drops) p.x -= d;
 
-    const hit = hitBox(playerBox());
+    const hit = playerHit();
     for (const o of obstacles) {
-      if (overlap(hit, hitBox(obstacleBox(o)))) {
-        crash();
-        return;
+      if (overlap(hit, obstacleHit(o))) {
+        if (o.type === 'rock') {
+          crash();
+          return;
+        }
+        // 물웅덩이는 지상에서 밟을 때만 첨벙. 점프로 넘으면 아무 일도 없다.
+        if (grounded && !o.splashed) splash(o);
       }
       // 판정 박스의 왼쪽 끝을 완전히 지나간 장애물 = 넘은 것
       if (!o.cleared && o.x + o.w < hit.x) {
@@ -690,6 +760,9 @@
 
   function update(dt) {
     updateJump(dt);
+    updateDrops(dt);
+    if (splashLeft > 0) splashLeft = Math.max(0, splashLeft - dt);
+    if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - dt);
     if (state === 'playing') {
       autoPilot();
       updatePlaying(dt);
@@ -726,7 +799,8 @@
     if (state === 'ready') {
       beginRun();
     } else if (state === 'playing') {
-      jump();
+      if (grounded) jump();
+      else jumpBuffer = JUMP_BUFFER; // 공중 입력은 잠깐 기억해 두었다가 착지 순간 점프
     } else if (state === 'crashed' && performance.now() - crashedAt > RESTART_LOCK_MS) {
       beginRun();
     }
@@ -897,12 +971,26 @@
     ctx.drawImage(img, x, GROUND_Y - liftPx - DISPLAY_H, w, DISPLAY_H);
   }
 
-  // 자세: 부딪힘 = 웃음, 공중 = 점프, 땅 = 달리기 (+ 위아래 흔들림). 한 명만 그린다.
+  function drawDrops() {
+    ctx.fillStyle = '#A8DCEB';
+    ctx.strokeStyle = '#6AAFC9';
+    ctx.lineWidth = 1.5;
+    for (const p of drops) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // 자세: 부딪힘 = 웃음, 땅에서 물웅덩이를 밟은 직후 = 웃음, 공중 = 점프, 땅 = 달리기 (+ 위아래 흔들림). 한 명만 그린다.
   function drawTeam() {
     const who = activeChar();
-    const pose = state === 'crashed' ? 'laugh' : (grounded ? 'run' : 'jump');
+    let pose = 'run';
+    if (state === 'crashed' || (grounded && splashLeft > 0)) pose = 'laugh';
+    else if (!grounded) pose = 'jump';
     let bob = 0;
-    if (grounded && state !== 'crashed') {
+    if (pose === 'run') {
       bob = (Math.sin(runClock * Math.PI * 2 * BOB_HZ) + 1) / 2 * BOB_AMP;
     }
     drawSprite(sprites[who][pose], PLAYER_X, lift + bob);
@@ -928,6 +1016,7 @@
       return;
     }
     drawObstacles();
+    drawDrops();
     drawTeam();
   }
 
