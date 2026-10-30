@@ -262,24 +262,23 @@
   const DISPLAY_H = 120;       // 캐릭터 표시 높이 (티노·코코 공통, 폭은 원본 비율대로)
   const PLAYER_X = 120;        // 선택한 캐릭터의 x 위치 (한 명만 달리므로 한 자리)
 
-  // 점프 물리: 중력은 약하게, 점프는 높게, 착지 때 살짝 통통
-  const GRAVITY = 780;                             // 중력 (월드 px/s²)
-  const JUMP_H = 175;                              // 점프 최고 높이 (월드 px)
-  const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_H);  // 점프 초기 속도
-  const BOUNCE_RATIO = 0.2;                        // 착지 반동 세기 (착지 속도의 20%)
-  const BOUNCE_MIN_IMPACT = 80;                    // 이 속도 이상으로 떨어졌을 때만 통통 튐
-  const JUMP_BUFFER = 0.18;                        // 공중에서 누른 점프를 기억하는 시간(초). 착지하자마자 실행
-  // 반동까지 포함한 공중 체류 시간(초)
-  const AIR_TIME = (2 * JUMP_V + 2 * BOUNCE_RATIO * JUMP_V) / GRAVITY;
+  // 속도: 별 개수에 따라 완만히 빨라지고 최고 속도에서 고정
+  const START_SPEED = 240;     // 시작 속도 (월드 px/s)
+  const MAX_SPEED = 480;       // 최고 속도
+  const SPEED_PER_STAR = 5;    // 별 1개당 목표 속도 증가 (48개에서 최고 속도)
+  const SPEED_EASE = 25;       // 목표 속도로 다가가는 가속 (px/s²). 계단처럼 튀지 않게
 
-  // 속도와 장애물 간격: 아주 느리게 시작, 아주 완만하게 가속
-  const START_SPEED = 105;     // 시작 속도 (월드 px/s)
-  const MAX_SPEED = 175;       // 최고 속도
-  const ACCEL = 0.8;           // 가속도 (px/s²)
-  // 장애물 사이 최소 간격 = max(속도 × 2.2초, 420px). 랜덤 상한은 최소 간격의 1.6배
-  const GAP_SECONDS = 2.2;
-  const GAP_MIN_PX = 420;
-  const GAP_RANDOM_MAX = 1.6;
+  // 점프 물리: 강한 중력 + 큰 초기속도 = 짧고 날카로운 포물선 (크롬 공룡식)
+  // 체공 시간 T를 속도와 거의 무관하게 고정하고 JUMP_V = g·T/2 로 둔다.
+  // 그래서 체공 중 수평 이동거리(속도 × T)가 속도에 비례해 커진다.
+  const GRAVITY = 2400;        // 중력 (월드 px/s²)
+  const AIR_T_START = 0.78;    // 시작 속도에서 체공 시간(초)
+  const AIR_T_MAX = 0.79;      // 최고 속도에서 체공 시간(초). 높이 g·T²/8 ≈ 187px (화면 위로 안 나감)
+  const JUMP_BUFFER = 0.18;    // 공중에서 누른 점프를 기억하는 시간(초). 착지하자마자 실행
+
+  // 장애물 간격은 거리가 아니라 시간 기준: 앞 장애물이 지나간 뒤 최소 1.35초 + 랜덤 0~0.7초
+  const GAP_MIN_SEC = 1.35;
+  const GAP_RANDOM_SEC = 0.7;
   const FIRST_DELAY = 1.2;     // 재시작 후 첫 장애물이 나오기까지 최소 시간(초)
 
   // 장애물 크기 (표시 px). 물웅덩이 44~60, 돌멩이 32~44 범위 안
@@ -293,11 +292,16 @@
   // 장애물: 좌우 25%씩 → 판정 폭 50%. 물웅덩이는 높이 판정을 절반(위쪽 50%), 돌멩이는 위쪽 25%
   const OBSTACLE_INSET = { x: 0.25, puddleTop: 0.5, rockTop: 0.25 };
   const DROP_COUNT = 10;       // 물웅덩이를 밟을 때 튀는 물방울 수
+  const DROP_GRAVITY = 900;    // 물방울·먼지가 떨어지는 중력 (점프 중력과 별개, 천천히 보이게)
   const SPLASH_SECONDS = 0.35; // 물웅덩이를 밟은 뒤 웃음 포즈 유지 시간
 
+  // 속도감 연출
+  const STEP_SLOW = 0.16;      // 시작 속도에서 run/walk 포즈 교체 주기(초)
+  const STEP_FAST = 0.09;      // 최고 속도에서 교체 주기(초)
+  const STEP_LIFT = 2;         // walk 포즈일 때 살짝 떠 보이는 높이(px)
+  const SPEED_LINE_FROM = 380; // 이 속도 이상에서 화면 가장자리에 스피드 라인
+
   const RESTART_LOCK_MS = 500; // 풍덩 직후 연타로 바로 재시작되는 것을 막는 짧은 대기
-  const BOB_AMP = 3.5;         // 달릴 때 위아래로 흔들리는 폭(px)
-  const BOB_HZ = 2.5;          // 흔들림 빈도
   const BEST_KEY = 'tinokoko-dino-best';
   const CHAR_KEY = 'tinokoko-dino-char';
   const CHAR_IDS = ['tino', 'coco'];
@@ -307,17 +311,25 @@
   const TEST_TIMEOUT = 60;     // 게임 시간(초) 안에 못 넘으면 FAIL
 
   const CLOUD_TILE = 820;      // 구름 반복 간격
-  const CLOUD_SPEED = 0.12;    // 구름 흐름 속도 (배경 기준 배율)
+  const CLOUD_SPEED = 0.1;     // 구름 흐름 속도 (게임 속도 배율)
   const GRASS_TILE = 600;      // 잔디 점 반복 간격
 
   const CHARACTERS = {
     tino: {
       name: '티노',
-      sprites: { run: 'assets/tino_run_flip.png', jump: 'assets/tino_jump_v2.png', laugh: 'assets/tino_laugh_v2.png' },
+      sprites: {
+        run: 'assets/tino_run_flip.png', walk: 'assets/tino_walk_flip.png',
+        jump: 'assets/tino_jump_v2.png', laugh: 'assets/tino_laugh_v2.png',
+      },
     },
     coco: {
       name: '코코',
-      sprites: { run: 'assets/coco_run_flip.png', jump: 'assets/coco_jump_v2.png', laugh: 'assets/coco_laugh_v2.png' },
+      // walk 원본은 같은 높이로 맞추면 머리가 run보다 작게 보여서(머리 폭 233 vs 264px) 표시만 키운다
+      walkScale: 1.12,
+      sprites: {
+        run: 'assets/coco_run_flip.png', walk: 'assets/coco_walk_flip.png',
+        jump: 'assets/coco_jump_v2.png', laugh: 'assets/coco_laugh_v2.png',
+      },
     },
   };
 
@@ -327,24 +339,31 @@
     { x: 430, y: 48, s: 0.8 },
     { x: 640, y: 92, s: 1.1 },
   ];
-  // 2겹 언덕: 뒤쪽 층이 더 느리게 흐른다 (패럴랙스)
+  // 2겹 언덕: 뒤쪽 층이 더 느리게 흐른다 (패럴랙스, 게임 속도 배율 평균 0.25)
   const HILL_LAYERS = [
-    { speed: 0.25, tile: 760, hills: [
+    { speed: 0.18, tile: 760, hills: [
       { x: 90, rx: 170, ry: 70, color: '#DCEAD9' },
       { x: 400, rx: 130, ry: 55, color: '#D6E7E8' },
       { x: 610, rx: 190, ry: 80, color: '#DCEAD9' },
     ] },
-    { speed: 0.5, tile: 620, hills: [
+    { speed: 0.32, tile: 620, hills: [
       { x: 150, rx: 150, ry: 40, color: '#F1DCCB' },
       { x: 430, rx: 120, ry: 34, color: '#EBD3C0' },
     ] },
   ];
-  // 땅의 가는 질감선 (땅과 같은 속도로 흐름)
+  // 땅의 대시·점 패턴 (게임 속도 그대로 흐름). v3보다 촘촘하고 길게
   const GROUND_LINES = [
-    { y: 338, x: 0, tile: 140, len: 26 },
-    { y: 352, x: 60, tile: 200, len: 40 },
-    { y: 370, x: 20, tile: 120, len: 18 },
-    { y: 386, x: 110, tile: 170, len: 30 },
+    { y: 327, x: 0, tile: 46, len: 22, h: 2 },
+    { y: 338, x: 14, tile: 70, len: 34, h: 1.5 },
+    { y: 352, x: 40, tile: 58, len: 18, h: 1.5 },
+    { y: 366, x: 5, tile: 90, len: 44, h: 1.5 },
+    { y: 380, x: 30, tile: 52, len: 12, h: 1.5 },
+    { y: 392, x: 60, tile: 76, len: 30, h: 1.5 },
+  ];
+  const GROUND_DOTS = [
+    { y: 332, x: 8, tile: 38 },
+    { y: 359, x: 25, tile: 44 },
+    { y: 386, x: 3, tile: 34 },
   ];
   const GRASS = Array.from({ length: 36 }, () => ({
     x: Math.random() * GRASS_TILE,
@@ -356,6 +375,7 @@
   const TEST_MODE = params.get('test') === '1';
   const FORCE_PUDDLE = TEST_MODE && params.get('force') === 'puddle'; // 물웅덩이만 나온다
   const NO_JUMP = TEST_MODE && params.get('nojump') === '1';          // 점프 입력을 모두 막는다
+  const TEST_MAX_SPEED = TEST_MODE && params.get('speed') === 'max';  // 처음부터 최고 속도로 달린다
   const TEST_GOAL = FORCE_PUDDLE ? 3 : 5; // 충돌 없이 이 점수에 도달하면 PASS
 
   // ===== DOM =====
@@ -383,18 +403,21 @@
   let best = readBest();
   let speed = START_SPEED;
   let scroll = 0;              // 배경 흐름 거리
-  let runClock = 0;            // 달리기 애니메이션 시간
+  let stepClock = 0;           // 다음 run/walk 포즈 교체까지 남은 시간
+  let stepFrame = 0;           // 0 = run 포즈, 1 = walk 포즈
   let obstacles = [];          // { type, x, w, h, cleared }
-  let nextGap = 0;             // 마지막 장애물 뒤로 필요한 간격
+  let nextGap = 0;             // 마지막 장애물 뒤로 필요한 간격(초)
   let spawnDelay = 0;          // 재시작 후 첫 장애물까지 남은 대기 시간
   let drops = [];              // 물방울 파티클 { x, y, vx, vy, life }
+  let dust = [];               // 발밑 먼지 파티클 { x, y, vx, vy, r, life, max }
+  let speedLines = [];         // 고속 구간 스피드 라인 { x, y, len, life }
   let splashLeft = 0;          // 웃음 포즈(물웅덩이를 밟은 뒤) 남은 시간
   let jumpBuffer = 0;          // 공중에서 누른 점프 입력이 남은 시간
   let lift = 0;                // 땅에서 떠 있는 높이
   let vy = 0;                  // 수직 속도
   let grounded = true;
-  let bounced = false;         // 이번 점프에서 착지 반동을 이미 썼는지
   let crashedAt = 0;
+  let jumpLog = null;          // 진행 중인 점프 실측 { speed, time, dist }
   let lastTs = null;
   let muted = false;
   let audioCtx = null;         // 첫 사용자 입력 뒤에만 만든다
@@ -404,6 +427,9 @@
   let testDone = false;
   let testElapsed = 0;
   const testResult = { status: 'RUNNING', char: null, score: 0, reason: '' };
+  const measuredJumps = [];    // 테스트 중 실제 점프 실측 기록
+  const gapLog = [];           // 테스트 중 장애물 사이 시간 간격 실측(초)
+  let lastClearAt = null;
 
   // 스프라이트 (캐릭터별 자세별 이미지)
   const sprites = { tino: {}, coco: {} };
@@ -532,28 +558,41 @@
   const sfxSplash = () => tone('sine', 260, 90, 0.45, 0.35);      // 풍덩
 
   // ===== 물리 =====
+  // 속도 → 체공 시간: 시작 속도 AIR_T_START에서 최고 속도 AIR_T_MAX까지 직선으로
+  function airTimeFor(v) {
+    const k = Math.min(1, Math.max(0, (v - START_SPEED) / (MAX_SPEED - START_SPEED)));
+    return AIR_T_START + (AIR_T_MAX - AIR_T_START) * k;
+  }
+
+  // 점프 초기속도 = g·T/2 (T = 지금 속도에서의 체공 시간)
+  function jumpVelocityFor(v) {
+    return GRAVITY * airTimeFor(v) / 2;
+  }
+
+  // 별 개수로 정해지는 목표 속도
+  function targetSpeedFor(stars) {
+    if (TEST_MAX_SPEED) return MAX_SPEED;
+    return Math.min(MAX_SPEED, START_SPEED + SPEED_PER_STAR * stars);
+  }
+
   // 점프 중 위치와 착지 처리. 공중에서는 점프 입력을 무시하므로 이중 점프가 없다.
   function updateJump(dt) {
     if (grounded) return;
     vy -= GRAVITY * dt;
     lift += vy * dt;
+    if (jumpLog) {
+      jumpLog.time += dt;
+      if (state === 'playing') jumpLog.dist += speed * dt;
+    }
     if (lift <= 0) {
       lift = 0;
+      vy = 0;
+      grounded = true;
+      landed();
       if (jumpBuffer > 0) {
-        // 착지 직전에 누른 입력: 튕기지 않고 바로 다시 점프
+        // 착지 직전에 누른 입력: 착지하자마자 바로 다시 점프
         jumpBuffer = 0;
-        grounded = true;
         jump();
-        return;
-      }
-      const impact = -vy;
-      if (!bounced && impact > BOUNCE_MIN_IMPACT) {
-        vy = impact * BOUNCE_RATIO; // 착지 반동 (한 번만)
-        bounced = true;
-      } else {
-        vy = 0;
-        grounded = true;
-        bounced = false;
       }
     }
   }
@@ -561,9 +600,39 @@
   function jump() {
     if (!grounded || NO_JUMP) return;
     grounded = false;
-    bounced = false;
-    vy = JUMP_V;
+    vy = jumpVelocityFor(speed);
+    jumpLog = { speed: speed, time: 0, dist: 0 };
     sfxJump();
+  }
+
+  // 착지: 먼지 한 번 + 실측 기록
+  function landed() {
+    kickDust(6);
+    if (jumpLog && TEST_MODE && state === 'playing') {
+      measuredJumps.push({
+        speed: Math.round(jumpLog.speed),
+        airTime: +jumpLog.time.toFixed(3),
+        dist: +jumpLog.dist.toFixed(1),
+      });
+    }
+    jumpLog = null;
+  }
+
+  // 발밑 먼지: 착지·스텝 교체 때 뒤쪽(왼쪽)으로 흩어지는 작은 알갱이
+  function kickDust(count) {
+    const feetX = PLAYER_X + playerBox().w * 0.35;
+    for (let i = 0; i < count; i++) {
+      const life = 0.25 + Math.random() * 0.2;
+      dust.push({
+        x: feetX + (Math.random() - 0.5) * 16,
+        y: GROUND_Y - 2,
+        vx: -(30 + Math.random() * 60),
+        vy: -(40 + Math.random() * 80),
+        r: 1.8 + Math.random() * 2.2,
+        life: life,
+        max: life,
+      });
+    }
   }
 
   // ===== 충돌 박스 =====
@@ -630,9 +699,11 @@
     state = 'playing';
     score = 0;
     setScore();
-    speed = START_SPEED;
+    speed = targetSpeedFor(0);
     obstacles = [];
     drops = [];
+    dust = [];
+    speedLines = [];
     nextGap = 0;
     spawnDelay = FIRST_DELAY;
     splashLeft = 0;
@@ -675,18 +746,23 @@
     if (TEST_MODE && !testDone) finishTest('FAIL', '충돌 (점수 ' + score + ')');
   }
 
+  // 시간 기준 스폰: 앞 장애물 꼬리가 지나간 뒤 다음 장애물 머리가 오기까지 nextGap초 이상.
+  // 속도는 별 개수로만 오르므로, 그 사이 속도는 "지금 화면의 미통과 장애물을 다 넘었을 때의 목표 속도"를 넘지 않는다.
+  // 이 최대 속도로 거리를 잡으면 어떤 속도에서도 시간 간격이 보장된다.
   function maybeSpawn() {
     if (spawnDelay > 0) return;
     const last = obstacles[obstacles.length - 1];
-    const lastRight = last ? last.x + last.w : 0;
-    if (worldW - lastRight < nextGap) return;
+    if (last) {
+      const pending = obstacles.filter(o => !o.cleared).length;
+      const worstSpeed = Math.max(speed, targetSpeedFor(score + pending));
+      if (worldW + 10 - (last.x + last.w) < nextGap * worstSpeed) return;
+    }
     if (!FORCE_PUDDLE && Math.random() < ROCK_RATIO) {
       obstacles.push({ type: 'rock', x: worldW + 10, w: ROCK.w, h: ROCK.h, cleared: false, splashed: false });
     } else {
       obstacles.push({ type: 'puddle', x: worldW + 10, w: PUDDLE.w, h: PUDDLE.h, cleared: false, splashed: false });
     }
-    const minGap = Math.max(speed * GAP_SECONDS, GAP_MIN_PX);
-    nextGap = minGap + Math.random() * (GAP_RANDOM_MAX - 1) * minGap;
+    nextGap = GAP_MIN_SEC + Math.random() * GAP_RANDOM_SEC;
   }
 
   // 물웅덩이를 지상에서 밟았을 때: 첨벙 소리, 물방울, 잠깐 웃음 포즈 (게임은 계속)
@@ -708,12 +784,50 @@
 
   function updateDrops(dt) {
     for (const p of drops) {
-      p.vy += GRAVITY * dt;
+      p.vy += DROP_GRAVITY * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.life -= dt;
     }
     drops = drops.filter(p => p.life > 0 && p.y < GROUND_Y);
+    for (const p of dust) {
+      p.vy += DROP_GRAVITY * dt;
+      p.x += p.vx * dt;
+      p.y = Math.min(GROUND_Y - 1, p.y + p.vy * dt);
+      p.life -= dt;
+    }
+    dust = dust.filter(p => p.life > 0);
+    for (const s of speedLines) {
+      s.x -= speed * 2.5 * dt;
+      s.life -= dt;
+    }
+    speedLines = speedLines.filter(s => s.life > 0 && s.x + s.len > 0);
+  }
+
+  // 고속 구간: 화면 위·아래 가장자리에 옅은 스피드 라인을 잠깐씩
+  function maybeSpeedLine(dt) {
+    if (speed < SPEED_LINE_FROM) return;
+    const rate = 4 + 10 * (speed - SPEED_LINE_FROM) / (MAX_SPEED - SPEED_LINE_FROM); // 초당 개수
+    if (Math.random() > rate * dt) return;
+    const top = Math.random() < 0.5;
+    speedLines.push({
+      x: worldW * (0.55 + Math.random() * 0.5),
+      y: top ? 14 + Math.random() * 60 : GROUND_Y + 8 + Math.random() * (WORLD_H - GROUND_Y - 16),
+      len: 60 + Math.random() * 90,
+      life: 0.25 + Math.random() * 0.2,
+    });
+  }
+
+  // 달리기 애니메이션: run/walk 포즈 교체. 빠를수록 교체 주기가 짧다
+  function updateStep(dt) {
+    if (!grounded) return;
+    stepClock -= dt;
+    if (stepClock > 0) return;
+    const k = Math.min(1, Math.max(0, (speed - START_SPEED) / (MAX_SPEED - START_SPEED)));
+    stepClock += STEP_SLOW + (STEP_FAST - STEP_SLOW) * k;
+    if (stepClock < 0) stepClock = 0;
+    stepFrame = 1 - stepFrame;
+    if (state === 'playing') kickDust(2);
   }
 
   // 자동 테스트 조종사: 가장 가까운 장애물이 가까워지면 점프 (?test=1 전용, nojump 모드에서는 끔)
@@ -728,16 +842,23 @@
   }
 
   function updatePlaying(dt) {
-    speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
+    speed = Math.min(targetSpeedFor(score), speed + SPEED_EASE * dt);
     const d = speed * dt;
     scroll += d;
     spawnDelay = Math.max(0, spawnDelay - dt);
     maybeSpawn();
+    maybeSpeedLine(dt);
     for (const o of obstacles) o.x -= d;
     for (const p of drops) p.x -= d;
+    for (const p of dust) p.x -= d;
 
     const hit = playerHit();
     for (const o of obstacles) {
+      // 시간 간격 실측: 앞 장애물 꼬리가 기준선을 지난 시각 → 다음 장애물 머리가 같은 기준선에 닿은 시각
+      if (TEST_MODE && !o.arrived && o.x < hit.x) {
+        o.arrived = true;
+        if (lastClearAt !== null) gapLog.push(+(testElapsed - lastClearAt).toFixed(3));
+      }
       if (overlap(hit, obstacleHit(o))) {
         if (o.type === 'rock') {
           crash();
@@ -749,6 +870,7 @@
       // 판정 박스의 왼쪽 끝을 완전히 지나간 장애물 = 넘은 것
       if (!o.cleared && o.x + o.w < hit.x) {
         o.cleared = true;
+        lastClearAt = testElapsed;
         score += 1;
         setScore();
         sfxStar();
@@ -766,15 +888,61 @@
     if (state === 'playing') {
       autoPilot();
       updatePlaying(dt);
-      runClock += dt;
+      updateStep(dt);
       if (TEST_MODE && !testDone) {
         testElapsed += dt;
         if (testElapsed > TEST_TIMEOUT) finishTest('FAIL', '시간 초과');
       }
     } else if (state === 'ready') {
-      runClock += dt;
+      updateStep(dt);
     }
     // crashed: 세계는 멈추고, 캐릭터는 착지까지만 updateJump로 떨어진다
+  }
+
+  // 같은 물리 코드(updateJump와 같은 식)를 고정 dt로 돌려 한 번의 점프를 잰다
+  function simulateJump(v, dt) {
+    let y = 0;
+    let vv = jumpVelocityFor(v);
+    let t = 0;
+    let peak = 0;
+    do {
+      vv -= GRAVITY * dt;
+      y += vv * dt;
+      t += dt;
+      peak = Math.max(peak, y);
+    } while (y > 0);
+    return { airTime: +t.toFixed(3), dist: +(v * t).toFixed(1), peak: +peak.toFixed(1) };
+  }
+
+  // 점프 수평거리 ÷ 필요 클리어 거리(캐릭터 판정 폭 + 장애물 최대 판정 폭)
+  function physicsReport() {
+    const charHitW = playerHit().w;
+    const obstHitW = Math.max(PUDDLE.w, ROCK.w) * (1 - 2 * OBSTACLE_INSET.x);
+    const need = charHitW + obstHitW;
+    const at = v => {
+      const s = simulateJump(v, 1 / 60);
+      return Object.assign({ speed: v, ratio: +(s.dist / need).toFixed(2) }, s);
+    };
+    const report = {
+      startSpeed: START_SPEED,
+      maxSpeed: MAX_SPEED,
+      gravity: GRAVITY,
+      clearNeed: +need.toFixed(1),
+      charHitW: +charHitW.toFixed(1),
+      obstacleHitWMax: +obstHitW.toFixed(1),
+      sim: { start: at(START_SPEED), max: at(MAX_SPEED) },
+    };
+    if (measuredJumps.length) {
+      const ratios = measuredJumps.map(j => j.dist / need);
+      report.measured = {
+        jumps: measuredJumps.slice(),
+        airTimeMin: Math.min(...measuredJumps.map(j => j.airTime)),
+        airTimeMax: Math.max(...measuredJumps.map(j => j.airTime)),
+        ratioMin: +Math.min(...ratios).toFixed(2),
+      };
+    }
+    if (gapLog.length) report.gapSecMin = Math.min(...gapLog);
+    return report;
   }
 
   // 자동 테스트 결과를 화면 구석, console, document.title, window.__TEST_RESULT 에 남긴다
@@ -784,6 +952,9 @@
     testResult.char = activeChar();
     testResult.score = score;
     testResult.reason = reason;
+    testResult.speedMode = TEST_MAX_SPEED ? 'max' : 'start';
+    testResult.speedNow = Math.round(speed);
+    testResult.physics = physicsReport();
     window.__TEST_RESULT = Object.assign({}, testResult);
     const line = '[TEST ' + status + '] ' + CHARACTERS[activeChar()].name + ' 점수 ' + score + '/' + TEST_GOAL + ' · ' + reason;
     document.title = line;
@@ -902,11 +1073,17 @@
     ctx.lineTo(worldW, GROUND_Y);
     ctx.stroke();
 
-    // 땅 질감선 (가는 선, 땅과 같은 속도로 흐름)
-    ctx.fillStyle = 'rgba(150, 120, 80, 0.22)';
+    // 땅 대시·점 패턴 (게임 속도 그대로 흐름)
+    ctx.fillStyle = 'rgba(150, 120, 80, 0.28)';
     for (const row of GROUND_LINES) {
       for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
-        ctx.fillRect(x, row.y, row.len, 1.5);
+        ctx.fillRect(x, row.y, row.len, row.h);
+      }
+    }
+    ctx.fillStyle = 'rgba(150, 120, 80, 0.32)';
+    for (const row of GROUND_DOTS) {
+      for (let x = wrapX(row.x, scroll, row.tile) - row.tile; x < worldW; x += row.tile) {
+        ctx.fillRect(x, row.y, 3, 3);
       }
     }
 
@@ -965,10 +1142,34 @@
     }
   }
 
-  function drawSprite(img, x, liftPx) {
+  // 포즈마다 폭이 달라도 run 포즈(판정 기준) 가운데에 맞춰 그린다
+  function drawSprite(img, x, liftPx, baseW, size) {
     if (!img || !img.complete || !img.naturalHeight) return;
-    const w = spriteWidth(img);
-    ctx.drawImage(img, x, GROUND_Y - liftPx - DISPLAY_H, w, DISPLAY_H);
+    const k = size || 1;
+    const w = spriteWidth(img) * k;
+    const h = DISPLAY_H * k;
+    ctx.drawImage(img, x + (baseW - w) / 2, GROUND_Y - liftPx - h, w, h);
+  }
+
+  function drawDust() {
+    for (const p of dust) {
+      ctx.fillStyle = 'rgba(190, 160, 115, ' + (0.6 * p.life / p.max).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawSpeedLines() {
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    for (const s of speedLines) {
+      ctx.strokeStyle = 'rgba(160, 135, 105, ' + Math.min(0.28, s.life).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + s.len, s.y);
+      ctx.stroke();
+    }
   }
 
   function drawDrops() {
@@ -983,17 +1184,16 @@
     }
   }
 
-  // 자세: 부딪힘 = 웃음, 땅에서 물웅덩이를 밟은 직후 = 웃음, 공중 = 점프, 땅 = 달리기 (+ 위아래 흔들림). 한 명만 그린다.
+  // 자세: 부딪힘 = 웃음, 땅에서 물웅덩이를 밟은 직후 = 웃음, 공중 = 점프,
+  // 땅 = run/walk 포즈를 번갈아 (다리가 움직이는 것처럼). 한 명만 그린다.
   function drawTeam() {
     const who = activeChar();
-    let pose = 'run';
+    let pose = stepFrame === 1 ? 'walk' : 'run';
     if (state === 'crashed' || (grounded && splashLeft > 0)) pose = 'laugh';
     else if (!grounded) pose = 'jump';
-    let bob = 0;
-    if (pose === 'run') {
-      bob = (Math.sin(runClock * Math.PI * 2 * BOB_HZ) + 1) / 2 * BOB_AMP;
-    }
-    drawSprite(sprites[who][pose], PLAYER_X, lift + bob);
+    const step = pose === 'walk' ? STEP_LIFT : 0;
+    const size = pose === 'walk' ? (CHARACTERS[who].walkScale || 1) : 1;
+    drawSprite(sprites[who][pose], PLAYER_X, lift + step, spriteWidth(sprites[who].run), size);
   }
 
   function drawStatus() {
@@ -1015,7 +1215,9 @@
       drawStatus();
       return;
     }
+    drawSpeedLines();
     drawObstacles();
+    drawDust();
     drawDrops();
     drawTeam();
   }
