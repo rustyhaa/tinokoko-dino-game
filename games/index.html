@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>티노코코 놀이터</title>
+<meta name="theme-color" content="#8fd4ff">
+<style>
+  /* 부모용 게임 고르기 화면. 아이는 큰 그림 카드만 눌러도 된다. */
+  :root{--bg:#eaf7ff;--card:#ffffff;--ink:#23324a;--sub:#5d6b80;--line:#cfe6f5;--accent:#ff9a2e}
+  @media (prefers-color-scheme: dark){:root{--bg:#16202e;--card:#202d40;--ink:#eef4fb;--sub:#a9b7c9;--line:#2f405a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+  header{max-width:980px;margin:0 auto 18px}
+  h1{font-size:1.6rem;margin:0 0 4px;text-wrap:balance}
+  header p{margin:0;color:var(--sub);font-size:.95rem}
+  ul{list-style:none;padding:0;margin:0 auto;max-width:980px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  a{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px 12px;background:var(--card);border:2px solid var(--line);
+    border-radius:20px;color:inherit;text-decoration:none;min-height:100%}
+  a:focus-visible,a:hover{border-color:var(--accent);outline:none}
+  img,.ic{width:96px;height:96px;border-radius:22px;display:block}
+  .ic{background:linear-gradient(#8fd4ff,#fbe7b4);display:grid;place-items:center;font-weight:800;color:#e9644f;font-size:2rem}
+  b{font-size:1.02rem}
+  small{color:var(--sub);font-size:.82rem;text-align:center}
+  footer{max-width:980px;margin:22px auto 0;color:var(--sub);font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>티노코코 놀이터</h1>
+  <p>3살 쌍둥이와 아빠가 몇 분씩 가볍게 노는 게임 모음. 실패·시간제한·점수 없이, 탭이나 끌기 하나로 놉니다.</p>
+</header>
+<ul>
+  <li><a href="../peekaboo/"><img src="../peekaboo/icons/icon-192.png" alt=""><b>까꿍 숨바꼭질</b><small>물건을 톡! 숨은 티노·코코 찾기</small></a></li>
+  <li><a href="../rainbow-bubbles/"><img src="../rainbow-bubbles/icons/icon-192.png" alt=""><b>무지개 방울</b><small>방울을 터뜨려 무지개 채우기</small></a></li>
+  <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>목욕탕</b><small>쓱쓱 문질러 깨끗하게</small></a></li>
+  <li><a href="../boat/"><img src="../boat/icons/icon-192.png" alt=""><b>배 태우기</b><small>친구들을 끌어 배에 태우기</small></a></li>
+  <li><a href="../shapes/"><img src="../shapes/icons/icon-192.png" alt=""><b>그림자 짝꿍</b><small>같은 모양 그림자에 쏙</small></a></li>
+  <li><a href="../stars/"><img src="../stars/icons/icon-192.png" alt=""><b>별자리 잇기</b><small>반짝이는 별을 차례로 톡</small></a></li>
+  <li><a href="../garden/"><img src="../garden/icons/icon-192.png" alt=""><b>꼬마 정원</b><small>톡톡 비 내려 쑥쑥 키우기</small></a></li>
+  <li><a href="../band/"><img src="../band/icons/icon-192.png" alt=""><b>쿵짝 악단</b><small>두드리면 둘이 춤춰요</small></a></li>
+  <li><a href="../blow/"><img src="../blow/icons/icon-192.png" alt=""><b>비눗방울 후</b><small>꾹 누르면 방울이 커져요</small></a></li>
+  <li><a href="../"><span class="ic">R</span><b>동시점프 러너</b><small>기존 달리기 게임</small></a></li>
+</ul>
+<footer>각 게임은 열어 둔 상태에서 Safari "홈 화면에 추가" 또는 Chrome "앱 설치"로 따로 설치할 수 있습니다. 한 번 열면 인터넷 없이도 실행됩니다.</footer>
+</body>
+</html>
