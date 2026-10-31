@@ -10,16 +10,24 @@
   canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none}
   /* 부모용 최소 UI: 소리 켜고 끄기 */
   #snd{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
-    width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);
-    padding:8px;opacity:.55;cursor:pointer}
+    width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.8);
+    padding:8px;opacity:.6;cursor:pointer}
   #snd svg{width:100%;height:100%;display:block}
   #snd .x{display:none}
   #snd.off .x{display:inline}
   #snd.off .w{display:none}
+  /* 부모용 최소 UI: 잘 시간 타이머 (끔 → 5분 → 10분 → 15분) */
+  #zz{position:fixed;top:max(10px,env(safe-area-inset-top));right:calc(max(10px,env(safe-area-inset-right)) + 52px);
+    height:44px;min-width:44px;border-radius:22px;border:0;background:rgba(255,255,255,.8);
+    padding:0 10px 0 8px;opacity:.6;cursor:pointer;display:flex;align-items:center;gap:4px;
+    font:600 12px/1 system-ui,sans-serif;color:#335}
+  #zz svg{width:20px;height:20px;display:block}
+  #zz.on{opacity:.85}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<button id="zz" aria-label="잘 시간 타이머 (부모용)"><svg viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4a8.5 8.5 0 1 0 11.5 11.5z" fill="#335"/></svg><span id="zzl">끔</span></button>
 <button id="snd" aria-label="소리 켜기/끄기">
   <svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 9h4l5-4v14l-5-4H4z" fill="#335"/>
@@ -62,7 +70,13 @@ const twins = [
 ];
 let T = 0, bubbles = [], parts = [], spawnCD = 0, side = 0;
 let flags = Array(7).fill(false), lit = Array(7).fill(0), litPulse = Array(7).fill(0);
-let party = 0, partyHop = 0, hint = true, down = false, pops = 0, parties = 0;
+let party = 0, partyHop = 0, hint = true, pops = 0, parties = 0;
+// 판마다 배경: 낮 → 노을 → 밤 (해금·수집 없이 변화만)
+let theme = 0, prevTheme = 0, themeBlend = 1;
+// 잘 시간: 부모가 정한 시간이 지나면 둘이 하품하고 잠듦
+const SLEEP_MIN = [0, 5, 10, 15];
+let sleepIdx = 0, sleepAt = null, sleep = 0, zzzCD = 0;
+const nightStars = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random() * 0.55, s: 0.6 + Math.random() * 1.4, ph: Math.random() * 6.3 }));
 const clouds = [0, 1, 2].map(i => ({ x: Math.random(), y: 0.08 + i * 0.09, s: 0.8 + Math.random() * 0.6, v: 0.006 + Math.random() * 0.006 }));
 
 // ---------- 소리 (WebAudio 합성) ----------
@@ -109,7 +123,29 @@ function noise(dur = 0.1, f = 2000, vol = 0.2, delay = 0, f2 = 0) {
   s.connect(bp); bp.connect(g); g.connect(master);
   s.start(t); s.stop(t + dur + 0.05);
 }
-const sPop = c => { noise(0.05, 2600, 0.25); tone(FREQ[c], 0, 0.5, 'sine', 0.32); tone(FREQ[c] * 2, 0, 0.18, 'triangle', 0.1); };
+// 동요 '반짝반짝 작은 별': 어떤 색을 터뜨리든 다음 음이 이어서 나옴. 6초 쉬면 처음부터
+const NOTE = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.0, A: 440.0 };
+const SONG = 'CCGGAAG FFEEDDC GGFFEED GGFFEED CCGGAAG FFEEDDC'.replace(/ /g, '').split('').map(n => NOTE[n]);
+let songIdx = 0, lastPopT = -99;
+function nextNote() {
+  if (T - lastPopT > 6) songIdx = 0;
+  lastPopT = T;
+  const f = SONG[songIdx]; songIdx = (songIdx + 1) % SONG.length;
+  return f;
+}
+const sPop = () => { noise(0.05, 2600, 0.25); const f = nextNote(); tone(f, 0, 0.55, 'sine', 0.34); tone(f * 2, 0, 0.18, 'triangle', 0.1); };
+// 캐릭터를 누르면 '히히히' (티노가 조금 낮고 코코가 조금 높음)
+function sGiggle(kind) {
+  const base = kind === 'tino' ? 500 : 640;
+  for (let i = 0; i < 4; i++) tone(base * (1.1 - i * 0.07), i * 0.09, 0.08, 'triangle', 0.2, base * (1.3 - i * 0.07));
+}
+function sSparkle() {
+  noise(0.4, 6000, 0.08);
+  [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, i) => tone(f, i * 0.06, 0.3, 'sine', 0.12));
+}
+const sSoft = () => tone(rand(900, 1300), 0, 0.3, 'sine', 0.05);
+function sYawn() { tone(520, 0, 1.1, 'sine', 0.14, 230); tone(660, 0.7, 1.1, 'sine', 0.12, 280); }
+function sLullaby() { SONG.slice(0, 14).forEach((f, i) => tone(f, 1.6 + i * 0.5, 0.6, 'sine', 0.09)); }
 const sStomp = () => tone(150, 0.05, 0.25, 'sine', 0.45, 50);
 const sSpout = () => noise(0.5, 900, 0.18, 0.05, 3500);
 const sBlow = () => tone(rand(500, 700), 0, 0.12, 'sine', 0.05, 900);
@@ -136,8 +172,10 @@ function spawn() {
   const tw = twins[side]; side ^= 1;
   const m = mouthPos(tw);
   tw.mouth = 0.45;
-  bubbles.push({ x: m.x, y: m.y, dir: m.dir, vy: -rand(45, 75) * H / 700, r: R * rand(0.9, 1.12),
-                 c: pickColor(), ph: rand(0, TAU), age: 0, grow: 0.15 });
+  // 가끔(약 8%) 큰 금빛 별 방울 — 터뜨리면 작은 방울이 우르르. 놓쳐도 아무 일 없음
+  const star = party <= 0 && pops >= 3 && !bubbles.some(x => x.star) && Math.random() < 0.08;
+  bubbles.push({ x: m.x, y: m.y, dir: m.dir, vy: -rand(45, 75) * H / 700, r: R * (star ? 1.3 : rand(0.9, 1.12)),
+                 c: star ? 2 : pickColor(), star, ph: rand(0, TAU), age: 0, grow: 0.15 });
   sBlow();
 }
 function seedBubbles() {
@@ -152,15 +190,16 @@ function hop(tw) { if (tw.hopT < 0 || tw.hopT > 0.3) tw.hopT = 0; tw.mouth = 0.5
 function pop(b) {
   bubbles.splice(bubbles.indexOf(b), 1);
   pops++; hint = false;
-  const col = COLS[b.c];
-  sPop(b.c);
+  const col = b.star ? [255, 200, 40] : COLS[b.c];
+  if (b.star) sSparkle(); else sPop();
   parts.push({ t: 'ring', x: b.x, y: b.y, r: b.r, life: 0.4, max: 0.4, c: col });
   for (let i = 0; i < 12; i++) {
     const a = rand(0, TAU), v = rand(120, 320) * U;
     parts.push({ t: 'drop', x: b.x, y: b.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80 * U,
                  r: rand(4, 9) * U, life: rand(0.5, 0.9), max: 0.9, c: col });
   }
-  if (party <= 0 && !flags[b.c]) {
+  if (b.star) { starBurst(b); return; }
+  if (party <= 0 && sleep <= 0 && !flags[b.c]) {
     flags[b.c] = true; litPulse[b.c] = 1;
     if (flags.every(Boolean)) setTimeout(startParty, 350);
   }
@@ -177,6 +216,17 @@ function react(tw) {
     sSpout(); spout(tw);
   }
 }
+function twinAt(x, y) {
+  return twins.find(tw => Math.abs(x - tw.cx) < 0.85 * S && y > gy - 2.45 * S && y < gy + 0.15 * S);
+}
+function twinTap(tw) {
+  hop(tw); tw.giggle = 1.1;
+  sGiggle(tw.kind);
+  for (let i = 0; i < 6; i++) {
+    parts.push({ t: 'heart', x: tw.cx + rand(-0.5, 0.5) * S, y: gy - 2.75 * S, vx: rand(-50, 50) * U, vy: -rand(70, 150) * U,
+                 r: rand(9, 15) * U, life: 1.1, max: 1.1, c: i % 2 ? [255, 120, 160] : [255, 170, 190], delay: i * 0.06 });
+  }
+}
 function dust(tw) {
   for (let i = 0; i < 8; i++) {
     parts.push({ t: 'puff', x: tw.cx + rand(-0.6, 0.6) * S, y: gy, vx: rand(-60, 60) * U, vy: -rand(20, 60) * U,
@@ -191,16 +241,40 @@ function spout(tw) {
                  c: [130, 205, 255], delay: i * 0.012 });
   }
 }
+function starBurst(b) {
+  for (let i = 0; i < 14; i++) {
+    const a = rand(0, TAU), v = rand(80, 260) * U;
+    parts.push({ t: 'spark', x: b.x, y: b.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(8, 14) * U,
+                 life: 0.9, max: 0.9, c: [255, 215, 70], rot: rand(0, TAU), vr: rand(-5, 5) });
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + rand(-0.2, 0.2);
+    bubbles.push({ x: b.x, y: b.y, dir: Math.cos(a) * 1.5, vy: -rand(35, 80) * H / 700, r: R * rand(0.62, 0.75),
+                   c: pickColor(), ph: rand(0, TAU), age: 0.5, grow: 0.4 });
+  }
+  twins.forEach(react);
+}
 function startParty() {
-  if (party > 0) return;
+  if (party > 0 || sleep > 0) return;
   party = 5.5; partyHop = 0; parties++;
   sFanfare();
   twins.forEach(hop);
 }
 
+function startSleep() {
+  sleep = 0.0001; zzzCD = 1.2;
+  sYawn(); sLullaby();
+  twins.forEach(tw => { tw.hopT = -1; tw.giggle = 0; });
+}
+function wake() { sleep = 0; }
+
 // ---------- 입력 (탭 · 드래그 · 마우스 갖다 대기 · 아무 키) ----------
 function handle(e, isDown) {
   const x = e.clientX, y = e.clientY;
+  if (sleep > 0) {          // 자는 동안에는 눌러도 작은 별만 반짝 (깨우지 않음)
+    if (isDown) { parts.push({ t: 'spark', x, y, vx: 0, vy: -30 * U, r: 12 * U, life: 0.8, max: 0.8, c: [255, 240, 170], rot: 0, vr: 2 }); sSoft(); }
+    return;
+  }
   const slop = e.pointerType === 'mouse' ? 16 : 8;   // 마우스는 맞히기 어려우니 판정을 조금 넉넉하게
   let hit = 0;
   for (let i = bubbles.length - 1; i >= 0 && hit < 3; i--) {
@@ -209,17 +283,20 @@ function handle(e, isDown) {
     if ((b.x - x) ** 2 + (b.y - y) ** 2 < r * r) { pop(b); hit++; }
   }
   if (!hit && isDown) {
-    parts.push({ t: 'ring', x, y, r: 18 * U, life: 0.5, max: 0.5, c: [255, 255, 255] });
-    sTap();
+    const tw = twinAt(x, y);
+    if (tw) twinTap(tw);     // 티노·코코를 누르면 콩 뛰며 히히히
+    else { parts.push({ t: 'ring', x, y, r: 18 * U, life: 0.5, max: 0.5, c: [255, 255, 255] }); sTap(); }
   }
 }
-cv.addEventListener('pointerdown', e => { e.preventDefault(); audio(); down = true; handle(e, true); });
+// 손가락마다 따로 추적 → 두 아이가 한 화면에서 동시에 문질러도 서로 끊기지 않음
+const active = new Set();
+cv.addEventListener('pointerdown', e => { e.preventDefault(); audio(); active.add(e.pointerId); handle(e, true); });
 // 마우스·트랙패드: 누르지 않고 방울에 갖다 대기만 해도 터짐 (터치는 기존처럼 탭·드래그)
 let mouse = null;
 const hasMouse = () => matchMedia('(any-hover: hover) and (any-pointer: fine)').matches;  // 실제 마우스가 있는 기기만
 cv.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse' && hasMouse()) { mouse = { x: e.clientX, y: e.clientY, t: T }; handle(e, false); }
-  else if (down) handle(e, false);
+  else if (active.has(e.pointerId)) handle(e, false);
 });
 cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse = null; });
 // 키보드: 아무 키나 누르면 화면 아래쪽(쌍둥이와 가까운) 방울부터 하나씩 터짐. 꾹 누르고 있어도 0.15초에 하나
@@ -230,13 +307,15 @@ addEventListener('keydown', e => {
   audio();
   if (T - lastKey < 0.15) return;
   lastKey = T;
+  if (sleep > 0) { sSoft(); return; }
   const L = bubbles.filter(b => b.grow >= 1 && b.y > b.r * 0.5 && b.y < H);
   if (!L.length) { sTap(); return; }
   L.sort((a, b) => b.y - a.y);
   pop(L[0]);
 });
-addEventListener('pointerup', () => { down = false; });
-addEventListener('pointercancel', () => { down = false; });
+const release = e => active.delete(e.pointerId);
+addEventListener('pointerup', release);
+addEventListener('pointercancel', release);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 const snd = document.getElementById('snd');
 snd.addEventListener('pointerdown', e => e.stopPropagation());
@@ -245,14 +324,37 @@ snd.addEventListener('click', () => {
   audio(); if (master) master.gain.value = muted ? 0 : 0.6;
   snd.blur();   // 키보드 입력이 버튼으로 가지 않게
 });
+// 잘 시간 버튼: 누를 때마다 끔 → 5분 → 10분 → 15분. 자고 있을 때 누르면 깨우고 같은 시간으로 다시 시작
+const zz = document.getElementById('zz'), zzl = document.getElementById('zzl');
+zz.addEventListener('pointerdown', e => e.stopPropagation());
+zz.addEventListener('click', () => {
+  audio();
+  if (sleep > 0) wake(); else sleepIdx = (sleepIdx + 1) % SLEEP_MIN.length;
+  const m = SLEEP_MIN[sleepIdx];
+  sleepAt = m ? T + m * 60 : null;
+  zzl.textContent = m ? m + '분' : '끔';
+  zz.classList.toggle('on', !!m);
+  zz.blur();
+});
 
 // ---------- 갱신 ----------
 function update(dt) {
   T += dt;
   clouds.forEach(c => { c.x += c.v * dt; if (c.x > 1.2) c.x = -0.2; });
 
+  if (sleepAt !== null && sleep <= 0 && party <= 0 && T >= sleepAt) startSleep();
+  if (sleep > 0) {
+    sleep += dt; zzzCD -= dt;
+    if (zzzCD <= 0) {
+      zzzCD = 1.4;
+      twins.forEach((tw, i) => parts.push({ t: 'zzz', x: tw.cx + (i ? -0.3 : 0.3) * S, y: gy - 2.3 * S, vx: (i ? -14 : 14) * U,
+                                             vy: -28 * U, r: 16 * U, life: 3, max: 3, c: [255, 255, 255], delay: i * 0.5 }));
+    }
+  }
+  themeBlend = Math.min(1, themeBlend + dt / 2.5);
+
   spawnCD -= dt;
-  if (spawnCD <= 0 && bubbles.length < 6) { spawn(); spawnCD = 0.9; }
+  if (sleep <= 0 && spawnCD <= 0 && bubbles.length < 6) { spawn(); spawnCD = 0.9; }
 
   for (let i = bubbles.length - 1; i >= 0; i--) {
     const b = bubbles[i];
@@ -269,6 +371,10 @@ function update(dt) {
     if (p.delay > 0) { p.delay -= dt; continue; }
     p.life -= dt;
     if (p.life <= 0) { parts.splice(i, 1); continue; }
+    if (p.t === 'heart' || p.t === 'spark' || p.t === 'zzz') {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.98;
+      if (p.t === 'spark') { p.vy *= 0.96; p.rot += p.vr * dt; }
+    }
     if (p.t === 'drop' || p.t === 'conf' || p.t === 'puff') {
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.t === 'drop') p.vy += 700 * U * dt;
@@ -281,6 +387,7 @@ function update(dt) {
     tw.mouth -= dt;
     tw.open += ((tw.mouth > 0 ? 1 : 0) - tw.open) * Math.min(1, dt * 14);
     tw.blink -= dt; if (tw.blink < -0.12) tw.blink = rand(2.5, 5);
+    tw.giggle = Math.max(0, (tw.giggle || 0) - dt);
   });
 
   for (let i = 0; i < 7; i++) {
@@ -295,28 +402,52 @@ function update(dt) {
       parts.push({ t: 'conf', x: rand(0, W), y: -10, vx: rand(-30, 30) * U, vy: rand(60, 140) * U, w: rand(8, 14) * U,
                    rot: rand(0, TAU), vr: rand(-6, 6), ph: rand(0, TAU), life: 4, max: 4, c: COLS[(Math.random() * 7) | 0] });
     }
-    if (party <= 0) { flags = Array(7).fill(false); }   // 바로 다음 판
+    if (party <= 0) {   // 바로 다음 판 — 배경도 낮 → 노을 → 밤으로 바뀜
+      flags = Array(7).fill(false);
+      prevTheme = theme; theme = (theme + 1) % THEMES.length; themeBlend = 0;
+    }
   }
 }
 
 // ---------- 그리기: 배경 ----------
 function ell(x, y, rx, ry, rot = 0) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(rx, 0.0001), Math.max(ry, 0.0001), rot, 0, TAU); }
-function drawBg() {
+const THEMES = [
+  { name: 'day',    sky: ['#8fd4ff', '#dff4ff'], sea: ['#3fb0e8', '#7fd3f2'], sand: ['#fbe7b4', '#f1d18f'], cloud: 'rgba(255,255,255,.92)', wave: 'rgba(255,255,255,.55)' },
+  { name: 'sunset', sky: ['#ff9f8f', '#ffdca6'], sea: ['#c97fae', '#f3a77e'], sand: ['#f7cfa0', '#e9b47f'], cloud: 'rgba(255,228,236,.9)',  wave: 'rgba(255,236,220,.6)' },
+  { name: 'night',  sky: ['#1c2656', '#3d4f93'], sea: ['#1f3f78', '#2f5f9a'], sand: ['#cdb98f', '#ab9670'], cloud: 'rgba(205,215,245,.35)', wave: 'rgba(200,220,255,.45)' },
+];
+function drawBg(th) {
   const hz = H * 0.6, sand = H * 0.76;
   let g = ctx.createLinearGradient(0, 0, 0, hz);
-  g.addColorStop(0, '#8fd4ff'); g.addColorStop(1, '#dff4ff');
+  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
-  // 해
   const sx = W * 0.1 + 20, sy = H * 0.12 + 10, sr = Math.min(W, H) * 0.07;
-  ctx.save(); ctx.translate(sx, sy); ctx.rotate(T * 0.2);
-  ctx.strokeStyle = 'rgba(255,200,60,.7)'; ctx.lineWidth = sr * 0.15; ctx.lineCap = 'round';
-  for (let i = 0; i < 10; i++) { ctx.rotate(TAU / 10); ctx.beginPath(); ctx.moveTo(sr * 1.3, 0); ctx.lineTo(sr * 1.65, 0); ctx.stroke(); }
-  ctx.restore();
-  ell(sx, sy, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
+  if (th.name === 'day') {
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(T * 0.2);
+    ctx.strokeStyle = 'rgba(255,200,60,.7)'; ctx.lineWidth = sr * 0.15; ctx.lineCap = 'round';
+    for (let i = 0; i < 10; i++) { ctx.rotate(TAU / 10); ctx.beginPath(); ctx.moveTo(sr * 1.3, 0); ctx.lineTo(sr * 1.65, 0); ctx.stroke(); }
+    ctx.restore();
+    ell(sx, sy, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
+  } else if (th.name === 'sunset') {
+    // 수평선에 걸린 큰 저녁 해 (아래는 바다가 가림)
+    const ux = W * 0.8, uy = hz - sr * 0.25, ur = sr * 1.5;
+    const gl = ctx.createRadialGradient(ux, uy, ur * 0.6, ux, uy, ur * 2.4);
+    gl.addColorStop(0, 'rgba(255,170,90,.55)'); gl.addColorStop(1, 'rgba(255,170,90,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, hz);
+    ell(ux, uy, ur, ur); ctx.fillStyle = '#ff7f50'; ctx.fill();
+  } else {
+    // 반짝이는 별 + 초승달
+    nightStars.forEach(st => {
+      const a = 0.45 + 0.55 * Math.abs(Math.sin(T * 1.5 + st.ph));
+      ell(st.x * W, st.y * hz, st.s * U * 1.6, st.s * U * 1.6); ctx.fillStyle = `rgba(255,255,230,${a})`; ctx.fill();
+    });
+    ell(sx, sy, sr, sr); ctx.fillStyle = '#fff4c2'; ctx.fill();
+    ell(sx + sr * 0.45, sy - sr * 0.2, sr * 0.88, sr * 0.88); ctx.fillStyle = th.sky[0]; ctx.fill();
+  }
   // 구름
   clouds.forEach(c => {
     const x = c.x * W, y = c.y * H, s = c.s * Math.min(W, H) * 0.06;
-    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ctx.fillStyle = th.cloud;
     ell(x, y, s * 1.4, s * 0.7); ctx.fill();
     ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill();
     ell(x + s * 0.9, y + s * 0.1, s * 0.9, s * 0.6); ctx.fill();
@@ -324,9 +455,9 @@ function drawBg() {
   });
   // 바다
   g = ctx.createLinearGradient(0, hz, 0, sand);
-  g.addColorStop(0, '#3fb0e8'); g.addColorStop(1, '#7fd3f2');
+  g.addColorStop(0, th.sea[0]); g.addColorStop(1, th.sea[1]);
   ctx.fillStyle = g; ctx.fillRect(0, hz, W, sand - hz + 2);
-  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3;
+  ctx.strokeStyle = th.wave; ctx.lineWidth = 3;
   for (let row = 0; row < 3; row++) {
     const y0 = hz + (sand - hz) * (0.25 + row * 0.25);
     ctx.beginPath();
@@ -338,7 +469,7 @@ function drawBg() {
   }
   // 모래
   g = ctx.createLinearGradient(0, sand, 0, H);
-  g.addColorStop(0, '#fbe7b4'); g.addColorStop(1, '#f1d18f');
+  g.addColorStop(0, th.sand[0]); g.addColorStop(1, th.sand[1]);
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.moveTo(0, sand);
   for (let x = 0; x <= W; x += 12) ctx.lineTo(x, sand + Math.sin(x * 0.02 + T * 1.5) * 4);
@@ -391,14 +522,17 @@ const SPR = {};
 // 자세 고르기: 평소 / 반응(방울 터짐) / 축하(무지개 완성)
 function poseOf(tw) {
   if (tw.kind === 'tino') return (party > 0 || tw.hopT >= 0) ? 'tino_jump_v2' : 'tino_run_v2';
-  if (party > 0) return 'coco_laugh_v2';
+  if (party > 0 || tw.giggle > 0) return 'coco_laugh_v2';
   return tw.hopT >= 0 ? 'coco_jump_v2' : 'coco_run_v2';
 }
 function drawTwin(tw) {
   const name = poseOf(tw), im = SPR[name];
   // 통통 튀기: 반응 때는 크게 한 번 뛰고, 평소에는 제자리에서 작게 콩콩
-  let lift, sx, sy;
-  if (tw.hopT >= 0) {
+  let lift, sx, sy, tilt = 0;
+  if (sleep > 0) {            // 잘 때: 콩콩 멈추고 천천히 숨쉬며 꾸벅
+    lift = 0; sx = 1; sy = 1 + 0.015 * Math.sin(T * 1.3 + tw.ph);
+    tilt = Math.min(1, sleep / 2.5) * 0.12 * Math.sin(T * 0.8 + tw.ph) + Math.min(1, sleep / 2.5) * (tw.kind === 'tino' ? 0.1 : -0.1);
+  } else if (tw.hopT >= 0) {
     const p = tw.hopT / 0.5;
     lift = Math.sin(Math.PI * p) * 0.55 * S;
     const edge = p < 0.12 || p > 0.88;
@@ -419,6 +553,7 @@ function drawTwin(tw) {
   const flip = name === 'tino_run_v2' ? -1 : 1;
   ctx.save();
   ctx.translate(tw.cx, gy - lift);
+  ctx.rotate(tilt);
   ctx.scale(sx * flip, sy);
   ctx.drawImage(im, -w / 2, -h, w, h);
   ctx.restore();
@@ -447,7 +582,7 @@ function drawPoolFront(cx) {
 // ---------- 그리기: 방울 · 효과 ----------
 function drawBubble(b) {
   const r = b.r * b.grow * (1 + 0.035 * Math.sin(b.age * 4 + b.ph));
-  const c = COLS[b.c];
+  const c = b.star ? [255, 196, 30] : COLS[b.c];
   ctx.save(); ctx.translate(b.x, b.y);
   const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
   g.addColorStop(0, 'rgba(255,255,255,.85)');
@@ -458,7 +593,19 @@ function drawBubble(b) {
   ctx.beginPath(); ctx.arc(0, 0, r * 0.72, -2.6, -1.9); ctx.lineWidth = r * 0.1; ctx.lineCap = 'round';
   ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.stroke();
   ell(r * 0.42, r * 0.42, r * 0.08, r * 0.08); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
+  if (b.star) {
+    ctx.shadowColor = 'rgba(255,230,120,.95)'; ctx.shadowBlur = 18 + 8 * Math.sin(T * 6);
+    star(0, 0, r * 0.55, '#fff3b0', Math.sin(T * 2) * 0.4);
+    ctx.shadowBlur = 0;
+  }
   ctx.restore();
+}
+function heart(x, y, r, col) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + r * 0.9);
+  ctx.bezierCurveTo(x - r * 1.4, y - r * 0.1, x - r * 0.7, y - r * 1.2, x, y - r * 0.45);
+  ctx.bezierCurveTo(x + r * 0.7, y - r * 1.2, x + r * 1.4, y - r * 0.1, x, y + r * 0.9);
+  ctx.fillStyle = col; ctx.fill();
 }
 function drawParts() {
   parts.forEach(p => {
@@ -471,6 +618,15 @@ function drawParts() {
     } else if (p.t === 'drop' || p.t === 'puff') {
       ell(p.x, p.y, p.r * (p.t === 'puff' ? 2 - a : 1), p.r * (p.t === 'puff' ? 2 - a : 1));
       ctx.fillStyle = rgba(p.c, p.t === 'puff' ? a * 0.6 : a); ctx.fill();
+    } else if (p.t === 'heart') {
+      heart(p.x, p.y, p.r * (1 + (1 - a) * 0.3), rgba(p.c, Math.min(1, a * 1.6)));
+    } else if (p.t === 'spark') {
+      star(p.x, p.y, p.r * (0.6 + a * 0.4), rgba(p.c, Math.min(1, a * 1.5)), p.rot);
+    } else if (p.t === 'zzz') {
+      const k = 1 - a;
+      ctx.save(); ctx.font = `700 ${Math.round(p.r * (1 + k * 1.2))}px system-ui, sans-serif`;
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, a * 1.5) * 0.9})`; ctx.textAlign = 'center';
+      ctx.fillText('z', p.x, p.y); ctx.restore();
     } else if (p.t === 'conf') {
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
       ctx.fillStyle = rgba(p.c, Math.min(1, a * 2)); ctx.fillRect(-p.w / 2, -p.w / 4, p.w, p.w / 2);
@@ -509,7 +665,10 @@ function drawCursor() {
 }
 
 function draw() {
-  drawBg();
+  if (themeBlend < 1) {     // 판이 바뀔 때 배경이 천천히 넘어감
+    drawBg(THEMES[prevTheme]);
+    ctx.globalAlpha = themeBlend; drawBg(THEMES[theme]); ctx.globalAlpha = 1;
+  } else drawBg(THEMES[theme]);
   drawRainbow();
   // 티노 (모래 위)
   drawTwin(twins[0]);
@@ -518,6 +677,9 @@ function draw() {
   drawTwin(twins[1]);
   drawPoolFront(twins[1].cx);
   bubbles.forEach(drawBubble);
+  if (sleep > 0) {          // 잘 시간: 화면이 밤처럼 어두워지고 z 가 피어오름
+    ctx.fillStyle = `rgba(16,20,52,${0.55 * Math.min(1, sleep / 3)})`; ctx.fillRect(0, 0, W, H);
+  }
   drawParts();
   drawHint();
   drawCursor();
@@ -537,7 +699,10 @@ requestAnimationFrame(frame);
 
 // 자동 확인용 (게임 동작에는 영향 없음)
 window.__tk = { get bubbles() { return bubbles; }, get flags() { return flags; }, get party() { return party; },
-                get pops() { return pops; }, get parties() { return parties; }, get audio() { return ac ? ac.state : 'none'; } };
+                get pops() { return pops; }, get parties() { return parties; }, get audio() { return ac ? ac.state : 'none'; },
+                get theme() { return THEMES[theme].name; }, get sleep() { return sleep; }, get songIdx() { return songIdx; },
+                get active() { return active.size; }, get twins() { return twins; }, get S() { return S; }, get gy() { return gy; },
+                sleepNow() { sleepAt = T; }, starNow() { const b = bubbles.find(x => x.grow >= 1 && x.y > 40); if (b) { b.star = true; b.c = 2; } return b && { x: b.x, y: b.y }; } };
 })();
 </script>
 </body>
