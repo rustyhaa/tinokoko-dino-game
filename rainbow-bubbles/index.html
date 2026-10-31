@@ -4,29 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>티노코코 무지개 방울</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#8fd4ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="무지개 방울">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#bfe8ff;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none}
   /* 부모용 최소 UI: 소리 켜고 끄기 */
-  #snd{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
+  #tools{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
+    display:flex;gap:8px;align-items:center;z-index:2}
+  #snd,#gear{
     width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.8);
     padding:8px;opacity:.6;cursor:pointer}
-  #snd svg{width:100%;height:100%;display:block}
+  #snd svg,#gear svg{width:100%;height:100%;display:block}
   #snd .x{display:none}
   #snd.off .x{display:inline}
   #snd.off .w{display:none}
   /* 부모용 최소 UI: 잘 시간 타이머 (끔 → 5분 → 10분 → 15분) */
-  #zz{position:fixed;top:max(10px,env(safe-area-inset-top));right:calc(max(10px,env(safe-area-inset-right)) + 52px);
+  #zz{
     height:44px;min-width:44px;border-radius:22px;border:0;background:rgba(255,255,255,.8);
     padding:0 10px 0 8px;opacity:.6;cursor:pointer;display:flex;align-items:center;gap:4px;
     font:600 12px/1 system-ui,sans-serif;color:#335}
   #zz svg{width:20px;height:20px;display:block}
   #zz.on{opacity:.85}
+  #gear.on{opacity:.95}
+  /* 부모 설정 패널 (어른용이라 글자 사용) */
+  #panel{position:fixed;top:calc(max(10px,env(safe-area-inset-top)) + 54px);right:max(10px,env(safe-area-inset-right));
+    z-index:2;background:rgba(255,255,255,.95);border-radius:14px;padding:10px 12px;display:grid;gap:8px;
+    box-shadow:0 4px 18px rgba(30,60,90,.18);font:600 13px/1.2 system-ui,sans-serif;color:#335}
+  #panel[hidden]{display:none}
+  #panel .row{display:grid;grid-template-columns:5.5em 1fr 1fr;gap:6px;align-items:center}
+  #panel button{min-height:36px;border-radius:10px;border:1.5px solid #b9d3e6;background:#fff;color:#335;
+    font:inherit;padding:0 10px;cursor:pointer}
+  #panel button.sel{background:#3d7fb8;border-color:#3d7fb8;color:#fff}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="tools">
+<button id="gear" aria-label="부모 설정"><svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke-linecap="round"/></svg></button>
 <button id="zz" aria-label="잘 시간 타이머 (부모용)"><svg viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4a8.5 8.5 0 1 0 11.5 11.5z" fill="#335"/></svg><span id="zzl">끔</span></button>
 <button id="snd" aria-label="소리 켜기/끄기">
   <svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -35,6 +55,12 @@
     <path class="x" d="M16 9l5 6M21 9l-5 6"/>
   </svg>
 </button>
+</div>
+<div id="panel" hidden>
+  <div class="row"><span>터뜨릴 때</span><button data-k="voice" data-v="song">동요</button><button data-k="voice" data-v="color">색 이름</button></div>
+  <div class="row"><span>방울 크기</span><button data-k="size" data-v="1">보통</button><button data-k="size" data-v="1.3">크게</button></div>
+  <div class="row"><span>방울 속도</span><button data-k="speed" data-v="1">보통</button><button data-k="speed" data-v="0.6">느리게</button></div>
+</div>
 <script>
 (() => {
 'use strict';
@@ -49,6 +75,9 @@ const COLS = [[255,90,95],[255,159,67],[255,214,50],[76,210,100],[58,167,255],[1
 const FREQ = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33]; // 펜타토닉 계열 — 어떤 순서로 눌러도 어울림
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
+// 부모 설정 (이 기기 브라우저에만 저장, 실패해도 기본값으로 동작)
+const settings = { voice: 'song', size: 1, speed: 1 };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('tk-rainbow-settings') || '{}')); } catch (e) {}
 let W, H, S, R, gy, U;
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -56,7 +85,7 @@ function resize() {
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   S = Math.min(W * 0.155, H * 0.15);            // 캐릭터 크기 단위 (둘이 똑같이 사용)
-  R = clamp(Math.min(W, H) * 0.085, 36, 72);   // 방울 반지름 — 아이 손가락 크기 이상
+  R = clamp(Math.min(W, H) * 0.085, 36, 72) * settings.size;   // 방울 반지름 — 아이 손가락 크기 이상 (설정: 크게 1.3배)
   gy = H * 0.87;                                // 발 딛는 선
   U = Math.min(W, H) / 700;
   twins[0].cx = Math.max(1.45 * S + 6, W * 0.17);
@@ -133,6 +162,27 @@ function nextNote() {
   const f = SONG[songIdx]; songIdx = (songIdx + 1) % SONG.length;
   return f;
 }
+// 색 이름 말하기 (브라우저 음성). 빨리 여러 개 터지면 마지막 것만 말함
+const COLOR_NAMES = ['빨강', '주황', '노랑', '초록', '파랑', '남색', '보라'];
+function sayColor(c) {
+  try {
+    const ss = window.speechSynthesis;
+    if (!ss || muted) return;
+    ss.cancel();
+    const u = new SpeechSynthesisUtterance(COLOR_NAMES[c]);
+    u.lang = 'ko-KR'; u.rate = 0.95; u.pitch = 1.35; u.volume = 1;
+    const v = ss.getVoices().find(v => /^ko/i.test(v.lang));
+    if (v) u.voice = v;
+    ss.speak(u);
+  } catch (e) {}
+}
+const sPopColor = c => { noise(0.05, 2600, 0.22); tone(FREQ[c], 0, 0.25, 'sine', 0.22); sayColor(c); };
+// 둘이 함께: 짝짝 + 화음
+function sHighFive() {
+  noise(0.06, 3000, 0.35); noise(0.06, 3000, 0.35, 0.16);
+  [523.25, 659.25, 783.99, 1046.5].forEach(f => tone(f, 0.2, 0.9, 'triangle', 0.14));
+}
+const sSplash = () => noise(0.25, 1200, 0.1, 0, 400);
 const sPop = () => { noise(0.05, 2600, 0.25); const f = nextNote(); tone(f, 0, 0.55, 'sine', 0.34); tone(f * 2, 0, 0.18, 'triangle', 0.1); };
 // 캐릭터를 누르면 '히히히' (티노가 조금 낮고 코코가 조금 높음)
 function sGiggle(kind) {
@@ -187,11 +237,24 @@ function seedBubbles() {
 
 // ---------- 터뜨리기 ----------
 function hop(tw) { if (tw.hopT < 0 || tw.hopT > 0.3) tw.hopT = 0; tw.mouth = 0.5; }
-function pop(b) {
+const lastPopBy = new Map();   // 누가(어느 손가락·키보드) 마지막으로 터뜨렸나
+let lastTogether = -99;
+function pop(b, src) {
   bubbles.splice(bubbles.indexOf(b), 1);
   pops++; hint = false;
   const col = b.star ? [255, 200, 40] : COLS[b.c];
-  if (b.star) sSparkle(); else sPop();
+  if (b.star) sSparkle(); else if (settings.voice === 'color') sPopColor(b.c); else sPop();
+  // 둘이 함께: 동시에 화면에 닿아 있는 두 손가락이(또는 터치+키보드·마우스처럼 다른 입력이) 0.5초 안에 각각 터뜨리면 하이파이브.
+  // 한 아이가 같은 손으로 빠르게 두 번 탭하는 건 해당 안 됨 (탭마다 번호가 바뀌어도 '동시에 닿아 있음' 조건에서 걸러짐)
+  if (src !== undefined && sleep <= 0) {
+    const kind = k => k.replace(/\d+$/, '');
+    for (const [k, t] of lastPopBy) {
+      const concurrent = kind(k) !== kind(src) || active.has(k);
+      if (k !== src && concurrent && T - t < 0.5 && T - lastTogether > 2) { together(); break; }
+    }
+    lastPopBy.set(src, T);
+  }
+  if (!b.star && sleep <= 0 && Math.random() < 0.22) addFriend(b.x, b.y);
   parts.push({ t: 'ring', x: b.x, y: b.y, r: b.r, life: 0.4, max: 0.4, c: col });
   for (let i = 0; i < 12; i++) {
     const a = rand(0, TAU), v = rand(120, 320) * U;
@@ -206,6 +269,89 @@ function pop(b) {
   // 가까운 쪽 쌍둥이가 반응
   const tw = Math.abs(b.x - twins[0].cx) <= Math.abs(b.x - twins[1].cx) ? twins[0] : twins[1];
   react(tw);
+}
+function together() {
+  lastTogether = T;
+  sHighFive();
+  twins.forEach(tw => { hop(tw); tw.lean = 0.9; });
+  const mx = W / 2, my = gy - 1.9 * S;
+  for (let k = 0; k < 7; k++) parts.push({ t: 'ring', x: mx, y: my, r: (20 + k * 9) * U, life: 0.7 + k * 0.05, max: 0.9, c: COLS[k] });
+  for (let i = 0; i < 26; i++) {
+    const a = rand(0, TAU), v = rand(150, 380) * U;
+    parts.push({ t: 'spark', x: mx, y: my, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(9, 16) * U, life: 1.1, max: 1.1,
+                 c: COLS[i % 7], rot: rand(0, TAU), vr: rand(-6, 6) });
+  }
+}
+// ---------- 방울 속 바다 친구 (가끔 튀어나와 바다로 퐁당, 게는 모래로 총총) ----------
+const FRIEND_KINDS = ['fish', 'crab', 'star', 'jelly'];
+let friends = [];
+function addFriend(x, y) {
+  const kind = FRIEND_KINDS[(Math.random() * FRIEND_KINDS.length) | 0];
+  friends.push({ kind, x, y, vx: rand(-70, 70) * U, vy: -rand(60, 120) * U, age: 0, ph: rand(0, TAU),
+                 land: kind === 'crab' ? H * rand(0.8, 0.93) : 0 });
+}
+function updateFriends(dt) {
+  for (let i = friends.length - 1; i >= 0; i--) {
+    const f = friends[i];
+    f.age += dt;
+    if (f.kind === 'crab' && f.vy === 0) {               // 모래 위를 옆걸음
+      f.x += f.vx * dt;
+      if (f.x < -60 || f.x > W + 60) friends.splice(i, 1);
+      continue;
+    }
+    f.vy = Math.min(f.vy + 160 * U * dt, 110 * U);
+    f.x += (f.vx + Math.sin(f.age * 3 + f.ph) * 30 * U) * dt;
+    f.y += f.vy * dt;
+    if (f.kind === 'crab' && f.y >= f.land) { f.y = f.land; f.vy = 0; f.vx = (f.x < W / 2 ? -1 : 1) * 110 * U; continue; }
+    if (f.kind !== 'crab' && f.age > 0.4 && f.y > H * 0.63) {   // 바다에 퐁당
+      sSplash();
+      parts.push({ t: 'ring', x: f.x, y: f.y, r: 10 * U, life: 0.5, max: 0.5, c: [255, 255, 255] });
+      for (let k = 0; k < 7; k++) parts.push({ t: 'drop', x: f.x, y: f.y, vx: rand(-60, 60) * U, vy: -rand(120, 220) * U,
+                                               r: rand(3, 6) * U, life: 0.6, max: 0.6, c: [170, 225, 255] });
+      friends.splice(i, 1);
+    } else if (f.age > 9) friends.splice(i, 1);
+  }
+}
+function drawFriend(f) {
+  const s = R * 0.42 / settings.size, dir = f.vx >= 0 ? 1 : -1;
+  ctx.save(); ctx.translate(f.x, f.y);
+  if (f.kind === 'fish') {
+    ctx.scale(dir, 1); ctx.rotate(Math.sin(f.age * 8) * 0.12);
+    ctx.beginPath(); ctx.moveTo(-s * 0.8, 0); ctx.lineTo(-s * 1.4, -s * 0.5); ctx.lineTo(-s * 1.4, s * 0.5); ctx.closePath();
+    ctx.fillStyle = '#ff8c42'; ctx.fill();
+    ell(0, 0, s, s * 0.62); ctx.fillStyle = '#ffa552'; ctx.fill();
+    ell(s * 0.45, -s * 0.12, s * 0.16, s * 0.16); ctx.fillStyle = '#fff'; ctx.fill();
+    ell(s * 0.5, -s * 0.12, s * 0.08, s * 0.08); ctx.fillStyle = '#222'; ctx.fill();
+  } else if (f.kind === 'crab') {
+    const step = f.vy === 0 ? Math.sin(f.age * 18) * 0.15 : 0;
+    ctx.strokeStyle = '#d9483b'; ctx.lineWidth = s * 0.14; ctx.lineCap = 'round';
+    for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) {
+      ctx.beginPath(); ctx.moveTo(sd * s * 0.5, s * 0.1 + k * s * 0.15);
+      ctx.lineTo(sd * s * 1.05, s * (0.45 + k * 0.15 + (k % 2 ? step : -step))); ctx.stroke();
+    }
+    for (const sd of [-1, 1]) { ell(sd * s * 1.0, -s * 0.45, s * 0.3, s * 0.22, sd * 0.5); ctx.fillStyle = '#ef5a4c'; ctx.fill(); }
+    ell(0, 0, s * 0.85, s * 0.55); ctx.fillStyle = '#ef5a4c'; ctx.fill();
+    for (const sd of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(sd * s * 0.25, -s * 0.4); ctx.lineTo(sd * s * 0.3, -s * 0.75); ctx.stroke();
+      ell(sd * s * 0.3, -s * 0.8, s * 0.13, s * 0.13); ctx.fillStyle = '#fff'; ctx.fill();
+      ell(sd * s * 0.3, -s * 0.8, s * 0.06, s * 0.06); ctx.fillStyle = '#222'; ctx.fill();
+    }
+  } else if (f.kind === 'star') {
+    star(0, 0, s, '#ff8fb1', f.age * 2);
+    ell(-s * 0.18, -s * 0.05, s * 0.07, s * 0.07); ctx.fillStyle = '#222'; ctx.fill();
+    ell(s * 0.18, -s * 0.05, s * 0.07, s * 0.07); ctx.fill();
+  } else {   // 해파리
+    ctx.strokeStyle = 'rgba(190,140,255,.85)'; ctx.lineWidth = s * 0.12; ctx.lineCap = 'round';
+    for (let k = -1.5; k <= 1.5; k++) {
+      ctx.beginPath(); ctx.moveTo(k * s * 0.3, 0);
+      ctx.quadraticCurveTo(k * s * 0.3 + Math.sin(f.age * 6 + k) * s * 0.3, s * 0.5, k * s * 0.3, s * 0.95); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.75, Math.PI, TAU); ctx.closePath();
+    ctx.fillStyle = 'rgba(205,160,255,.9)'; ctx.fill();
+    ell(-s * 0.22, -s * 0.3, s * 0.07, s * 0.07); ctx.fillStyle = '#3a2a55'; ctx.fill();
+    ell(s * 0.22, -s * 0.3, s * 0.07, s * 0.07); ctx.fill();
+  }
+  ctx.restore();
 }
 function react(tw) {
   hop(tw);
@@ -280,7 +426,7 @@ function handle(e, isDown) {
   for (let i = bubbles.length - 1; i >= 0 && hit < 3; i--) {
     const b = bubbles[i];
     const r = b.r * b.grow * 1.25 + slop;
-    if ((b.x - x) ** 2 + (b.y - y) ** 2 < r * r) { pop(b); hit++; }
+    if ((b.x - x) ** 2 + (b.y - y) ** 2 < r * r) { pop(b, pkey(e)); hit++; }
   }
   if (!hit && isDown) {
     const tw = twinAt(x, y);
@@ -290,13 +436,14 @@ function handle(e, isDown) {
 }
 // 손가락마다 따로 추적 → 두 아이가 한 화면에서 동시에 문질러도 서로 끊기지 않음
 const active = new Set();
-cv.addEventListener('pointerdown', e => { e.preventDefault(); audio(); active.add(e.pointerId); handle(e, true); });
+const pkey = e => e.pointerType + e.pointerId;
+cv.addEventListener('pointerdown', e => { e.preventDefault(); audio(); active.add(pkey(e)); handle(e, true); });
 // 마우스·트랙패드: 누르지 않고 방울에 갖다 대기만 해도 터짐 (터치는 기존처럼 탭·드래그)
 let mouse = null;
 const hasMouse = () => matchMedia('(any-hover: hover) and (any-pointer: fine)').matches;  // 실제 마우스가 있는 기기만
 cv.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse' && hasMouse()) { mouse = { x: e.clientX, y: e.clientY, t: T }; handle(e, false); }
-  else if (active.has(e.pointerId)) handle(e, false);
+  else if (active.has(pkey(e))) handle(e, false);
 });
 cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse = null; });
 // 키보드: 아무 키나 누르면 화면 아래쪽(쌍둥이와 가까운) 방울부터 하나씩 터짐. 꾹 누르고 있어도 0.15초에 하나
@@ -311,9 +458,9 @@ addEventListener('keydown', e => {
   const L = bubbles.filter(b => b.grow >= 1 && b.y > b.r * 0.5 && b.y < H);
   if (!L.length) { sTap(); return; }
   L.sort((a, b) => b.y - a.y);
-  pop(L[0]);
+  pop(L[0], 'kb');
 });
-const release = e => active.delete(e.pointerId);
+const release = e => active.delete(pkey(e));
 addEventListener('pointerup', release);
 addEventListener('pointercancel', release);
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -325,6 +472,23 @@ snd.addEventListener('click', () => {
   snd.blur();   // 키보드 입력이 버튼으로 가지 않게
 });
 // 잘 시간 버튼: 누를 때마다 끔 → 5분 → 10분 → 15분. 자고 있을 때 누르면 깨우고 같은 시간으로 다시 시작
+const gear = document.getElementById('gear'), panel = document.getElementById('panel');
+function syncPanel() {
+  panel.querySelectorAll('button').forEach(bt => bt.classList.toggle('sel', String(settings[bt.dataset.k]) === bt.dataset.v));
+}
+gear.addEventListener('pointerdown', e => e.stopPropagation());
+panel.addEventListener('pointerdown', e => e.stopPropagation());
+gear.addEventListener('click', () => { panel.hidden = !panel.hidden; gear.classList.toggle('on', !panel.hidden); gear.blur(); });
+panel.addEventListener('click', e => {
+  const bt = e.target.closest('button'); if (!bt) return;
+  const k = bt.dataset.k, v = bt.dataset.v;
+  settings[k] = k === 'voice' ? v : parseFloat(v);
+  try { localStorage.setItem('tk-rainbow-settings', JSON.stringify(settings)); } catch (err) {}
+  if (k === 'size') resize();
+  if (k === 'voice' && v === 'color') { audio(); sayColor(0); }   // 바로 들어보기
+  syncPanel(); bt.blur();
+});
+syncPanel();
 const zz = document.getElementById('zz'), zzl = document.getElementById('zzl');
 zz.addEventListener('pointerdown', e => e.stopPropagation());
 zz.addEventListener('click', () => {
@@ -352,6 +516,7 @@ function update(dt) {
     }
   }
   themeBlend = Math.min(1, themeBlend + dt / 2.5);
+  updateFriends(dt);
 
   spawnCD -= dt;
   if (sleep <= 0 && spawnCD <= 0 && bubbles.length < 6) { spawn(); spawnCD = 0.9; }
@@ -360,8 +525,8 @@ function update(dt) {
     const b = bubbles[i];
     b.age += dt;
     b.grow = Math.min(1, 0.15 + b.age * 1.6);
-    b.x += (b.dir * 110 * Math.exp(-b.age * 0.9) + Math.sin(b.age * 1.1 + b.ph) * 18) * U * dt;
-    b.y += b.vy * dt * (b.age < 0.4 ? 0.3 : 1);
+    b.x += (b.dir * 110 * Math.exp(-b.age * 0.9) + Math.sin(b.age * 1.1 + b.ph) * 18) * U * dt * settings.speed;
+    b.y += b.vy * dt * (b.age < 0.4 ? 0.3 : 1) * settings.speed;
     b.x = clamp(b.x, b.r * 0.7, W - b.r * 0.7);
     if (b.y < -b.r * 2) bubbles.splice(i, 1);   // 놓쳐도 그냥 날아갈 뿐
   }
@@ -388,6 +553,7 @@ function update(dt) {
     tw.open += ((tw.mouth > 0 ? 1 : 0) - tw.open) * Math.min(1, dt * 14);
     tw.blink -= dt; if (tw.blink < -0.12) tw.blink = rand(2.5, 5);
     tw.giggle = Math.max(0, (tw.giggle || 0) - dt);
+    tw.lean = Math.max(0, (tw.lean || 0) - dt);
   });
 
   for (let i = 0; i < 7; i++) {
@@ -519,9 +685,19 @@ const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
   const im = new Image(); im.src = 'assets/' + n + '.png'; SPR[n] = im;
 });
+// 선택 그림: assets/ 에 넣어 두면 자동으로 씀, 없으면 지금 그림으로 대신함 (정면 자세 기준, 반전 안 함)
+//   tino_laugh_v3.png — 고친 티노 웃음 (반응·축하·눌렀을 때)
+//   tino_sleep.png, coco_sleep.png — 잘 시간
+const OPTIONAL = ['tino_laugh_v3', 'tino_sleep', 'coco_sleep'];
+OPTIONAL.forEach(n => { const im = new Image(); im.onerror = () => { im.bad = true; }; im.src = 'assets/' + n + '.png'; SPR[n] = im; });
+const ready = n => { const im = SPR[n]; return im && !im.bad && im.complete && im.naturalWidth > 0; };
 // 자세 고르기: 평소 / 반응(방울 터짐) / 축하(무지개 완성)
 function poseOf(tw) {
-  if (tw.kind === 'tino') return (party > 0 || tw.hopT >= 0) ? 'tino_jump_v2' : 'tino_run_v2';
+  if (sleep > 0 && ready(tw.kind + '_sleep')) return tw.kind + '_sleep';
+  if (tw.kind === 'tino') {
+    if ((tw.giggle > 0 || party > 0) && ready('tino_laugh_v3')) return 'tino_laugh_v3';
+    return (party > 0 || tw.hopT >= 0 || tw.giggle > 0) ? 'tino_jump_v2' : 'tino_run_v2';
+  }
   if (party > 0 || tw.giggle > 0) return 'coco_laugh_v2';
   return tw.hopT >= 0 ? 'coco_jump_v2' : 'coco_run_v2';
 }
@@ -542,6 +718,8 @@ function drawTwin(tw) {
     lift = b * (party > 0 ? 0.18 : 0.07) * S;
     sy = 0.95 + 0.08 * b; sx = 1.04 - 0.06 * b;
   }
+  if (tw.lean > 0) tilt += (tw.kind === 'tino' ? 0.25 : -0.25) * Math.sin(Math.PI * tw.lean / 0.9);   // 하이파이브: 서로 쪽으로 기울기
+  if (sleep > 0 && name.endsWith('_sleep')) tilt = 0;
   // 그림자 (티노는 모래 위)
   if (tw.kind === 'tino') {
     ell(tw.cx, gy, S * (0.85 - lift / S * 0.35), S * 0.13);
@@ -676,6 +854,7 @@ function draw() {
   drawPoolBack(twins[1].cx);
   drawTwin(twins[1]);
   drawPoolFront(twins[1].cx);
+  friends.forEach(drawFriend);
   bubbles.forEach(drawBubble);
   if (sleep > 0) {          // 잘 시간: 화면이 밤처럼 어두워지고 z 가 피어오름
     ctx.fillStyle = `rgba(16,20,52,${0.55 * Math.min(1, sleep / 3)})`; ctx.fillRect(0, 0, W, H);
@@ -693,6 +872,10 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 addEventListener('resize', resize);
+// 홈 화면 앱: 한 번 열면 인터넷 없이도 실행되게 (파일로 열 때는 건너뜀)
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 resize();
 seedBubbles();
 requestAnimationFrame(frame);
@@ -702,6 +885,8 @@ window.__tk = { get bubbles() { return bubbles; }, get flags() { return flags; }
                 get pops() { return pops; }, get parties() { return parties; }, get audio() { return ac ? ac.state : 'none'; },
                 get theme() { return THEMES[theme].name; }, get sleep() { return sleep; }, get songIdx() { return songIdx; },
                 get active() { return active.size; }, get twins() { return twins; }, get S() { return S; }, get gy() { return gy; },
+                get friends() { return friends; }, get R() { return R; }, get settings() { return settings; }, get lastTogether() { return lastTogether; },
+                together, addFriend,
                 sleepNow() { sleepAt = T; }, starNow() { const b = bubbles.find(x => x.grow >= 1 && x.y > 40); if (b) { b.star = true; b.c = 2; } return b && { x: b.x, y: b.y }; } };
 })();
 </script>
