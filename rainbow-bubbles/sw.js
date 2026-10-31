@@ -1,5 +1,5 @@
 // 무지개 방울 오프라인 캐시: 한 번 열면 인터넷 없이도 실행. 파일을 바꾸면 VERSION 을 올릴 것.
-const VERSION = 'rainbow-v4';
+const VERSION = 'rainbow-v5';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './assets/tino_run_v2.png', './assets/tino_jump_v2.png', './assets/coco_run_v2.png', './assets/coco_jump_v2.png', './assets/coco_laugh_v2.png'];
 const OPTIONAL = ['./assets/tino_laugh_v3.png', './assets/tino_sleep.png', './assets/coco_sleep.png'];

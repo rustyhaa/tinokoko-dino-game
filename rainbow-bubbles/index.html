@@ -639,6 +639,7 @@ function drawBg(th) {
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.moveTo(0, sand);
   for (let x = 0; x <= W; x += 12) ctx.lineTo(x, sand + Math.sin(x * 0.02 + T * 1.5) * 4);
+  ctx.lineTo(W, sand + Math.sin(W * 0.02 + T * 1.5) * 4);   // 오른쪽 끝까지 칠하기
   ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   // 불가사리 장식
   star(W * 0.5, H * 0.95, 14 * U, '#ff9e9e', 0.3);
