@@ -13,7 +13,7 @@
     font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   }
   #stage {
-    max-width: 960px;
+    max-width: 960px;             /* 보통 (기본). 크게·전체는 아래 size-* 클래스가 덮어쓴다 */
     margin: 20px auto;
     padding: 14px 16px 12px;
     box-sizing: border-box;
@@ -21,11 +21,14 @@
     border-radius: 16px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   }
+  #stage.size-large { max-width: 1440px; }
+  #stage.size-full { max-width: none; }
   #top {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px 12px;
     margin-bottom: 10px;
   }
   h1 {
@@ -154,12 +157,19 @@
   /* 상단 배속 버튼: 캔버스 밖에 두어 점프 입력(캔버스 탭)과 섞이지 않는다 */
   #top-right {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
   }
   .seg.small {
     padding: 3px 9px;
     font-size: 13px;
+  }
+  /* 상단 화면 크기 버튼 앞의 작은 라벨 */
+  .opt-label {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0.8;
   }
   .actions {
     display: flex;
@@ -228,6 +238,12 @@
         <button class="seg small" type="button" data-speed="0.7" aria-pressed="false">0.7배</button>
         <button class="seg small" type="button" data-speed="1" aria-pressed="true">1배</button>
         <button class="seg small" type="button" data-speed="1.4" aria-pressed="false">1.4배</button>
+      </div>
+      <div class="seg-group" role="group" aria-label="화면 크기">
+        <span class="opt-label">크기</span>
+        <button class="seg small" type="button" data-size="normal" aria-pressed="true">보통</button>
+        <button class="seg small" type="button" data-size="large" aria-pressed="false">크게</button>
+        <button class="seg small" type="button" data-size="full" aria-pressed="false">전체</button>
       </div>
       <button id="mute" class="round" type="button" aria-label="소리 끄기">🔊</button>
     </div>
@@ -360,6 +376,11 @@
   const CHAR_NAMES = { tino: '티노', coco: '코코' };
   const SPEED_KEY = 'tinokoko-dino-speed';
   const SPEED_IDS = ['0.7', '1', '1.4'];    // 배속 (문자열로 저장·비교)
+  const SIZE_KEY = 'tinokoko-dino-size';
+  const SIZE_IDS = ['normal', 'large', 'full']; // 화면 크기 (보통 · 크게 · 전체)
+  // 캔버스 높이 범위 [하한, 상한] (px). 보통·크게는 가로 × 0.42, 전체는 창 높이 − SIZE_FULL_OFFSET
+  const SIZE_H = { normal: [360, 420], large: [420, 680], full: [420, 900] };
+  const SIZE_FULL_OFFSET = 170;
 
   // 자동 테스트 (?test=1): 장애물 왼쪽 끝이 판정 오른쪽 끝에서 속도×AUTOPILOT_LEAD 초 안쪽이면 점프
   const AUTOPILOT_LEAD = 0.2;
@@ -444,6 +465,8 @@
   const overPanel = document.getElementById('over-panel');
   const cards = document.querySelectorAll('.card');
   const speedBtns = document.querySelectorAll('.seg[data-speed]');
+  const stage = document.getElementById('stage');
+  const sizeBtns = document.querySelectorAll('.seg[data-size]');
   const startBtn = document.getElementById('start-btn');
   const retryBtn = document.getElementById('retry-btn');
   const changeBtn = document.getElementById('change-btn');
@@ -457,6 +480,8 @@
   // 배속: 시작 패널 · 상단 버튼 · 1/2/3 키로 언제든 바꾼다 (setSpeed). 시작·최고 속도와 가속에 곱한다.
   let speedId = TEST_MODE ? pickParam('speedmul', SPEED_IDS, '1') : loadPref(SPEED_KEY, SPEED_IDS, '1');
   let speedMul = Number(speedId);
+  // 화면 크기: 저장된 값을 쓴다 (테스트 모드는 기본 normal, ?size= 로만 바꾼다)
+  let sizeId = TEST_MODE ? pickParam('size', SIZE_IDS, 'normal') : loadPref(SIZE_KEY, SIZE_IDS, 'normal');
   let distance = 0;            // 달린 거리 (월드 px)
   let score = 0;               // 표시 점수 = floor(distance / SCORE_PX)
   let best = readBest();
@@ -507,8 +532,10 @@
   // ===== 화면 크기 =====
   function resize() {
     const cssW = wrap.clientWidth;
-    // 높이는 가로 비율을 따르되 360~420px 범위로 제한
-    const cssH = Math.round(Math.min(420, Math.max(360, cssW * 0.42)));
+    // 높이는 가로 비율을 따르되 크기별 범위로 제한 (전체는 창 높이에서 맞춘다)
+    const [minH, maxH] = SIZE_H[sizeId];
+    const wantH = sizeId === 'full' ? window.innerHeight - SIZE_FULL_OFFSET : cssW * 0.42;
+    const cssH = Math.round(Math.min(maxH, Math.max(minH, wantH)));
     dpr = window.devicePixelRatio || 1;
     canvas.style.width = cssW + 'px';
     canvas.style.height = cssH + 'px';
@@ -517,6 +544,12 @@
     scale = cssH / WORLD_H;
     worldW = cssW / scale;
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  }
+
+  // 화면 크기 적용: 컨테이너 폭(CSS 클래스)을 바꾸고 캔버스를 다시 맞춘다. 게임 상태는 건드리지 않는다
+  function applySize() {
+    stage.className = 'size-' + sizeId;
+    resize();
   }
 
   // ===== 저장 (실패해도 게임은 그대로 동작) =====
@@ -656,6 +689,16 @@
     renderChoice();
   }
 
+  // 화면 크기 변경 (상단 버튼 공통). 캔버스 밖 HTML 버튼이라 점프와 섞이지 않는다.
+  // 월드 좌표(장애물·장치·꽃)는 그대로이고 축척만 바뀐다. 캐릭터는 월드 x에 고정이라 화면 안에 남는다.
+  function setSize(id) {
+    if (id === sizeId) return;
+    sizeId = id;
+    savePref(SIZE_KEY, id);
+    applySize();
+    renderChoice();
+  }
+
   // 속도 → 체공 시간: 시작 속도 AIR_T_START에서 최고 속도 AIR_T_MAX까지 직선으로
   function airTimeFor(v) {
     const k = Math.min(1, Math.max(0, (v - startSpeed()) / (maxSpeed() - startSpeed())));
@@ -756,6 +799,9 @@
     }
     for (const btn of speedBtns) {
       btn.setAttribute('aria-pressed', String(btn.dataset.speed === speedId));
+    }
+    for (const btn of sizeBtns) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.size === sizeId));
     }
     startBtn.disabled = !selected;
     drawPreviews();
@@ -1226,6 +1272,10 @@
     btn.addEventListener('click', () => setSpeed(btn.dataset.speed));
   }
 
+  for (const btn of sizeBtns) {
+    btn.addEventListener('click', () => setSize(btn.dataset.size));
+  }
+
   startBtn.addEventListener('click', beginRun);
   retryBtn.addEventListener('click', beginRun);
   changeBtn.addEventListener('click', goReady);
@@ -1619,7 +1669,7 @@
   }
 
   // ===== 시작 =====
-  resize();
+  applySize();
   window.addEventListener('resize', resize);
   drawPreviews();
   renderChoice();
