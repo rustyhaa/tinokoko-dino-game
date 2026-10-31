@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>티노코코 무지개 방울</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#bfe8ff;touch-action:none;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  /* 부모용 최소 UI: 소리 켜고 끄기 */
+  #snd{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
+    width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);
+    padding:8px;opacity:.55;cursor:pointer}
+  #snd svg{width:100%;height:100%;display:block}
+  #snd .x{display:none}
+  #snd.off .x{display:inline}
+  #snd.off .w{display:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="snd" aria-label="소리 켜기/끄기">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9h4l5-4v14l-5-4H4z" fill="#335"/>
+    <path class="w" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>
+    <path class="x" d="M16 9l5 6M21 9l-5 6"/>
+  </svg>
+</button>
+<script>
+(() => {
+'use strict';
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// 빨주노초파남보
+const COLS = [[255,90,95],[255,159,67],[255,214,50],[76,210,100],[58,167,255],[100,100,225],[176,92,240]];
+const FREQ = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33]; // 펜타토닉 계열 — 어떤 순서로 눌러도 어울림
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+let W, H, S, R, gy, U;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  S = Math.min(W * 0.155, H * 0.15);            // 캐릭터 크기 단위 (둘이 똑같이 사용)
+  R = clamp(Math.min(W, H) * 0.085, 36, 72);   // 방울 반지름 — 아이 손가락 크기 이상
+  gy = H * 0.87;                                // 발 딛는 선
+  U = Math.min(W, H) / 700;
+  twins[0].cx = Math.max(1.45 * S + 6, W * 0.17);
+  twins[1].cx = W - twins[0].cx;
+}
+
+// ---------- 상태 ----------
+const twins = [
+  { kind: 'tino', cx: 0, hopT: -1, mouth: 0, open: 0, blink: 2, ph: 0 },
+  { kind: 'coco', cx: 0, hopT: -1, mouth: 0, open: 0, blink: 3.3, ph: 1.7 },
+];
+let T = 0, bubbles = [], parts = [], spawnCD = 0, side = 0;
+let flags = Array(7).fill(false), lit = Array(7).fill(0), litPulse = Array(7).fill(0);
+let party = 0, partyHop = 0, hint = true, down = false, pops = 0, parties = 0;
+const clouds = [0, 1, 2].map(i => ({ x: Math.random(), y: 0.08 + i * 0.09, s: 0.8 + Math.random() * 0.6, v: 0.006 + Math.random() * 0.006 }));
+
+// ---------- 소리 (WebAudio 합성) ----------
+let ac = null, master = null, muted = false;
+function audio() {
+  if (!ac) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    ac = new C();
+    master = ac.createGain();
+    master.gain.value = muted ? 0 : 0.6;
+    master.connect(ac.destination);
+  }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function tone(f, delay = 0, dur = 0.35, type = 'sine', vol = 0.3, f2 = 0) {
+  if (!ac) return;
+  const t = ac.currentTime + delay;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+let noiseBuf = null;
+function noise(dur = 0.1, f = 2000, vol = 0.2, delay = 0, f2 = 0) {
+  if (!ac) return;
+  if (!noiseBuf) {
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = ac.currentTime + delay;
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.5;
+  bp.frequency.setValueAtTime(f, t);
+  if (f2) bp.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(bp); bp.connect(g); g.connect(master);
+  s.start(t); s.stop(t + dur + 0.05);
+}
+const sPop = c => { noise(0.05, 2600, 0.25); tone(FREQ[c], 0, 0.5, 'sine', 0.32); tone(FREQ[c] * 2, 0, 0.18, 'triangle', 0.1); };
+const sStomp = () => tone(150, 0.05, 0.25, 'sine', 0.45, 50);
+const sSpout = () => noise(0.5, 900, 0.18, 0.05, 3500);
+const sBlow = () => tone(rand(500, 700), 0, 0.12, 'sine', 0.05, 900);
+const sTap = () => tone(FREQ[(Math.random() * 7) | 0] / 2, 0, 0.25, 'triangle', 0.1);
+function sFanfare() {
+  [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+    tone(f, i * 0.13, 0.45, 'triangle', 0.22); tone(f / 2, i * 0.13, 0.3, 'sine', 0.12);
+  });
+  for (let i = 0; i < 8; i++) tone(rand(1500, 2600), 1 + i * 0.09, 0.2, 'sine', 0.05);
+}
+
+// ---------- 방울 ----------
+function pickColor() {
+  const need = [];
+  flags.forEach((f, i) => { if (!f) need.push(i); });
+  if (need.length && Math.random() < 0.65) return need[(Math.random() * need.length) | 0];
+  return (Math.random() * 7) | 0;
+}
+function mouthPos(tw) {
+  const dir = tw.kind === 'tino' ? 1 : -1;
+  return { x: tw.cx + dir * 1.05 * S, y: gy - 1.2 * S, dir };
+}
+function spawn() {
+  const tw = twins[side]; side ^= 1;
+  const m = mouthPos(tw);
+  tw.mouth = 0.45;
+  bubbles.push({ x: m.x, y: m.y, dir: m.dir, vy: -rand(45, 75) * H / 700, r: R * rand(0.9, 1.12),
+                 c: pickColor(), ph: rand(0, TAU), age: 0, grow: 0.15 });
+  sBlow();
+}
+function seedBubbles() {
+  for (let i = 0; i < 4; i++) {
+    bubbles.push({ x: W * (0.3 + 0.4 * i / 3) + rand(-20, 20), y: H * rand(0.2, 0.5), dir: 0,
+                   vy: -rand(40, 65) * H / 700, r: R * rand(0.95, 1.1), c: pickColor(), ph: rand(0, TAU), age: 3, grow: 1 });
+  }
+}
+
+// ---------- 터뜨리기 ----------
+function hop(tw) { if (tw.hopT < 0 || tw.hopT > 0.3) tw.hopT = 0; tw.mouth = 0.5; }
+function pop(b) {
+  bubbles.splice(bubbles.indexOf(b), 1);
+  pops++; hint = false;
+  const col = COLS[b.c];
+  sPop(b.c);
+  parts.push({ t: 'ring', x: b.x, y: b.y, r: b.r, life: 0.4, max: 0.4, c: col });
+  for (let i = 0; i < 12; i++) {
+    const a = rand(0, TAU), v = rand(120, 320) * U;
+    parts.push({ t: 'drop', x: b.x, y: b.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80 * U,
+                 r: rand(4, 9) * U, life: rand(0.5, 0.9), max: 0.9, c: col });
+  }
+  if (party <= 0 && !flags[b.c]) {
+    flags[b.c] = true; litPulse[b.c] = 1;
+    if (flags.every(Boolean)) setTimeout(startParty, 350);
+  }
+  // 가까운 쪽 쌍둥이가 반응
+  const tw = Math.abs(b.x - twins[0].cx) <= Math.abs(b.x - twins[1].cx) ? twins[0] : twins[1];
+  react(tw);
+}
+function react(tw) {
+  hop(tw);
+  if (tw.kind === 'tino') {
+    sStomp();
+    setTimeout(() => dust(tw), 480);
+  } else {
+    sSpout(); spout(tw);
+  }
+}
+function dust(tw) {
+  for (let i = 0; i < 8; i++) {
+    parts.push({ t: 'puff', x: tw.cx + rand(-0.6, 0.6) * S, y: gy, vx: rand(-60, 60) * U, vy: -rand(20, 60) * U,
+                 r: rand(6, 12) * U, life: 0.6, max: 0.6, c: [230, 200, 140] });
+  }
+}
+function spout(tw) {
+  const x = tw.cx - 0.05 * S;
+  for (let i = 0; i < 16; i++) {
+    parts.push({ t: 'drop', grav: 1, x: x + rand(-6, 6), y: gy - 2.0 * S - (tw.hopT >= 0 ? 0 : 0),
+                 vx: rand(-90, 90) * U, vy: -rand(250, 420) * U, r: rand(4, 8) * U, life: 0.9, max: 0.9,
+                 c: [130, 205, 255], delay: i * 0.012 });
+  }
+}
+function startParty() {
+  if (party > 0) return;
+  party = 5.5; partyHop = 0; parties++;
+  sFanfare();
+  twins.forEach(hop);
+}
+
+// ---------- 입력 (탭 · 드래그) ----------
+function handle(e, isDown) {
+  const x = e.clientX, y = e.clientY;
+  let hit = 0;
+  for (let i = bubbles.length - 1; i >= 0 && hit < 3; i--) {
+    const b = bubbles[i];
+    const r = b.r * b.grow * 1.25 + 8;
+    if ((b.x - x) ** 2 + (b.y - y) ** 2 < r * r) { pop(b); hit++; }
+  }
+  if (!hit && isDown) {
+    parts.push({ t: 'ring', x, y, r: 18 * U, life: 0.5, max: 0.5, c: [255, 255, 255] });
+    sTap();
+  }
+}
+cv.addEventListener('pointerdown', e => { e.preventDefault(); audio(); down = true; handle(e, true); });
+cv.addEventListener('pointermove', e => { if (down) handle(e, false); });
+addEventListener('pointerup', () => { down = false; });
+addEventListener('pointercancel', () => { down = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+const snd = document.getElementById('snd');
+snd.addEventListener('pointerdown', e => e.stopPropagation());
+snd.addEventListener('click', () => {
+  muted = !muted; snd.classList.toggle('off', muted);
+  audio(); if (master) master.gain.value = muted ? 0 : 0.6;
+});
+
+// ---------- 갱신 ----------
+function update(dt) {
+  T += dt;
+  clouds.forEach(c => { c.x += c.v * dt; if (c.x > 1.2) c.x = -0.2; });
+
+  spawnCD -= dt;
+  if (spawnCD <= 0 && bubbles.length < 6) { spawn(); spawnCD = 0.9; }
+
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.age += dt;
+    b.grow = Math.min(1, 0.15 + b.age * 1.6);
+    b.x += (b.dir * 110 * Math.exp(-b.age * 0.9) + Math.sin(b.age * 1.1 + b.ph) * 18) * U * dt;
+    b.y += b.vy * dt * (b.age < 0.4 ? 0.3 : 1);
+    b.x = clamp(b.x, b.r * 0.7, W - b.r * 0.7);
+    if (b.y < -b.r * 2) bubbles.splice(i, 1);   // 놓쳐도 그냥 날아갈 뿐
+  }
+
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    if (p.delay > 0) { p.delay -= dt; continue; }
+    p.life -= dt;
+    if (p.life <= 0) { parts.splice(i, 1); continue; }
+    if (p.t === 'drop' || p.t === 'conf' || p.t === 'puff') {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.t === 'drop') p.vy += 700 * U * dt;
+      if (p.t === 'conf') { p.vy = Math.min(p.vy + 200 * U * dt, 160 * U); p.rot += p.vr * dt; p.vx += Math.sin(T * 3 + p.ph) * 30 * dt; }
+    }
+  }
+
+  twins.forEach(tw => {
+    if (tw.hopT >= 0) { tw.hopT += dt; if (tw.hopT > 0.5) tw.hopT = -1; }
+    tw.mouth -= dt;
+    tw.open += ((tw.mouth > 0 ? 1 : 0) - tw.open) * Math.min(1, dt * 14);
+    tw.blink -= dt; if (tw.blink < -0.12) tw.blink = rand(2.5, 5);
+  });
+
+  for (let i = 0; i < 7; i++) {
+    lit[i] += ((flags[i] ? 1 : 0) - lit[i]) * Math.min(1, dt * (flags[i] ? 5 : 2.5));
+    litPulse[i] = Math.max(0, litPulse[i] - dt * 1.5);
+  }
+
+  if (party > 0) {
+    party -= dt; partyHop -= dt;
+    if (partyHop <= 0) { partyHop = 0.6; twins.forEach(hop); }
+    if (Math.random() < dt * 40) {
+      parts.push({ t: 'conf', x: rand(0, W), y: -10, vx: rand(-30, 30) * U, vy: rand(60, 140) * U, w: rand(8, 14) * U,
+                   rot: rand(0, TAU), vr: rand(-6, 6), ph: rand(0, TAU), life: 4, max: 4, c: COLS[(Math.random() * 7) | 0] });
+    }
+    if (party <= 0) { flags = Array(7).fill(false); }   // 바로 다음 판
+  }
+}
+
+// ---------- 그리기: 배경 ----------
+function ell(x, y, rx, ry, rot = 0) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(rx, 0.0001), Math.max(ry, 0.0001), rot, 0, TAU); }
+function drawBg() {
+  const hz = H * 0.6, sand = H * 0.76;
+  let g = ctx.createLinearGradient(0, 0, 0, hz);
+  g.addColorStop(0, '#8fd4ff'); g.addColorStop(1, '#dff4ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
+  // 해
+  const sx = W * 0.1 + 20, sy = H * 0.12 + 10, sr = Math.min(W, H) * 0.07;
+  ctx.save(); ctx.translate(sx, sy); ctx.rotate(T * 0.2);
+  ctx.strokeStyle = 'rgba(255,200,60,.7)'; ctx.lineWidth = sr * 0.15; ctx.lineCap = 'round';
+  for (let i = 0; i < 10; i++) { ctx.rotate(TAU / 10); ctx.beginPath(); ctx.moveTo(sr * 1.3, 0); ctx.lineTo(sr * 1.65, 0); ctx.stroke(); }
+  ctx.restore();
+  ell(sx, sy, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
+  // 구름
+  clouds.forEach(c => {
+    const x = c.x * W, y = c.y * H, s = c.s * Math.min(W, H) * 0.06;
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ell(x, y, s * 1.4, s * 0.7); ctx.fill();
+    ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill();
+    ell(x + s * 0.9, y + s * 0.1, s * 0.9, s * 0.6); ctx.fill();
+    ell(x + s * 0.1, y - s * 0.45, s * 0.8, s * 0.6); ctx.fill();
+  });
+  // 바다
+  g = ctx.createLinearGradient(0, hz, 0, sand);
+  g.addColorStop(0, '#3fb0e8'); g.addColorStop(1, '#7fd3f2');
+  ctx.fillStyle = g; ctx.fillRect(0, hz, W, sand - hz + 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3;
+  for (let row = 0; row < 3; row++) {
+    const y0 = hz + (sand - hz) * (0.25 + row * 0.25);
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 10) {
+      const y = y0 + Math.sin(x * 0.03 + T * (1.2 + row * 0.3) + row) * 3;
+      x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+  // 모래
+  g = ctx.createLinearGradient(0, sand, 0, H);
+  g.addColorStop(0, '#fbe7b4'); g.addColorStop(1, '#f1d18f');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(0, sand);
+  for (let x = 0; x <= W; x += 12) ctx.lineTo(x, sand + Math.sin(x * 0.02 + T * 1.5) * 4);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+  // 불가사리 장식
+  star(W * 0.5, H * 0.95, 14 * U, '#ff9e9e', 0.3);
+  star(W * 0.36, H * 0.82, 10 * U, '#ffb36b', -0.4);
+  star(W * 0.66, H * 0.9, 11 * U, '#c99bff', 0.8);
+}
+function star(x, y, r, col, rot) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+    ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.restore();
+}
+
+// 무지개: 같은 색 방울을 터뜨리면 그 줄이 켜짐 (글자 없이 진행 표시)
+function drawRainbow() {
+  const cx = W / 2, cy = H * 0.6, Rr = Math.min(W * 0.42, H * 0.36), w = Rr * 0.08;
+  ctx.save();
+  ctx.lineCap = 'butt';
+  for (let i = 0; i < 7; i++) {
+    const r = Rr - i * w - w / 2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, TAU);
+    ctx.lineWidth = w + 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.stroke();
+    if (lit[i] > 0.01) {
+      const sweep = flags[i] ? lit[i] : 1;
+      ctx.globalAlpha = flags[i] ? 1 : lit[i];
+      ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + Math.PI * sweep);
+      ctx.lineWidth = w * (1 + litPulse[i] * 0.6) + 1;
+      ctx.strokeStyle = rgba(COLS[i], party > 0 ? 1 : 0.9);
+      ctx.shadowColor = rgba(COLS[i], 0.8); ctx.shadowBlur = party > 0 ? 20 + Math.sin(T * 8) * 8 : litPulse[i] * 25;
+      ctx.stroke();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+}
+
+// ---------- 그리기: 티노 · 코코 (정본 스프라이트) ----------
+// 원본 PNG(rustyhaa/tinokoko-dino-game assets)는 수정하지 않고, 화면에서 크기·좌우 반전·통통 튀기만 줌.
+// 둘 다 같은 키(2.35S)로 그림. tino_laugh_v2 는 머리가 빈 결함 파일이라 쓰지 않음.
+const SPR = {};
+['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
+  const im = new Image(); im.src = 'assets/' + n + '.png'; SPR[n] = im;
+});
+// 자세 고르기: 평소 / 반응(방울 터짐) / 축하(무지개 완성)
+function poseOf(tw) {
+  if (tw.kind === 'tino') return (party > 0 || tw.hopT >= 0) ? 'tino_jump_v2' : 'tino_run_v2';
+  if (party > 0) return 'coco_laugh_v2';
+  return tw.hopT >= 0 ? 'coco_jump_v2' : 'coco_run_v2';
+}
+function drawTwin(tw) {
+  const name = poseOf(tw), im = SPR[name];
+  // 통통 튀기: 반응 때는 크게 한 번 뛰고, 평소에는 제자리에서 작게 콩콩
+  let lift, sx, sy;
+  if (tw.hopT >= 0) {
+    const p = tw.hopT / 0.5;
+    lift = Math.sin(Math.PI * p) * 0.55 * S;
+    const edge = p < 0.12 || p > 0.88;
+    sx = edge ? 1.08 : 0.95; sy = edge ? 0.9 : 1.06;      // 도약·착지 때 납작, 공중에서 길쭉
+  } else {
+    const b = Math.abs(Math.sin(T * (party > 0 ? 6 : 3.2) + tw.ph));
+    lift = b * (party > 0 ? 0.18 : 0.07) * S;
+    sy = 0.95 + 0.08 * b; sx = 1.04 - 0.06 * b;
+  }
+  // 그림자 (티노는 모래 위)
+  if (tw.kind === 'tino') {
+    ell(tw.cx, gy, S * (0.85 - lift / S * 0.35), S * 0.13);
+    ctx.fillStyle = 'rgba(160,120,40,.22)'; ctx.fill();
+  }
+  if (!im || !im.complete || !im.naturalWidth) return;
+  const h = 2.35 * S, w = h * im.naturalWidth / im.naturalHeight;
+  // tino_run 은 원본이 왼쪽을 봄 → 화면에서만 뒤집어 코코 쪽(오른쪽)을 보게
+  const flip = name === 'tino_run_v2' ? -1 : 1;
+  ctx.save();
+  ctx.translate(tw.cx, gy - lift);
+  ctx.scale(sx * flip, sy);
+  ctx.drawImage(im, -w / 2, -h, w, h);
+  ctx.restore();
+}
+
+function drawPoolBack(cx) {
+  ell(cx, gy + 0.04 * S, 1.55 * S, 0.42 * S); ctx.fillStyle = '#e8c98a'; ctx.fill();
+  ell(cx, gy + 0.04 * S, 1.45 * S, 0.36 * S); ctx.fillStyle = '#69c3f0'; ctx.fill();
+}
+function drawPoolFront(cx) {
+  ctx.save();
+  ell(cx, gy + 0.04 * S, 1.45 * S, 0.36 * S); ctx.clip();
+  ctx.fillStyle = 'rgba(105,195,240,.96)';
+  ctx.beginPath(); ctx.moveTo(cx - 1.6 * S, gy - 0.22 * S);
+  for (let x = -1.6; x <= 1.6; x += 0.1) ctx.lineTo(cx + x * S, gy - 0.22 * S + Math.sin(x * 5 + T * 3) * 0.03 * S);
+  ctx.lineTo(cx + 1.6 * S, gy + S); ctx.lineTo(cx - 1.6 * S, gy + S); ctx.fill();
+  ctx.restore();
+  // 잔물결
+  for (let k = 0; k < 2; k++) {
+    const p = (T * 0.5 + k * 0.5) % 1;
+    ell(cx, gy - 0.05 * S, (0.7 + p * 0.7) * S, (0.12 + p * 0.15) * S);
+    ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - p)})`; ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+// ---------- 그리기: 방울 · 효과 ----------
+function drawBubble(b) {
+  const r = b.r * b.grow * (1 + 0.035 * Math.sin(b.age * 4 + b.ph));
+  const c = COLS[b.c];
+  ctx.save(); ctx.translate(b.x, b.y);
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  g.addColorStop(0, 'rgba(255,255,255,.85)');
+  g.addColorStop(0.4, rgba(c, 0.5));
+  g.addColorStop(1, rgba(c, 0.9));
+  ell(0, 0, r, r); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = Math.max(2, r * 0.06); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.72, -2.6, -1.9); ctx.lineWidth = r * 0.1; ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.stroke();
+  ell(r * 0.42, r * 0.42, r * 0.08, r * 0.08); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
+  ctx.restore();
+}
+function drawParts() {
+  parts.forEach(p => {
+    if (p.delay > 0) return;
+    const a = clamp(p.life / p.max, 0, 1);
+    if (p.t === 'ring') {
+      const k = 1 - a;
+      ell(p.x, p.y, p.r * (1 + k * 0.8), p.r * (1 + k * 0.8));
+      ctx.strokeStyle = rgba(p.c, a); ctx.lineWidth = 6 * a + 1; ctx.stroke();
+    } else if (p.t === 'drop' || p.t === 'puff') {
+      ell(p.x, p.y, p.r * (p.t === 'puff' ? 2 - a : 1), p.r * (p.t === 'puff' ? 2 - a : 1));
+      ctx.fillStyle = rgba(p.c, p.t === 'puff' ? a * 0.6 : a); ctx.fill();
+    } else if (p.t === 'conf') {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = rgba(p.c, Math.min(1, a * 2)); ctx.fillRect(-p.w / 2, -p.w / 4, p.w, p.w / 2);
+      ctx.restore();
+    }
+  });
+}
+// 처음에만 나오는 손가락 힌트 (글자 대신)
+function drawHand() {
+  if (!hint) return;
+  let tgt = null;
+  bubbles.forEach(b => { if (b.grow >= 1 && b.y > H * 0.15 && b.y < H * 0.6 && (!tgt || b.y > tgt.y)) tgt = b; });
+  if (!tgt) return;
+  const k = U * 1.3, press = (Math.sin(T * 5) + 1) / 2;
+  ctx.save();
+  ctx.translate(tgt.x + tgt.r * 0.15, tgt.y + tgt.r * 0.2 + press * 14 * U);
+  ctx.scale(k, k);
+  ctx.fillStyle = '#ffd7b5'; ctx.strokeStyle = '#c98d5c'; ctx.lineWidth = 3;
+  rr(-9, 0, 18, 50, 9); ctx.fill(); ctx.stroke();
+  rr(-24, 34, 48, 46, 18); ctx.fill(); ctx.stroke();
+  rr(-9, 0, 18, 50, 9); ctx.fill();
+  ctx.restore();
+}
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+function draw() {
+  drawBg();
+  drawRainbow();
+  // 티노 (모래 위)
+  drawTwin(twins[0]);
+  // 코코 (모래 웅덩이 속)
+  drawPoolBack(twins[1].cx);
+  drawTwin(twins[1]);
+  drawPoolFront(twins[1].cx);
+  bubbles.forEach(drawBubble);
+  drawParts();
+  drawHand();
+}
+
+// ---------- 루프 ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', resize);
+resize();
+seedBubbles();
+requestAnimationFrame(frame);
+
+// 자동 확인용 (게임 동작에는 영향 없음)
+window.__tk = { get bubbles() { return bubbles; }, get flags() { return flags; }, get party() { return party; },
+                get pops() { return pops; }, get parties() { return parties; }, get audio() { return ac ? ac.state : 'none'; } };
+})();
+</script>
+</body>
+</html>
