@@ -105,24 +105,6 @@
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
   }
-  .cell {
-    min-width: 0;
-  }
-  /* 카드 아래 다음 모자까지 남은 별: 아이콘 + 숫자 */
-  .need {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    margin: 6px 0 0;
-    min-height: 18px;
-    font-size: 13px;
-  }
-  .need b {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 14px;
-    font-weight: 700;
-  }
   .card canvas.preview {
     display: block;
     width: 110px;
@@ -257,22 +239,16 @@
         <h2>누구랑 달릴까요?</h2>
         <p class="sub">고른 친구 한 명만 달려요.</p>
         <div class="cards">
-          <div class="cell">
-            <button class="card" type="button" data-char="tino" aria-pressed="false">
-              <canvas class="preview" width="220" height="168" data-preview="tino"></canvas>
-              <strong>티노</strong>
-              <span>아기 티라노</span>
-            </button>
-            <p class="need" aria-label="다음 모자까지 남은 별"></p>
-          </div>
-          <div class="cell">
-            <button class="card" type="button" data-char="coco" aria-pressed="false">
-              <canvas class="preview" width="220" height="168" data-preview="coco"></canvas>
-              <strong>코코</strong>
-              <span>아기 범고래</span>
-            </button>
-            <p class="need" aria-label="다음 모자까지 남은 별"></p>
-          </div>
+          <button class="card" type="button" data-char="tino" aria-pressed="false">
+            <canvas class="preview" width="220" height="168" data-preview="tino"></canvas>
+            <strong>티노</strong>
+            <span>아기 티라노</span>
+          </button>
+          <button class="card" type="button" data-char="coco" aria-pressed="false">
+            <canvas class="preview" width="220" height="168" data-preview="coco"></canvas>
+            <strong>코코</strong>
+            <span>아기 범고래</span>
+          </button>
         </div>
         <div class="opts">
           <div class="seg-group" role="group" aria-label="배속">
@@ -390,7 +366,7 @@
   const TEST_TIMEOUT = 60;     // 게임 시간(초) 안에 못 넘으면 FAIL
   const TEST_GOAL = 5;         // 장애물 5개를 충돌 없이 넘으면 PASS
 
-  // 4차 연출·보상 (축하 · 낮/밤 · 꽃길 · 과일 · 모자). 새 사망 조건 없음
+  // 4차 연출·보상 (축하 · 낮/밤 · 꽃길 · 과일). 새 사망 조건 없음
   const MILESTONE = 500;        // 이 점수 배수를 넘을 때마다 축하 (구간당 1회)
   const CELEB_MAX = 40;         // 축하 파티클 동시 최대 개수
   const CELEB_SEC = 1.0;        // 축하 파티클 수명(초)
@@ -410,17 +386,6 @@
   const FRUIT_COLORS = { apple: '#E5484D', grape: '#8E5CC7', orange: '#F5A03A' };
   // 장치 등장 가중치 (별 : 과일 : 하트). 하트가 눈에 띄게 줄지 않도록 5:3:2 대신 2:1:2로 잡았다 (보고서 참고)
   const ITEM_WEIGHTS = { star: 2, fruit: 1, heart: 2 };
-  const STAR_TOTAL_KEY = 'tinokoko-dino-star-total';
-  // 별 누적 해금 단계 (오름차순). 현재 모자는 해금된 것 중 가장 높은 하나
-  const HAT_TIERS = [{ at: 20, id: 'cap' }, { at: 50, id: 'crown' }, { at: 100, id: 'star' }];
-  const HAT_U = 0.46;           // 모자 기준 단위 = 스프라이트 표시 높이 × HAT_U
-  // 모자 앵커: 그림 안 머리 꼭대기 가운데의 (가로, 세로) 비율. 캐릭터·자세별로 따로 잰다
-  const HAT_ANCHOR = {
-    tino: { run: { x: 0.70, y: 0.085 }, jump: { x: 0.51, y: 0.07 }, crash: { x: 0.55, y: 0.04 } },
-    coco: { run: { x: 0.60, y: 0.09 }, jump: { x: 0.52, y: 0.10 }, crash: { x: 0.53, y: 0.09 } },
-  };
-  // 시작 화면 카드 아래 별 아이콘 (HUD 별과 같은 모양)
-  const STAR_ICON = '<svg width="12" height="12" viewBox="-12 -12 24 24" aria-hidden="true"><polygon points="0,-11 2.76,-3.8 10.46,-3.4 4.47,1.45 6.47,8.9 0,4.7 -6.47,8.9 -4.47,1.45 -10.46,-3.4 -2.76,-3.8" fill="#F5B82E" stroke="#B9800F" stroke-width="1"/></svg>';
 
   // 캐릭터·돌멩이·배경은 INK 한 색, 바탕은 PAPER. 장치(별·하트)만 컬러로 그린다.
   const INK = '#535353';
@@ -465,9 +430,8 @@
   const TEST_MAX_SPEED = TEST_MODE && params.get('speed') === 'max';  // 처음부터 최고 속도로 달린다
   // 스크린샷용: 시작할 때 이 장치를 화면에 띄운다 (테스트 모드에서는 무시)
   const FORCE_ITEM = TEST_MODE ? null : pickParam('forceitem', ['star', 'heart', 'fruit'], null);
-  // 스크린샷용: 밤 고정 · 모자 강제 · 축하 응원 상태 강제 (테스트 모드에서는 무시)
+  // 스크린샷용: 밤 고정 · 축하 응원 상태 강제 (테스트 모드에서는 무시)
   const FORCE_NIGHT = !TEST_MODE && params.get('forcenight') === '1';
-  const FORCE_HAT = TEST_MODE ? null : pickParam('forcehat', ['cap', 'crown', 'star'], null);
   const FORCE_CHEER = !TEST_MODE && params.get('forcecheer') === '1';
 
   // ===== DOM =====
@@ -522,7 +486,6 @@
   let itemClock = 0;           // 다음 장치가 나올 때까지 남은 시간
   let effects = [];            // 깨짐·반짝임 조각 { x, y, vx, vy, life, color }
   let clockT = 0;              // 애니메이션 시계 (반짝임·깜빡임용)
-  let starTotal = readStarTotal(); // 별 누적 (모자 해금 기준, 저장값)
   let fruits = 0;              // 이번 판 과일 개수
   let nightMix = 0;            // 0 = 낮, 1 = 밤 (전환 중에는 사이값)
   let flowers = [];            // 꽃길 { x, grow, color }
@@ -560,15 +523,6 @@
   function readBest() {
     try {
       return Number(localStorage.getItem(BEST_KEY)) || 0;
-    } catch (err) {
-      return 0;
-    }
-  }
-
-  // 별 누적 총수 (실패하면 0). 저장은 takeItem에서 별을 먹을 때마다 즉시 한다
-  function readStarTotal() {
-    try {
-      return Math.max(0, parseInt(localStorage.getItem(STAR_TOTAL_KEY), 10) || 0);
     } catch (err) {
       return 0;
     }
@@ -805,16 +759,6 @@
     }
     startBtn.disabled = !selected;
     drawPreviews();
-    renderNeed();
-  }
-
-  // 카드 아래: 다음 모자까지 남은 별 개수 (별 아이콘 + 숫자, HUD 숫자 형식). 전부 해금이면 체크
-  function renderNeed() {
-    const next = nextTierFor(starTotal);
-    const html = next
-      ? STAR_ICON + '<b>' + (next.at - starTotal) + '</b>'
-      : STAR_ICON + '<b>✓</b>';
-    for (const el of document.querySelectorAll('.need')) el.innerHTML = html;
   }
 
   // ===== 게임 흐름 =====
@@ -951,8 +895,6 @@
     const cy = it.y + it.h / 2;
     if (it.kind === 'star') {
       stars += 1;
-      starTotal += 1;
-      savePref(STAR_TOTAL_KEY, String(starTotal)); // 누적은 먹는 즉시 저장 (테스트 모드는 savePref가 막는다)
       distance += STAR_POINTS * SCORE_PX; // 점수에 더한다
       burst(cx, cy, STAR_COLOR, 12);
       sfxStar();
@@ -1179,22 +1121,6 @@
     return FORCE_NIGHT || Math.floor(s / NIGHT_SEC) % 2 === 1;
   }
 
-  // 누적 별 개수 → 현재 모자 (해금된 가장 높은 단계)
-  function hatFor(n) {
-    let id = null;
-    for (const t of HAT_TIERS) if (n >= t.at) id = t.id;
-    return id;
-  }
-
-  function currentHat() {
-    return FORCE_HAT || hatFor(starTotal);
-  }
-
-  // 다음 해금 단계 (없으면 null)
-  function nextTierFor(n) {
-    return HAT_TIERS.find(t => t.at > n) || null;
-  }
-
   // 500점 배수를 넘었을 때: 파티클 폭죽 (최대 40개) + 팡파레 + 응원 캐릭터. 게임은 멈추지 않는다
   function celebrate() {
     const cx = PLAYER_X + CHAR_W / 2;
@@ -1319,92 +1245,21 @@
   }
 
   // 실사 흑백: 발끝(footY)에 맞춰 높이 h로 가운데(cx) 정렬한다. 달리기 2프레임 중 한쪽에서만 2px 위로 튄다 (bobbing)
-  // 그린 자리 {x, y, w, h}를 돌려준다. 모자는 이 자리를 기준으로 얹는다
   function drawPhoto(c, who, mode, legPhase, cx, footY, h) {
     const key = mode === 'crash' ? 'crash' : (mode === 'jump' ? 'jump' : 'run');
     const img = PHOTOS[who][key];
     const bob = key === 'run' && legPhase === 1 ? 2 : 0;
     const w = img.naturalWidth * h / img.naturalHeight;
-    const r = { x: cx - w / 2, y: footY - h - bob, w: w, h: h };
-    c.drawImage(img, r.x, r.y, r.w, r.h);
-    return r;
+    c.drawImage(img, cx - w / 2, footY - h - bob, w, h);
   }
 
   // 게임 좌표에서 캐릭터를 그린다. x = 박스 왼쪽, footY = 발끝 y (땅이면 GROUND_Y)
   // 판정 박스(CHAR_W x DISPLAY_H)와 같은 높이·가운데 기준으로 맞춘다
   function drawCharacter(c, x, footY, who, legPhase, mode) {
-    if (!photoReady(who, mode)) return null;
-    return drawPhoto(c, who, mode, legPhase, x + CHAR_W / 2, footY, DISPLAY_H);
+    if (photoReady(who, mode)) drawPhoto(c, who, mode, legPhase, x + CHAR_W / 2, footY, DISPLAY_H);
   }
 
-  // 모자: 그림 자리 r 안의 머리 꼭대기 앵커에 얹는다 (자세별 앵커, 크기는 그림 높이에 비례)
-  function drawHat(c, hat, who, mode, r) {
-    const key = mode === 'crash' ? 'crash' : (mode === 'jump' ? 'jump' : 'run');
-    const a = HAT_ANCHOR[who][key];
-    c.save();
-    c.translate(r.x + r.w * a.x, r.y + r.h * a.y);
-    drawHatShape(c, hat, r.h * HAT_U);
-    c.restore();
-  }
-
-  // 모자 그림 (원점 = 머리 꼭대기 가운데, 위쪽이 음수 y, u = 기준 단위)
-  function drawHatShape(c, hat, u) {
-    if (hat === 'cap') {
-      c.fillStyle = '#D9342B';
-      c.beginPath();
-      c.ellipse(0, 0, u * 0.5, u * 0.42, 0, Math.PI, Math.PI * 2); // 돔
-      c.fill();
-      c.fillStyle = '#A8261F';
-      c.beginPath();
-      c.ellipse(u * 0.36, 0, u * 0.36, u * 0.1, 0, 0, Math.PI * 2); // 챙 (앞쪽으로)
-      c.fill();
-      c.fillStyle = '#FFFFFF';
-      c.beginPath();
-      c.arc(0, -u * 0.2, u * 0.07, 0, Math.PI * 2); // 로고 점
-      c.fill();
-    } else if (hat === 'crown') {
-      c.fillStyle = '#F5B82E';
-      c.strokeStyle = '#B9800F';
-      c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(-u * 0.45, 0);
-      c.lineTo(-u * 0.45, -u * 0.4);
-      c.lineTo(-u * 0.22, -u * 0.2);
-      c.lineTo(0, -u * 0.5);
-      c.lineTo(u * 0.22, -u * 0.2);
-      c.lineTo(u * 0.45, -u * 0.4);
-      c.lineTo(u * 0.45, 0);
-      c.closePath();
-      c.fill();
-      c.stroke();
-      c.fillStyle = '#E5484D';
-      c.beginPath();
-      c.arc(0, -u * 0.12, u * 0.06, 0, Math.PI * 2); // 보석
-      c.fill();
-    } else {
-      // 무지개 별모자: 별 안을 무지개 띠로 칠한다
-      const g = c.createLinearGradient(-u * 0.4, 0, u * 0.4, 0);
-      ['#E5484D', '#F5A03A', '#F5D547', '#4CAF6A', '#4C9BE8', '#8E5CC7']
-        .forEach((col, i, arr) => g.addColorStop(i / (arr.length - 1), col));
-      c.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const rad = i % 2 === 0 ? u * 0.36 : u * 0.15;
-        const ang = -Math.PI / 2 + i * Math.PI / 5;
-        const x = Math.cos(ang) * rad;
-        const y = -u * 0.42 + Math.sin(ang) * rad;
-        if (i === 0) c.moveTo(x, y);
-        else c.lineTo(x, y);
-      }
-      c.closePath();
-      c.fillStyle = g;
-      c.fill();
-      c.lineWidth = 1;
-      c.strokeStyle = '#B9800F';
-      c.stroke();
-    }
-  }
-
-  // 시작 패널 미리보기: 달리기 자세의 실사 흑백 그림 (2배 해상도). 현재 모자도 얹는다
+  // 시작 패널 미리보기: 달리기 자세의 실사 흑백 그림 (2배 해상도)
   function drawPreviews() {
     for (const pv of document.querySelectorAll('canvas.preview')) {
       const pc = pv.getContext('2d');
@@ -1412,12 +1267,7 @@
       pc.setTransform(2, 0, 0, 2, 0, 0);
       pc.fillStyle = PAPER;
       pc.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
-      if (photoReady(who, 'run')) {
-        // 모자 꼭대기가 캔버스 위로 잘리지 않게 그림을 75%로 줄이고 발끝은 그대로 아래에 둔다 (머리 위 여백 확보)
-        const r = drawPhoto(pc, who, 'run', 0, PREVIEW_W / 2, PREVIEW_H, PREVIEW_H * 0.75);
-        const hat = currentHat();
-        if (hat) drawHat(pc, hat, who, 'run', r);
-      }
+      if (photoReady(who, 'run')) drawPhoto(pc, who, 'run', 0, PREVIEW_W / 2, PREVIEW_H, PREVIEW_H);
     }
   }
 
@@ -1735,9 +1585,7 @@
     const who = selected || 'tino';
     if (nightMix > 0) drawHalo(nightMix);
     ctx.globalAlpha = blinkOff ? 0.35 : 1;
-    const r = drawCharacter(ctx, PLAYER_X, GROUND_Y - lift, who, stepFrame, mode);
-    const hat = currentHat();
-    if (r && hat) drawHat(ctx, hat, who, mode, r);
+    drawCharacter(ctx, PLAYER_X, GROUND_Y - lift, who, stepFrame, mode);
     ctx.globalAlpha = 1;
     drawAura();
   }
