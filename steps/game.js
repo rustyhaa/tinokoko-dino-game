@@ -7,14 +7,14 @@
 (() => {
 const { ctx, ell, clamp, sfx } = TK;
 let phase = 'play', phaseT = 0, rounds = 0, lastWord = '', word = null, prints = [], next = 0;
-let start = { x: 0, y: 0 }, whale = { x: 0, y: 0, up: 0 }, sea = {}, ps = 60, port = false, hz = 0.42;
+let start = { x: 0, y: 0 }, whale = { x: 0, y: 0, up: 0, kind: '고래' }, sea = {}, ps = 60, ps0 = 60, port = false, hz = 0.42;
 const twins = [{ kind: 'tino' }, { kind: 'coco' }];
 const clouds = Array.from({ length: 4 }, (_, i) => ({ x: Math.random(), y: 0.06 + Math.random() * 0.14, s: 0.7 + Math.random() * 0.6, v: 0.004 + i * 0.002 }));
 
 function pickWord() {
-  const fav = H.favWords().filter(w => w !== lastWord && [...w].length <= 3);
-  // 좋아하는 것(공룡·고래)은 세 판에 한 번은 꼭
-  if (fav.length && rounds % 3 === 0) return H.word(TK.pick(fav));
+  const fav = H.favWords().filter(w => w !== lastWord && [...w].length <= 8);
+  // 좋아하는 것(공룡 7종·고래 7종)은 두 판에 한 번은 꼭 — 긴 이름이면 발자국도 길어짐
+  if (fav.length && rounds % 2 === 0) return H.word(TK.pick(fav));
   const c = H.pick(10, { pic: true, exclude: [lastWord] }).filter(o => o.syl.length >= 2 && o.syl.length <= 3);
   return c[0] || H.word('공룡');
 }
@@ -23,7 +23,8 @@ function place() {
   const W = TK.W, H2 = TK.H, n = word.syl.length;
   port = W < H2;
   hz = port ? 0.3 : 0.42;
-  ps = port ? Math.min(W * 0.16, H2 * 0.075) : Math.min(W * 0.085, H2 * 0.15);
+  ps0 = port ? Math.min(W * 0.16, H2 * 0.075) : Math.min(W * 0.085, H2 * 0.15);
+  ps = ps0 * Math.min(1, (port ? 4.5 : 3.6) / n);   // 발자국이 많으면(긴 이름) 작게 — 친구·고래 크기는 ps0 기준
   if (port) {   // 세로: 위에서 아래로 지그재그 내려가 아래쪽 바다로
     start = { x: W * 0.2, y: H2 * 0.4 }; sea = { x: 0, y: H2 * 0.82, w: W, h: H2 * 0.18 }; whale.x = W * 0.5; whale.y = H2 * 0.97;
     prints.forEach((p, i) => { const t = (i + 1) / n; p.y = TK.lerp(start.y, H2 * 0.74, t); p.x = W * ((i + rounds) % 2 ? 0.3 : 0.7); });
@@ -40,7 +41,7 @@ function place() {
 function newRound() {
   word = pickWord(); lastWord = word.w;
   prints = word.syl.map(s => ({ s, lit: false, wig: -1, glow: 0 }));
-  next = 0; whale.up = 0;
+  next = 0; whale.up = 0; whale.kind = H.WHALES.includes(word.w) ? word.w : '고래';   // 고래 이름이면 바다에서 그 고래가 솟음
   place();
   const lead = twins[rounds % 2], follow = twins[(rounds + 1) % 2];
   lead.at = -1; follow.at = -2;
@@ -50,11 +51,11 @@ function newRound() {
 function pos(i) {
   if (i >= 0) return prints[i];
   if (i === -1) return start;
-  return port ? { x: start.x + ps * 0.4, y: start.y - ps * 1.1 } : { x: start.x - ps * 0.85, y: start.y - ps * 0.55 };
+  return port ? { x: start.x + ps0 * 0.4, y: start.y - ps0 * 1.1 } : { x: start.x - ps0 * 0.85, y: start.y - ps0 * 0.55 };
 }
 const busy = () => twins.some(t => t.jump >= 0);
 const mover = () => twins[0].at < twins[1].at ? twins[0] : twins[1];   // 뒤에 있는 친구가 다음에 뜀
-const th = () => ps * (port ? 1.6 : 1.9);
+const th = () => ps0 * (port ? 1.6 : 1.9);
 function hop(t, to) { const a = pos(t.at), b = pos(to); t.fx = a.x; t.fy = a.y; t.tx = b.x; t.ty = b.y; t.at = to; t.jump = 0; }
 
 function step() {
@@ -72,7 +73,7 @@ function land(t) {   // 뛴 친구가 발자국에 닿음: 쿵 + 글자 소리
 }
 function tapAt(x, y) {
   if (phase === 'play') {
-    if (next < prints.length) { const p = prints[next]; if (TK.dist(x, y, p.x, p.y) < ps * 1.1) { step(); return; } }
+    if (next < prints.length) { const p = prints[next]; if (TK.dist(x, y, p.x, p.y) < Math.max(ps * 1.1, 40)) { step(); return; } }
     for (const p of prints) if (TK.dist(x, y, p.x, p.y) < ps * 0.9) { if (p.lit) H.saySyl(p.s); else { p.wig = 0; sfx.soft(); } return; }
   }
   if ((phase === 'party' || phase === 'shore') && TK.dist(x, y, whale.x, whale.y - ps * 1.2) < ps * 2) { H.read(word.w); spout(); return; }
@@ -81,7 +82,7 @@ function tapAt(x, y) {
   TK.spark(x, y, [255, 255, 255], 4, 0.4); sfx.soft();
 }
 function spout() { const top = whaleTop(); for (let k = 0; k < 3; k++) TK.drops(top.x, top.y, [150, 210, 255], 10, 1.4); sfx.splash(); }
-const whaleSize = () => ps * (port ? 2.0 : 2.2);
+const whaleSize = () => ps0 * (port ? 2.0 : 2.2);
 const whaleTop = () => ({ x: whale.x - whaleSize() * 0.05, y: whale.y - whaleSize() * 0.75 * TK.ease(whale.up) - ps * 0.1 });
 TK.input({ down(p) { tapAt(p.x, p.y); }, key() { step(); } });
 
@@ -134,7 +135,7 @@ function draw() {
   if (whale.up > 0) {
     const ws = whaleSize(), k = TK.ease(whale.up);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, whale.y); ctx.clip();
-    ctx.translate(whale.x, whale.y + ws * (1 - k) * 0.9); H.drawPic(ctx, '고래', ws); ctx.restore();
+    ctx.translate(whale.x, whale.y + ws * (1 - k) * 0.9); H.drawPic(ctx, whale.kind, ws); ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ell(whale.x, whale.y, ws * 0.6, ws * 0.08); ctx.fill();
   }
   // 발자국
@@ -158,7 +159,7 @@ function draw() {
     ctx.shadowBlur = 0;
   });
   // 위쪽: 지금 만드는 단어 (찍은 글자만 진하게)
-  const ty = H2 * (port ? 0.15 : 0.17), fs = Math.min(W, H2) * (alive ? 0.12 : 0.09), hi = H.hi(word.w);
+  const ty = H2 * (port ? 0.15 : 0.17), fs = Math.min(W, H2) * (alive ? 0.12 : 0.09) * Math.min(1, 4 / word.syl.length), hi = H.hi(word.w);
   const lit = prints.filter(p => p.lit).length;
   [...word.w].forEach((ch, i) => {
     const gap = fs * 1.02, x = W / 2 - (word.syl.length - 1) * gap / 2 + i * gap;
@@ -167,12 +168,13 @@ function draw() {
   });
   if (alive || phase === 'fade') {   // 완성: 단어 그림
     const k = clamp(phaseT / 0.5, 0, 1) * (phase === 'fade' ? 1 - phaseT / 0.9 : 1), x = W / 2 + (word.syl.length / 2 + 0.6) * fs * 1.02 + fs * 0.6;
-    if (phase !== 'shore' && word.w !== '고래') {   /* 고래는 바다에 이미 있으니 한 번만 */ ctx.save(); ctx.translate(Math.min(x, W - fs), ty + fs * 0.75); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, word.w, fs * 1.5); ctx.restore(); }
+    if (phase !== 'shore' && word.w !== whale.kind) {   /* 고래는 바다에 이미 있으니 한 번만 */ ctx.save(); ctx.translate(Math.min(x, W - fs), ty + fs * 0.75); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, word.w, fs * 1.5); ctx.restore(); }
   }
   TK.drawParts();
 }
 
 window.__g = {
+  force(w) { word = H.word(w); lastWord = w; prints = word.syl.map(s => ({ s, lit: false, wig: -1, glow: 0 })); next = 0; whale.up = 0; whale.kind = H.WHALES.includes(w) ? w : '고래'; place(); const a = twins[rounds % 2], b = twins[(rounds + 1) % 2]; a.at = -1; b.at = -2; twins.forEach(t => { const p = pos(t.at); t.x = p.x; t.y = p.y; t.jump = -1; }); },   // 자동 확인용
   get phase() { return phase; }, get rounds() { return rounds; }, get word() { return word && word.w; }, get next() { return next; },
   actions() { if (phase !== 'play' || next >= prints.length || busy()) return []; const p = prints[next]; return [{ type: 'tap', x: p.x, y: p.y, wait: 650 }]; },
 };
