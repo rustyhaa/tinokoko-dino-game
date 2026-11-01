@@ -83,8 +83,6 @@ function draw() {
   for (let k = 0; k < 3; k++) { const x = ((TK.T * 10 * (k + 1) + k * 300) % (W + 300)) - 150, y = H * (0.12 + k * 0.08), s = Math.min(W, H) * 0.05; ctx.fillStyle = 'rgba(255,255,255,.9)'; ell(x, y, s * 1.4, s * 0.7); ctx.fill(); ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill(); ell(x + s * 0.9, y + s * 0.1, s * 0.9, s * 0.6); ctx.fill(); }
   ctx.fillStyle = TK.grad(gy, H, '#9fdc7c', '#6fbf5a'); ctx.beginPath(); ctx.moveTo(0, gy); ctx.quadraticCurveTo(W * 0.5, gy - H * 0.05, W, gy); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   for (let k = 0; k < 9; k++) { const x = (k + 0.5) * W / 9, y = gy + H * (0.06 + (k % 3) * 0.05); for (let q = 0; q < 5; q++) { ell(x + Math.cos(q * 1.26) * 6 * TK.U, y + Math.sin(q * 1.26) * 6 * TK.U, 4.5 * TK.U, 4.5 * TK.U); ctx.fillStyle = TK.rgba(TK.COLS[k % 7], 1); ctx.fill(); } ell(x, y, 3.5 * TK.U, 3.5 * TK.U); ctx.fillStyle = '#fff3a0'; ctx.fill(); }
-  // 처음엔 "꾹 누르기" 그림 힌트: 손자리 동그라미가 커졌다 작아짐 (아무것도 안 했을 때만)
-  if (released === 0 && growing.size === 0 && bubbles.length === 0) { const q = (TK.T % 1.6) / 1.6, r = TK.lerp(RMIN, RMAX * 0.7, TK.ease(q)); drawBubble(W / 2, H * 0.45, r, 200, TK.T, null); ell(W / 2, H * 0.45, 18 * TK.U, 18 * TK.U); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill(); }
   fallers.forEach(f => { ctx.save(); ctx.translate(f.x, f.y - (f.st === 'wave' ? Math.abs(Math.sin(f.t * 8)) * 10 * TK.U : 0)); ctx.rotate(f.st === 'fall' ? Math.sin(f.t * 3) * 0.2 : 0); TK.drawFriend(f.kind, RMAX * 0.7); ctx.restore(); if (f.st === 'fall') { ctx.save(); ctx.translate(f.x, f.y - RMAX * 0.95); ctx.beginPath(); ctx.arc(0, 0, RMAX * 0.45, Math.PI, 0); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill(); ctx.restore(); } });
   twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   bubbles.forEach(b => drawBubble(b.x, b.y, b.r, b.h, b.age, b.friend));
@@ -101,6 +99,11 @@ window.__g = {
     if (b && released % 3 === 2) return [{ type: 'tap', x: b.x, y: b.y, wait: 150 }];
     return [{ type: 'hold', x: rand(TK.W * 0.3, TK.W * 0.7), y: TK.H * rand(0.45, 0.65), ms: released % 2 ? 1500 : 500, wait: 200 }];
   },
+};
+// 별 시범: 가운데를 꾹 (별 둘레 원이 방울처럼 커짐)
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  return { kind: 'hold', x: TK.W / 2, y: TK.H * 0.5, say: '꾹 누르고 있어 봐!' };
 };
 TK.start({ resize: layout, init() { layout(); }, update, draw });
 })();

@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>티노코코 무지개 방울</title>
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="../games/manifest.webmanifest">
 <meta name="theme-color" content="#8fd4ff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="무지개 방울">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#bfe8ff;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -47,7 +48,6 @@
 <canvas id="c"></canvas>
 <div id="tools">
 <button id="gear" aria-label="부모 설정"><svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke-linecap="round"/></svg></button>
-<button id="zz" aria-label="잘 시간 타이머 (부모용)"><svg viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4a8.5 8.5 0 1 0 11.5 11.5z" fill="#335"/></svg><span id="zzl">끔</span></button>
 <button id="snd" aria-label="소리 켜기/끄기">
   <svg viewBox="0 0 24 24" fill="none" stroke="#335" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 9h4l5-4v14l-5-4H4z" fill="#335"/>
@@ -452,6 +452,7 @@ addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || /^F\d/.test(e.key)) return;
   e.preventDefault();
   audio();
+  if (window.__paused) return;
   if (T - lastKey < 0.15) return;
   lastKey = T;
   if (sleep > 0) { sSoft(); return; }
@@ -471,7 +472,6 @@ snd.addEventListener('click', () => {
   audio(); if (master) master.gain.value = muted ? 0 : 0.6;
   snd.blur();   // 키보드 입력이 버튼으로 가지 않게
 });
-// 잘 시간 버튼: 누를 때마다 끔 → 5분 → 10분 → 15분. 자고 있을 때 누르면 깨우고 같은 시간으로 다시 시작
 const gear = document.getElementById('gear'), panel = document.getElementById('panel');
 function syncPanel() {
   panel.querySelectorAll('button').forEach(bt => bt.classList.toggle('sel', String(settings[bt.dataset.k]) === bt.dataset.v));
@@ -489,17 +489,7 @@ panel.addEventListener('click', e => {
   syncPanel(); bt.blur();
 });
 syncPanel();
-const zz = document.getElementById('zz'), zzl = document.getElementById('zzl');
-zz.addEventListener('pointerdown', e => e.stopPropagation());
-zz.addEventListener('click', () => {
-  audio();
-  if (sleep > 0) wake(); else sleepIdx = (sleepIdx + 1) % SLEEP_MIN.length;
-  const m = SLEEP_MIN[sleepIdx];
-  sleepAt = m ? T + m * 60 : null;
-  zzl.textContent = m ? m + '분' : '끔';
-  zz.classList.toggle('on', !!m);
-  zz.blur();
-});
+// 잘 시간은 놀이터 공통 설정(frame.js)으로 옮김
 
 // ---------- 갱신 ----------
 function update(dt) {
@@ -684,13 +674,13 @@ function drawRainbow() {
 // 둘 다 같은 키(2.35S)로 그림. tino_laugh_v2 는 머리가 빈 결함 파일이라 쓰지 않음.
 const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
-  const im = new Image(); im.src = 'assets/' + n + '.png'; SPR[n] = im;
+  const im = new Image(); im.src = '../shared/assets/' + n + '.png'; SPR[n] = im;
 });
 // 선택 그림: assets/ 에 넣어 두면 자동으로 씀, 없으면 지금 그림으로 대신함 (정면 자세 기준, 반전 안 함)
 //   tino_laugh_v3.png — 고친 티노 웃음 (반응·축하·눌렀을 때)
 //   tino_sleep.png, coco_sleep.png — 잘 시간
 const OPTIONAL = ['tino_laugh_v3', 'tino_sleep', 'coco_sleep'];
-OPTIONAL.forEach(n => { const im = new Image(); im.onerror = () => { im.bad = true; }; im.src = 'assets/' + n + '.png'; SPR[n] = im; });
+OPTIONAL.forEach(n => { const im = new Image(); im.onerror = () => { im.bad = true; }; im.src = '../shared/assets/' + n + '.png'; SPR[n] = im; });
 const ready = n => { const im = SPR[n]; return im && !im.bad && im.complete && im.naturalWidth > 0; };
 // 자세 고르기: 평소 / 반응(방울 터짐) / 축하(무지개 완성)
 function poseOf(tw) {
@@ -861,7 +851,6 @@ function draw() {
     ctx.fillStyle = `rgba(16,20,52,${0.55 * Math.min(1, sleep / 3)})`; ctx.fillRect(0, 0, W, H);
   }
   drawParts();
-  drawHint();
   drawCursor();
 }
 
@@ -869,17 +858,22 @@ function draw() {
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  update(dt); draw();
+  if (!window.__paused) update(dt);   // 잘 시간·나가는 중에는 멈춤 (frame.js)
+  draw();
   requestAnimationFrame(frame);
 }
 addEventListener('resize', resize);
-// 홈 화면 앱: 한 번 열면 인터넷 없이도 실행되게 (파일로 열 때는 건너뜀)
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
 resize();
 seedBubbles();
 requestAnimationFrame(frame);
+
+// 놀이터 틀(frame.js) 연결: iOS 소리 잠금 해제용 + 별 시범(가장 아래쪽 방울을 톡)
+window.__audioUnlock = audio;
+window.__demo = () => {
+  if (party > 0 || sleep > 0) return null;
+  const b = bubbles.filter(b => b.grow >= 1 && b.y > H * 0.15 && b.y < H * 0.72).sort((a, c) => c.y - a.y)[0];
+  return b ? { kind: 'tap', x: b.x, y: b.y - 30 * U, say: '톡 터뜨려 봐!' } : null;
+};
 
 // 자동 확인용 (게임 동작에는 영향 없음)
 window.__tk = { get bubbles() { return bubbles; }, get flags() { return flags; }, get party() { return party; },
@@ -891,5 +885,6 @@ window.__tk = { get bubbles() { return bubbles; }, get flags() { return flags; }
                 sleepNow() { sleepAt = T; }, starNow() { const b = bubbles.find(x => x.grow >= 1 && x.y > 40); if (b) { b.star = true; b.c = 2; } return b && { x: b.x, y: b.y }; } };
 })();
 </script>
+<script src="../shared/frame.js"></script>
 </body>
 </html>

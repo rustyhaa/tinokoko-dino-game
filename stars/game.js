@@ -57,8 +57,6 @@ function update(dt) {
     if (phaseT > 3.8) { phase = 'fade'; phaseT = 0; }
   }
   if (phase === 'fade' && phaseT > 0.8) { phase = 'play'; phaseT = 0; rounds++; shapeIdx = (shapeIdx + 1) % SHAPES.length; done = 0; lines = []; lastTap = TK.T; sfx.sparkle(); }
-  if (phase === 'play' && done > 0 && done < N() && TK.T - lastTap > 6 && !comet) comet = { t: 0 };
-  if (comet) { comet.t += dt / 1.2; if (comet.t > 1) { comet = null; lastTap = TK.T - 3; } }
 }
 
 function draw() {
@@ -90,7 +88,6 @@ function draw() {
     ctx.shadowBlur = 0;
   }
   ctx.restore();
-  if (comet && done < N()) { const a = P(done - 1), b = P(done), q = TK.ease(comet.t); for (let k = 0; k < 6; k++) { const qq = clamp(q - k * 0.04, 0, 1); TK.star(TK.lerp(a.x, b.x, qq), TK.lerp(a.y, b.y, qq), R * (0.9 - k * 0.12), `rgba(255,250,200,${0.9 - k * 0.14})`, TK.T * 3); } }
   twins.forEach((t, i) => TK.twin(t.kind, alive || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (alive ? TK.bob(i * 1.5, t.h * 0.1, 6) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   TK.drawParts();
 }
@@ -98,6 +95,11 @@ function draw() {
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get done() { return done; },
   actions() { if (phase !== 'play' || done >= N()) return []; const p = P(done); return [{ type: 'tap', x: p.x, y: p.y, wait: 120 }]; },
+};
+// 별 시범: 다음 별을 톡
+window.__demo = () => {
+  if (phase !== 'play' || done >= N()) return null;
+  const p = P(done); return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 별을 톡!' };
 };
 TK.start({ resize: layout, init() { layout(); lastTap = TK.T; }, update, draw });
 })();

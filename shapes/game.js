@@ -75,7 +75,6 @@ function update(dt) {
     TK.confetti(dt);
     if (phaseT > 3.4) { phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; newSet(); sfx.sparkle(); lastSnap = TK.T; }
   }
-  if (phase === 'play' && TK.T - lastSnap > 7) { const p = pieces.find(p => p.st === 'home'); if (p) { p.wig = 0.6; sfx.soft(); } lastSnap = TK.T - 4.5; }
 }
 
 // 모양 그리기 (가운데 (x,y), 크기 s). sil=true 면 그림자(한 색, 눈 없음)
@@ -150,11 +149,6 @@ function draw() {
   drawBg();
   const alive = phase === 'party';
   slots.forEach(s => { if (!pieces.some(p => p.slot === slots.indexOf(s) && p.st === 'placed')) shape(s.kind, s.x, s.y, S, true); });
-  // 힌트: 오래 못 맞추면 흔들리는 조각에서 제 그림자까지 반짝이
-  if (phase === 'play' && TK.T - lastSnap > 5) {
-    const p = pieces.find(p => p.st === 'home');
-    if (p) for (let k = 0; k < 6; k++) { const q = (TK.T * 0.7 + k / 6) % 1, s = slots[p.slot]; TK.star(TK.lerp(p.x, s.x, q), TK.lerp(p.y, s.y, q), 7 * TK.U, `rgba(255,190,80,${0.9 - q * 0.5})`, TK.T * 2); }
-  }
   pieces.filter(p => p.st === 'placed').forEach(p => shape(p.kind, p.x, p.y, S * (1 + p.pulse * 0.2), false, alive));
   twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   pieces.filter(p => p.st !== 'placed').forEach(p => {
@@ -175,6 +169,13 @@ window.__g = {
     for (let k = 0; k <= 14; k++) pts.push({ x: TK.lerp(p.x, s.x, k / 14), y: TK.lerp(p.y, s.y, k / 14) });
     return [{ type: 'path', pts, wait: 350 }];
   },
+};
+// 별 시범: 조각 하나를 제 그림자까지 끌고 가기
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  const p = pieces.find(p => p.st === 'home'); if (!p) return null;
+  const s = slots[p.slot];
+  return { kind: 'path', pts: [{ x: p.x, y: p.y }, { x: s.x, y: s.y }], say: '같은 모양에 쏙!' };
 };
 TK.start({ resize: layout, init() { newSet(); }, update, draw });
 })();

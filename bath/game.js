@@ -84,11 +84,6 @@ function update(dt) {
   if (duck.hop >= 0) { duck.hop += dt / 0.6; if (duck.hop > 1) duck.hop = -1; }
   spots.forEach(s => { s.grow = Math.min(1, s.grow + dt * 4); s.wig = Math.max(0, s.wig - dt); });
   if (phase === 'appear' && phaseT > 0.9) { phase = 'play'; phaseT = 0; lastClean = TK.T; }
-  if (phase === 'play' && TK.T - lastClean > 8) {   // 힌트: 가장 더러운 얼룩이 들썩
-    const s = spots.filter(s => s.d > 0).sort((a, b) => b.d - a.d)[0];
-    if (s && s.wig <= 0) { s.wig = 0.6; const q = spotXY(s); TK.spark(q.x, q.y, [255, 255, 255], 4, 0.4); }
-    lastClean = TK.T - 6.5;
-  }
   if (phase === 'shower') {
     const hx = TK.W / 2;
     for (let i = 0; i < 4; i++) TK.parts.push({ t: 'drop', x: hx + rand(-tub.w * 0.38, tub.w * 0.38), y: TK.H * 0.12, vx: 0, vy: rand(300, 450) * TK.U, r: rand(3, 6) * TK.U, life: 1, max: 1, c: [150, 210, 255], g: 400 });
@@ -191,6 +186,14 @@ window.__g = {
     for (let k = 0; k <= 12; k++) pts.push({ x: p.x + Math.sin(k * 1.6) * p.r * 1.4, y: p.y + (k % 2 ? 2 : -2) });
     return [{ type: 'path', pts }];
   },
+};
+// 별 시범: 가장 더러운 얼룩을 쓱쓱 (frame.js 가 처음과 한참 손 안 댈 때 보여줌)
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  const s = spots.filter(s => s.d > 0).sort((a, b) => b.d - a.d)[0]; if (!s) return null;
+  const p = spotXY(s), pts = [];
+  for (let k = 0; k <= 8; k++) pts.push({ x: p.x + (k % 2 ? 1 : -1) * p.r * 1.6, y: p.y + (k - 4) * p.r * 0.08 });
+  return { kind: 'path', pts, say: '쓱쓱 문질러 봐!' };
 };
 TK.start({ resize: layout, init() { layout(); makeSpots(); }, update, draw });
 })();

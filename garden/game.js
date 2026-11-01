@@ -65,7 +65,6 @@ function update(dt) {
   flying.forEach(f => { f.t += dt / 0.6; if (f.t >= 1 && !f.done) { f.done = true; basket.items.push(f.kind); TK.spark(basket.x, basket.y - S, [255, 220, 120], 5, 0.5); } });
   flying = flying.filter(f => !f.done);
   if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.2) { phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; basket.items = []; newSet(); lastGrow = TK.T; sfx.sparkle(); } }
-  if (phase === 'play' && TK.T - lastGrow > 7) { const p = plots.filter(p => p.g < 4).sort((a, b) => a.g - b.g)[0]; if (p) p.wig = 0.6; lastGrow = TK.T - 4.5; }
 }
 
 // 식물 그리기: 흙 위 (x,y), 단계 st(0~4), 크기 s
@@ -140,6 +139,12 @@ function draw() {
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; },
   actions() { if (phase !== 'play') return []; const p = plots.find(p => p.g < 4); return p ? [{ type: 'tap', x: p.x, y: p.y - S * 0.2, wait: 160 }] : []; },
+};
+// 별 시범: 가장 덜 자란 흙더미를 톡
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  const p = plots.filter(p => p.g < 4).sort((a, b) => a.g - b.g)[0]; if (!p) return null;
+  return { kind: 'tap', x: p.x, y: p.y - S * 0.2, say: '톡톡, 물 주자!' };
 };
 TK.start({ resize: layout, init() { newSet(); lastGrow = TK.T; }, update, draw });
 })();

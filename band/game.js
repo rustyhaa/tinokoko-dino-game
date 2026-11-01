@@ -147,5 +147,13 @@ window.__g = {
     return [{ type: 'tap', x: it.x, y: it.y - it.s * 0.3, wait: 90 }];
   },
 };
+// 별 시범: 번갈아 북 두드리기 / 실로폰 쓸기
+let demoN = 0;
+window.__demo = () => {
+  if (phase !== 'play' || !inst.length) return null;
+  demoN++;
+  if (demoN % 2) { const d = inst[0]; return { kind: 'tap', x: d.x, y: d.y - d.s * 0.4, say: '둥둥 두드려 봐!' }; }
+  return { kind: 'path', pts: [{ x: bars[0].x, y: bars[0].y }, { x: bars[5].x, y: bars[5].y }], say: '쓱 쓸어 봐!' };
+};
 TK.start({ resize: layout, init() { layout(); }, update, draw });
 })();

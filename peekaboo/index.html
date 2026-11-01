@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>티노코코 까꿍 숨바꼭질</title>
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="../games/manifest.webmanifest">
 <meta name="theme-color" content="#9fdcff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="까꿍 숨바꼭질">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#9fdcff;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -77,7 +78,7 @@ function resize() {
 // ---------- 스프라이트 (원본 PNG 수정 없이 화면에서만 크기 조절) ----------
 const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
-  const im = new Image(); im.src = 'assets/' + n + '.png'; SPR[n] = im;
+  const im = new Image(); im.src = '../shared/assets/' + n + '.png'; SPR[n] = im;
 });
 function drawSprite(name, x, yb, h, flip = 1, sx = 1, sy = 1, rot = 0) {
   const im = SPR[name];
@@ -223,7 +224,7 @@ function update(dt) {
       o.t += dt; o.open = 1 - ease(o.t / 0.4); if (o.t >= 0.4) { o.st = 'idle'; o.open = 0; }
     }
     // 힌트: 9초 넘게 못 찾으면 숨은 아이 머리 꼭대기가 살짝 보이고 물건이 들썩
-    const wantHint = twin && o.st === 'idle' && phase === 'play' && T - lastFindT > 9;
+    const wantHint = false;   // 힌트는 frame.js 별 시범으로 통일 (못 찾고 있으면 별이 숨은 곳을 톡)
     o.hint += ((wantHint ? 1 : 0) - o.hint) * Math.min(1, dt * 3);
     if (wantHint && Math.sin(T * 2.4) > 0.97 && o.wig <= 0) o.wig = 0.4;
   });
@@ -261,7 +262,7 @@ let lastKey = -1;
 addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || /^F\d/.test(e.key)) return;
   e.preventDefault(); audio();
-  if (T - lastKey < 0.35) return; lastKey = T;
+  if (window.__paused || T - lastKey < 0.35) return; lastKey = T;
   const closed = objs.filter(o => o.st === 'idle');
   if (closed.length) tapObj(closed[(Math.random() * closed.length) | 0]);
 });
@@ -517,18 +518,29 @@ function draw() {
 
 // ---------- 루프 ----------
 let last = performance.now();
-function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); draw(); requestAnimationFrame(frame); }
+function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!window.__paused) update(dt); draw(); requestAnimationFrame(frame); }
 addEventListener('resize', resize);
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 W = innerWidth; H = innerHeight;
 buildScene();
 resize();
 requestAnimationFrame(frame);
+
+// 놀이터 틀(frame.js) 연결: iOS 소리 잠금 해제용 + 별 시범
+//  처음엔 아무 물건이나 톡, 9초 넘게 못 찾고 있으면 숨은 아이가 있는 물건을 톡
+window.__audioUnlock = audio;
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  const late = T - lastFindT > 9;
+  const pool = objs.filter(o => o.st === 'idle' && (!late || o.content === 'tino' || o.content === 'coco'));
+  const o = late ? pool[0] : pool[(Math.random() * pool.length) | 0]; if (!o) return null;
+  return { kind: 'tap', x: o.x, y: o.y - o.s * 0.6, say: late ? '어디 숨었을까?' : '톡 눌러 봐!' };
+};
 
 // 자동 확인용 (게임 동작에는 영향 없음)
 window.__pk = { get objs() { return objs; }, get phase() { return phase; }, get scene() { return SCENES[sceneIdx].name; }, get found() { return found; },
                 get audio() { return ac ? ac.state : 'none'; }, skipIntro() { phaseT = 2.1; }, hintNow() { lastFindT = T - 20; } };
 })();
 </script>
+<script src="../shared/frame.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 // tk.js — 티노코코 미니게임 공통 엔진 (바닐라 JS, 외부 라이브러리 없음)
 //  화면·루프 / 소리(WebAudio + 브라우저 음성) / 스프라이트 / 효과 / 여러 손가락 입력 /
 //  소리 끄기 버튼 / 홈 화면 앱 등록 / 친구 그림.
-//  게임마다 이 파일을 같은 내용으로 복사해 둔다 (폴더 하나만 옮겨도 동작하게).
+//  모든 게임이 ../shared/tk.js 하나를 함께 쓴다. 집 버튼·별 시범·잘 시간·앱 등록은 frame.js 담당.
 // =====================================================================
 (function () {
 'use strict';
@@ -39,9 +39,11 @@ TK.start = g => {
   let last = performance.now();
   const frame = now => {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    TK.T += dt; TK.dt = dt;
-    if (game.update) game.update(dt);
-    updateParts(dt);
+    if (!window.__paused) {   // 잘 시간·나가는 중에는 멈춤 (frame.js)
+      TK.T += dt; TK.dt = dt;
+      if (game.update) game.update(dt);
+      updateParts(dt);
+    }
     if (game.draw) game.draw();
     requestAnimationFrame(frame);
   };
@@ -128,7 +130,7 @@ TK.say = text => {
 // ---------- 스프라이트 (원본 PNG 수정 없이 화면에서만 크기·반전) ----------
 const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
-  const im = new Image(); im.src = 'assets/' + n + '.png'; SPR[n] = im;
+  const im = new Image(); im.src = '../shared/assets/' + n + '.png'; SPR[n] = im;
 });
 TK.sprite = (name, x, yb, h, o = {}) => {
   const im = SPR[name]; if (!im || !im.complete || !im.naturalWidth) return 0;
@@ -195,6 +197,7 @@ TK.input = h => { handlers = h; };
 const pk = e => e.pointerType + e.pointerId;
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); TK.audio();
+  if (window.__paused) return;
   const p = { id: pk(e), x: e.clientX, y: e.clientY, down: true, x0: e.clientX, y0: e.clientY, t0: TK.T };
   ptrs.set(p.id, p);
   if (handlers.down) handlers.down(p);
@@ -213,7 +216,7 @@ let lastKey = -1;
 addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || /^F\d/.test(e.key)) return;
   e.preventDefault(); TK.audio();
-  if (TK.T - lastKey < 0.3) return; lastKey = TK.T;
+  if (window.__paused || TK.T - lastKey < 0.3) return; lastKey = TK.T;
   if (handlers.key) handlers.key(e);
 });
 
@@ -230,8 +233,6 @@ document.body.appendChild(snd);
 snd.addEventListener('pointerdown', e => e.stopPropagation());
 snd.addEventListener('click', () => { TK.muted = !TK.muted; snd.classList.toggle('off', TK.muted); TK.audio(); if (master) master.gain.value = TK.muted ? 0 : 0.6; snd.blur(); });
 
-// ---------- 홈 화면 앱: 한 번 열면 인터넷 없이도 (파일로 열 때는 건너뜀) ----------
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // ---------- 친구들 (밑변 가운데가 원점, 키 h) ----------
 TK.FRIENDS = ['crab', 'fish', 'starfish', 'jelly', 'bunny', 'frog', 'chick', 'butterfly', 'owl', 'skystar'];
