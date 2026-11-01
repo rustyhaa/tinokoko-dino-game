@@ -198,7 +198,8 @@ def build():
                      {'src': '../shared/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
     write(os.path.join(ROOT, 'games', 'manifest.webmanifest'), json.dumps(man, ensure_ascii=False, indent=2) + '\n')
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
-    files = ['games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js']
+    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js']
+    files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in list(GAMES) + STANDALONE:
         files += [name + '/', name + '/index.html', name + '/icons/icon-192.png']
@@ -208,7 +209,7 @@ def build():
         p = os.path.join(ROOT, f, 'index.html') if f.endswith('/') else os.path.join(ROOT, f)
         with open(p, 'rb') as fh: h.update(fh.read())
     version = 'playground-' + h.hexdigest()[:10]
-    write(os.path.join(ROOT, 'sw.js'), ROOT_SW.format(version=version, precache=json.dumps(['./' + f for f in files], ensure_ascii=False, indent=1)))
+    write(os.path.join(ROOT, 'sw.js'), ROOT_SW.format(version=version, precache=json.dumps(['./'] + ['./' + f for f in files], ensure_ascii=False, indent=1)))
     print('built', len(GAMES), 'engine games +', len(STANDALONE), 'standalone,', len(files), 'precached files,', version)
 
 

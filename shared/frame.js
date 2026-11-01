@@ -1,10 +1,10 @@
 // =====================================================================
 // frame.js — 티노코코 놀이터 공통 틀 (모든 게임이 같은 파일을 씀)
-//  1) 집 버튼: 1초 꾹 눌러야 나감 (둘레에 원이 차오름). 아이가 톡 치면 안 나감.
+//  1) 집 버튼: 한 번 톡 → 놀이터로 (인사하며 나감).
 //  2) 나갈 때 인사: 티노·코코가 손 흔들며 "안녕!" → 놀이터로.
 //  3) 별 시범 + 음성: 처음 들어오면, 그리고 한참 손을 안 대면 반짝이 별이 노는 법을 한 번 보여줌.
 //     게임은 window.__demo = () => ({ kind:'tap'|'path'|'hold', x, y, pts, ms, say }) 로 시범 내용을 알려줌.
-//  4) 잘 시간: 놀이터에서 정한 시간이 되면 어느 게임에서든 화면이 밤처럼 어두워지고 둘이 잠듦.
+//  4) 잘 시간 (TK_FRAME.sleep 이 true 인 페이지만): 놀이터에서 정한 시간이 되면 어느 게임에서든 화면이 밤처럼 어두워지고 둘이 잠듦.
 //     해 버튼을 1초 꾹 누르면 깨움.
 //  5) 태블릿·모바일 보정: iOS 소리·음성 잠금 해제, 두 손가락 확대·더블탭 확대 막기, 안전 영역.
 //  6) 놀이터 앱 하나: 사이트 맨 위의 sw.js 하나로 모든 게임을 오프라인 저장. 예전 게임별 설치는 정리.
@@ -12,8 +12,14 @@
 // =====================================================================
 (function () {
 'use strict';
-const HUB = '../games/';
-const ASSET = '../shared/assets/';
+// 기능 설정: 러너처럼 잘 시간·별 시범이 없는 페이지는 window.TK_FRAME = { demo:false, sleep:false } 로 끈다
+const CFG = Object.assign({ home: true, demo: true, sleep: true }, window.TK_FRAME || {});
+// 경로는 이 파일(shared/frame.js) 위치 기준으로 계산 → 게임 폴더·루트 러너 어디서든 동작
+const SRC = document.currentScript ? document.currentScript.src : location.href;
+const SHARED = new URL('.', SRC).href;
+const ROOT = new URL('../', SHARED).href;
+const HUB = ROOT + 'games/';
+const ASSET = SHARED + 'assets/';
 const now = () => performance.now() / 1000;
 const isMuted = () => (window.TK && TK.muted) || !!(document.getElementById('snd') && document.getElementById('snd').classList.contains('off'));
 
@@ -26,7 +32,8 @@ html,body{overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-selec
   opacity:.62;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .tkbtn svg{width:100%;height:100%;display:block;pointer-events:none}
 .tkbtn.on{opacity:1}
-#tkhome{top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));z-index:8}
+#tkhome{top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));z-index:8;opacity:.8}
+#tkhome:active{transform:scale(.92);opacity:1}
 #tksleep{position:fixed;inset:0;z-index:6;display:none;touch-action:none;overflow:hidden;background:rgba(16,20,52,0);opacity:0;transition:opacity 2s ease}
 #tksleep.dark{opacity:1}
 #tksleep.show{display:block}
@@ -84,10 +91,13 @@ function longPress(el, ms, onDone) {
   el.addEventListener('click', e => e.stopPropagation());
   el.addEventListener('contextmenu', e => e.preventDefault());
 }
-const home = ringButton('tkhome', '<path d="M15 27 L26 17 L37 27 M18.5 25 V36 H33.5 V25" fill="none" stroke="#335" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="23.5" y="29" width="5" height="7" fill="#335"/>', '#ff9a2e');
-home.setAttribute('aria-label', '놀이터로 (1초 꾹 누르기)');
-document.body.appendChild(home);
-longPress(home, 1000, goodbye);
+// 집 버튼: 한 번 톡 → 바로 놀이터로 (아이가 실수로 눌러도 인사하며 나가는 것 외엔 변화 없음)
+const home = document.createElement('button');
+home.id = 'tkhome'; home.className = 'tkbtn'; home.setAttribute('aria-label', '놀이터로 가기');
+home.innerHTML = '<svg viewBox="0 0 52 52"><path d="M15 27 L26 17 L37 27 M18.5 25 V36 H33.5 V25" fill="none" stroke="#335" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="23.5" y="29" width="5" height="7" fill="#335"/></svg>';
+home.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); });   // 게임 입력(점프·터뜨리기)으로 넘어가지 않게
+home.addEventListener('click', e => { e.stopPropagation(); home.blur(); goodbye(); });
+if (CFG.home) document.body.appendChild(home);
 
 // ---------- 소리 (틀 자체용: 인사·자장가·잠깐 효과) ----------
 let fa = null;
@@ -143,6 +153,7 @@ addEventListener('pageshow', e => { if (e.persisted) { leaving = false; window._
 let sleeping = false, sleepEl = null, zTimer = 0;
 function readUntil() { try { const v = JSON.parse(localStorage.getItem('tk-sleep') || 'null'); return v && v.until || 0; } catch (e) { return 0; } }
 function startSleep() {
+  if (!CFG.sleep) return;
   sleeping = true; window.__paused = true; demo = null;
   if (!sleepEl) {
     sleepEl = document.createElement('div'); sleepEl.id = 'tksleep';
@@ -175,7 +186,7 @@ function stopSleep() {
   if (sleepEl) { sleepEl.classList.remove('dark'); setTimeout(() => { if (!sleeping) sleepEl.classList.remove('show'); }, 300); }
   lastInput = now();
 }
-function sleepCheck() { const until = readUntil(); if (until && Date.now() >= until && !sleeping) startSleep(); else if (sleeping && !until) stopSleep(); }
+function sleepCheck() { if (!CFG.sleep) return; const until = readUntil(); if (until && Date.now() >= until && !sleeping) startSleep(); else if (sleeping && !until) stopSleep(); }
 setInterval(sleepCheck, 1000);
 
 // ---------- 별 시범 ----------
@@ -209,7 +220,7 @@ let last = now();
 function loop() {
   const t = now(), dt = Math.min(0.05, t - last); last = t;
   g.clearRect(0, 0, W, H);
-  if (!demo && !sleeping && !leaving) {
+  if (CFG.demo && !demo && !sleeping && !leaving) {
     const idleLimit = idleRuns < 3 ? 10 : 25;
     if ((!firstDone && t - start > 1.6) || (firstDone && t - lastInput > idleLimit)) {
       if (tryDemo()) { firstDone = true; idleRuns++; lastInput = t; }
@@ -245,9 +256,9 @@ requestAnimationFrame(loop);
 
 // ---------- 놀이터 앱: 오프라인 저장 하나로 ----------
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  const root = new URL('../', location.href).href;
-  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { if (r.scope !== root && r.scope.startsWith(root)) r.unregister(); })).catch(() => {});
-  navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});
+  const root = ROOT;
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { if (r.scope !== root && r.scope.startsWith(root) && !r.scope.endsWith('/shared/')) r.unregister(); })).catch(() => {});
+  navigator.serviceWorker.register(ROOT + 'sw.js', { scope: ROOT }).catch(() => {});
 }
 
 // 자동 확인용
