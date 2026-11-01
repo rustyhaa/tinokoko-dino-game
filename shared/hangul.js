@@ -220,12 +220,21 @@ H.drawTag = (ctx, w, x, y, size, o = {}) => {
 const muted = () => (window.TK && TK.muted) || !!(document.getElementById('snd') && document.getElementById('snd').classList.contains('off'));
 H.voices = new Map();   // 부모 녹음: 글자 → 재생 주소
 let curAudio = null;
+// 기기 한국어 음성 중 품질 좋은 것을 먼저 (Premium·Enhanced·Neural·Natural·Online·Google 이름) — 없으면 첫 한국어 음성
+H.koVoice = () => {
+  try {
+    const ko = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)); if (!ko.length) return null;
+    const score = v => (/premium|enhanced|neural|natural|online/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 2 : 0) + (/yuna|sunhi|heami/i.test(v.name) ? 1 : 0) - (/compact|novelty|eloquence/i.test(v.name) ? 5 : 0);
+    return ko.sort((a, b) => score(b) - score(a))[0];
+  } catch (e) { return null; }
+};
+H.PITCH = 1.05;   // 예전 1.3: 기계음처럼 들려서 낮춤
 function tts(text, rate = 0.92) {
   try {
     const ss = window.speechSynthesis; if (!ss) return;
     ss.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; }
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = 1.3;
-    const v = ss.getVoices().find(v => /^ko/i.test(v.lang)); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = H.PITCH;
+    const v = H.koVoice(); if (v) u.voice = v;
     ss.speak(u);
   } catch (e) {}
 }
