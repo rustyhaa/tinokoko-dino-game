@@ -114,6 +114,12 @@
   </div>
 
   <div class="panel">
+    <b>좋아하는 것</b>
+    <div class="seg" id="favSeg"><button data-v="공룡">🦕 공룡</button><button data-v="고래">🐳 고래</button></div>
+    <p class="note">켜 두면 공룡(공룡·티라노)·고래(고래·범고래)가 모든 게임에 더 자주 나와요. 별자리엔 고래·공룡 별자리, 정원엔 공룡알, 목욕탕엔 장난감 고래, 실로폰엔 공룡·고래 친구가 와요.</p>
+  </div>
+
+  <div class="panel">
     <b>단계</b>
     <div class="seg" id="stageSeg"><button data-v="1">① 듣고 보기</button><button data-v="2">② 자음 모양</button><button data-v="3">③ 가나다</button></div>
     <p class="note" id="stageNote"></p>
@@ -178,6 +184,10 @@ const stageSeg = document.getElementById('stageSeg');
 function renderStage() { stageSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', +b.dataset.v === cfg.stage)); document.getElementById('stageNote').textContent = STAGE_NOTE[cfg.stage]; }
 stageSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cfg.stage = +b.dataset.v; save(); renderStage(); });
 renderStage();
+const favSeg = document.getElementById('favSeg');
+function renderFav() { favSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', (cfg.fav || []).includes(b.dataset.v))); }
+favSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v, f = cfg.fav || []; cfg.fav = f.includes(v) ? f.filter(x => x !== v) : f.concat(v); save(); renderFav(); if (cfg.fav.includes(v)) H.read(v); });
+renderFav();
 const focusSeg = document.getElementById('focusSeg');
 H.JAMO.forEach(j => { const b = document.createElement('button'); b.type = 'button'; b.textContent = j; b.dataset.v = j; b.setAttribute('aria-label', H.JAMO_NAME[j]); focusSeg.appendChild(b); });
 function renderFocus() { focusSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', (cfg.focus || []).includes(b.dataset.v))); }

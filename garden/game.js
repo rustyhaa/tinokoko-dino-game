@@ -4,8 +4,8 @@
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
 const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
-const SETS = [['tulip', 'carrot', 'sunflower', 'strawberry'], ['tomato', 'pumpkin', 'tulip2', 'carrot'], ['sunflower', 'strawberry', 'tomato', 'tulip']];
-const NAME = { tulip: '튤립', tulip2: '튤립', carrot: '당근', sunflower: '해바라기', strawberry: '딸기', tomato: '토마토', pumpkin: '호박' };
+const SETS = [['tulip', 'carrot', 'dino', 'strawberry'], ['tomato', 'dino', 'tulip2', 'carrot'], ['sunflower', 'strawberry', 'dino', 'tomato']];   // dino: 공룡알 (좋아하는 것에 공룡이 없으면 호박)
+const NAME = { tulip: '튤립', tulip2: '튤립', carrot: '당근', sunflower: '해바라기', strawberry: '딸기', tomato: '토마토', pumpkin: '호박', dino: '공룡' };
 let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastGrow = 0, S = 50;
 let plots = [], basket = { x: 0, y: 0, w: 0, items: [] }, flying = [], twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }];
 
@@ -18,7 +18,7 @@ function layout() {
   twins.forEach((t, i) => { t.h = port ? H * 0.19 : H * 0.36; t.x = i ? W * (port ? 0.85 : 0.92) : W * (port ? 0.15 : 0.08); t.yb = H * 0.98; });
 }
 function newSet() {
-  plots = SETS[setIdx].map(kind => ({ kind, g: 0, stage: 0, wig: 0, rain: 0, pop: 0 }));
+  plots = SETS[setIdx].map(k => (k === 'dino' && !HG.likes('공룡') ? 'pumpkin' : k)).map(kind => ({ kind, g: 0, stage: 0, wig: 0, rain: 0, pop: 0 }));
   layout();
 }
 function grow(p, amt) {
@@ -28,6 +28,7 @@ function grow(p, amt) {
   if (st > p.stage) {
     p.stage = st; p.pop = 1;
     TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1], 0, 0.4, 'sine', 0.22); TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1] * 2, 0.03, 0.2, 'sine', 0.05);
+    if (st === 4 && p.kind === 'dino') { TK.tone(200, 0.1, 0.5, 'sawtooth', 0.07, 130); TK.noise(0.3, 900, 0.1, 0.05); }   // 알이 톡 깨지며 아기 공룡 크앙
     if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
   }
 }
@@ -71,6 +72,14 @@ function update(dt) {
 // 식물 그리기: 흙 위 (x,y), 단계 st(0~4), 크기 s
 function plant(kind, x, y, st, s, sway) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(sway);
+  if (kind === 'dino') {   // 공룡알: 작은 알 → 큰 알 → 금 간 알 → 아기 공룡
+    const egg = (rx, ry) => { ell(0, -ry, rx, ry); ctx.fillStyle = '#fff8e8'; ctx.fill(); ctx.strokeStyle = '#e8d6b0'; ctx.lineWidth = 2; ctx.stroke(); [[-.4, -.6], [.35, -1.1], [.1, -.35], [-.2, -1.35]].forEach(([dx, dy]) => { ell(dx * rx, dy * ry, rx * .16, rx * .13); ctx.fillStyle = '#9fdc7c'; ctx.fill(); }); };
+    if (st === 1) egg(s * .3, s * .38);
+    else if (st === 2) egg(s * .42, s * .55);
+    else if (st === 3) { ctx.rotate(Math.sin(TK.T * 14) * 0.06); egg(s * .5, s * .66); ctx.beginPath(); ctx.moveTo(-s * .45, -s * .75); ctx.lineTo(-s * .2, -s * .6); ctx.lineTo(0, -s * .8); ctx.lineTo(s * .2, -s * .62); ctx.lineTo(s * .45, -s * .78); ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = s * .05; ctx.stroke(); }
+    else if (st === 4) { HG.drawPic(ctx, '공룡', s * 2.0); for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sd * s * .15, 0); ctx.lineTo(sd * s * .6, 0); ctx.lineTo(sd * s * .55, -s * .3); ctx.lineTo(sd * s * .42, -s * .18); ctx.lineTo(sd * s * .3, -s * .32); ctx.closePath(); ctx.fillStyle = '#fff8e8'; ctx.fill(); } }
+    ctx.restore(); return;
+  }
   const leaf = (lx, ly, r, rot, c = '#5fbf5a') => { ell(lx, ly, r, r * 0.45, rot); ctx.fillStyle = c; ctx.fill(); };
   const stem = (h, c = '#4fa84a') => { ctx.strokeStyle = c; ctx.lineWidth = s * 0.12; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(s * 0.1, -h * 0.5, 0, -h); ctx.stroke(); };
   if (st === 1) { stem(s * 0.35); leaf(-s * 0.2, -s * 0.35, s * 0.22, -0.5); leaf(s * 0.2, -s * 0.38, s * 0.22, 0.5); }

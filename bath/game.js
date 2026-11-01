@@ -61,7 +61,12 @@ TK.input({
   down(p) {
     p.lx = p.x; p.ly = p.y;
     const d = duckPos();
-    if (TK.dist(p.x, p.y, d.x, d.y - tub.h * 0.12) < tub.h * 0.3) { duck.hop = 0; sfx.squeak(); TK.tone(900, 0.05, 0.12, 'square', 0.06, 1400); H.read('오리'); return; }
+    if (TK.dist(p.x, p.y, d.x, d.y - tub.h * 0.12) < tub.h * 0.35) {
+      duck.hop = 0;
+      if (H.likes('고래')) { sfx.splash(); for (let k = 0; k < 14; k++) TK.parts.push({ t: 'drop', x: d.x + rand(-5, 5), y: d.y - tub.h * 0.45, vx: rand(-70, 70) * TK.U, vy: -rand(220, 360) * TK.U, r: rand(3, 6) * TK.U, life: 0.9, max: 0.9, c: [140, 205, 255], g: 700, delay: k * 0.01 }); H.read('고래'); }
+      else { sfx.squeak(); TK.tone(900, 0.05, 0.12, 'square', 0.06, 1400); H.read('오리'); }
+      return;
+    }
     const tile = tiles.find(t => t.clean && Math.abs(p.x - t.x) < t.s * 0.55 && Math.abs(p.y - t.y) < t.s * 0.55);
     if (tile && phase === 'play' || tile && phase === 'wait') { H.read(tile.w); return; }
     if (rubAt(p.x, p.y, 0.3) || overTile(p.x, p.y)) { TK.foam(p.x, p.y, 4); sfx.squeak(); return; }
@@ -165,6 +170,7 @@ function drawTubFront() {
   TK.rr(x0 - tub.w * 0.01, y0 - tub.h * 0.06, tub.w * 1.02, tub.h * 0.12, tub.h * 0.06); ctx.fillStyle = '#f4f9fd'; ctx.fill(); ctx.stroke();
   for (const fx of [0.2, 0.8]) { ell(x0 + tub.w * fx, y0 + tub.h * 1.02, tub.w * 0.04, tub.h * 0.08); ctx.fillStyle = '#e3b04b'; ctx.fill(); }
   const d = duckPos(), s = tub.h * 0.22;
+  if (H.likes('고래')) { ctx.save(); ctx.translate(d.x, d.y + s * 0.15); ctx.scale(-1, 1); H.drawPic(ctx, '고래', s * 2.4); ctx.restore(); return; }   // 장난감 고래 (누르면 물을 뿜음)
   ell(d.x, d.y - s * 0.5, s * 1.0, s * 0.6); ctx.fillStyle = '#ffd84a'; ctx.fill();
   ell(d.x - s * 0.5, d.y - s * 1.15, s * 0.5, s * 0.5); ctx.fill();
   ctx.beginPath(); ctx.moveTo(d.x - s * 0.95, d.y - s * 1.15); ctx.lineTo(d.x - s * 1.3, d.y - s * 1.05); ctx.lineTo(d.x - s * 0.95, d.y - s * 0.98); ctx.fillStyle = '#ff9a3c'; ctx.fill();
