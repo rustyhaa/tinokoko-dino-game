@@ -27,6 +27,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'garden': ('티노코코 글자 정원',   '#bfe9ff'),
     'band':   ('티노코코 가나다 실로폰', '#5a2a6e'),
     'blow':   ('티노코코 이름 방울',   '#a8e0ff'),
+    'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
 
@@ -136,6 +137,15 @@ def game_icon(name, color, n):
     elif name == 'blow':
         c(W * .58, W * .42, W * .25, (190, 230, 255), (255, 255, 255), int(W * .02)); c(W * .5, W * .34, W * .06, (255, 255, 255))
         d.line([(W * .2, W * .85), (W * .38, W * .62)], fill=(255, 160, 80), width=int(W * .04)); c(W * .4, W * .6, W * .07, None, (255, 160, 80), int(W * .025))
+    elif name == 'steps':
+        d.rectangle([0, 0, W, W * .38], fill=(143, 212, 255))
+        d.polygon([(W * .72, W), (W * .8, W * .55), (W, W * .55), (W, W)], fill=(70, 160, 225))
+        for k, (x, y) in enumerate([(.16, .78), (.36, .66), (.56, .74)]):
+            x, y, s = x * W, y * W, W * .075
+            c(x - s * .1, y, s * .6, (217, 181, 116))
+            for a in (-0.55, 0, 0.55): c(x + math.cos(a) * s * .8, y + math.sin(a) * s * .62, s * .26, (217, 181, 116))
+        c(W * .86, W * .5, W * .1, (91, 155, 240)); d.line([(W * .84, W * .38), (W * .8, W * .26)], fill=(255, 255, 255), width=int(W * .02))
+        d.line([(W * .84, W * .38), (W * .9, W * .26)], fill=(255, 255, 255), width=int(W * .02))
     return im.resize((n, n), Image.LANCZOS)
 
 

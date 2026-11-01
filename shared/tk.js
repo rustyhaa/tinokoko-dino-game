@@ -82,6 +82,7 @@ TK.audio = () => {
   return ac;
 };
 TK.audioState = () => ac ? ac.state : 'none';
+TK.suspend = () => { if (ac && ac.state === 'running') ac.suspend(); };   // 화면이 가려질 때 (frame.js). 다음 톡에서 TK.audio()가 다시 켬
 const tone = TK.tone = (f, delay = 0, dur = 0.3, type = 'sine', vol = 0.3, f2 = 0) => {
   if (!ac) return;
   const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();

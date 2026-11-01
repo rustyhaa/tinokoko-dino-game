@@ -133,7 +133,11 @@ function unlock() {
 document.addEventListener('gesturestart', e => e.preventDefault());           // iOS 두 손가락 확대
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-document.addEventListener('visibilitychange', () => { if (document.hidden && fa) fa.suspend && fa.suspend(); });
+// 다른 앱으로 넘어가거나 화면이 꺼지면: 소리·읽기 멈춤 (rAF 는 브라우저가 멈추고, 돌아오면 TK 루프가 dt 를 0.05초로 자름)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  try { if (fa && fa.suspend) fa.suspend(); if (window.TK && TK.suspend) TK.suspend(); if (window.H && H.hush) H.hush(); else if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+});
 
 // ---------- 나갈 때 인사 ----------
 let leaving = false;
