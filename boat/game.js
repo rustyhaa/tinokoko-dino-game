@@ -4,6 +4,7 @@
 //  여러 손가락 동시 끌기 OK (두 아이가 각자 한 친구씩).
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
+const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
 const SETS = [['crab', 'bunny', 'chick', 'frog'], ['starfish', 'owl', 'butterfly', 'jelly'], ['fish', 'skystar', 'bunny', 'chick'], ['frog', 'crab', 'owl', 'butterfly']];
 let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastSeat = 0;
 let boat = {}, friends = [], twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }], boatX = 0;
@@ -20,7 +21,7 @@ function layout() {
 const seatPos = i => ({ x: boatX + boat.w * (-0.21 + i * 0.14), y: boat.deck + boat.h * 0.12 + bobY() });
 const bobY = () => Math.sin(TK.T * 1.6) * boat.h * 0.06;
 function newSet() {
-  friends = SETS[setIdx].map(kind => ({ kind, st: 'appear', t: 0, x: 0, y: 0, hx: 0, hy: 0, seat: -1, wig: 0, ptr: null }));
+  friends = HG.pick(4, { cat: 'animal', pic: true }).map(o => ({ kind: o.w, st: 'appear', t: 0, x: 0, y: 0, hx: 0, hy: 0, seat: -1, wig: 0, ptr: null }));
   layout();
   friends.forEach(f => { f.x = f.hx; f.y = f.hy; TK.spark(f.hx, f.hy - boat.fh * 0.5, [255, 255, 255], 6, 0.6); });
 }
@@ -30,6 +31,8 @@ function seat(f) {
   const free = [0, 1, 2, 3].filter(i => !used.includes(i)).sort((a, b) => Math.abs(seatPos(a).x - f.x) - Math.abs(seatPos(b).x - f.x));
   f.seat = free[0]; f.st = 'fly'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; lastSeat = TK.T;
   sfx.boing(); TK.tone(TK.pick([784, 880, 988]), 0.15, 0.15, 'triangle', 0.12, 1200);
+  // 탈 때 이름을 읽어줌. 2단계 이상이면 첫소리를 먼저 "기역, 게!"
+  HG.read(f.kind, HG.cfg().stage >= 2 ? HG.JAMO_NAME[HG.cho(f.kind)] + ', ' : '');
   const tw = seatPos(f.seat).x < boatX ? twins[0] : twins[1]; tw.hop = 0;
 }
 function sendHome(f) { f.st = 'back'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; sfx.soft(); }
@@ -40,9 +43,9 @@ TK.input({
     if (phase !== 'play') return;
     const f = friendAt(p.x, p.y);
     if (f && f.st === 'home') { f.st = 'drag'; f.ptr = p.id; f.ox = f.x - p.x; f.oy = f.y - p.y; f.wig = 0.3; sfx.rustle(); return; }
-    if (f && f.st === 'seated') { f.wig = 0.5; TK.tone(TK.pick([784, 880, 988]), 0, 0.15, 'triangle', 0.12, 1200); return; }
+    if (f && f.st === 'seated') { f.wig = 0.5; TK.tone(TK.pick([784, 880, 988]), 0, 0.15, 'triangle', 0.12, 1200); HG.read(f.kind); return; }
     const tw = twins.find(t => Math.abs(p.x - t.x) < boat.th * 0.3 && p.y > t.yb - boat.th && p.y < t.yb);
-    if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - boat.th * 1.05); return; }
+    if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - boat.th * 1.05); HG.read(tw.kind === 'tino' ? '티노' : '코코'); return; }
     TK.ring(p.x, p.y, 14 * TK.U, [255, 255, 255]); sfx.soft();
   },
   move(p) {
@@ -135,7 +138,8 @@ function drawFriendAt(f) {
   const hop = f.st === 'home' ? TK.bob(f.hx * 0.01, boat.fh * 0.05, 4) : 0;
   ctx.save(); ctx.translate(f.x, f.y - hop); ctx.rotate(wg); ctx.scale(sc, sc);
   if (f.st !== 'seated') { ell(0, 0, boat.fh * 0.4, boat.fh * 0.08); ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fill(); }
-  TK.drawFriend(f.kind, boat.fh);
+  HG.drawPic(ctx, f.kind, boat.fh);
+  if (f.st !== 'seated') HG.drawTag(ctx, f.kind, 0, boat.fh * 0.3, boat.fh * 0.22, { hi: HG.hi(f.kind) });   // 이름표
   ctx.restore();
 }
 

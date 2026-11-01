@@ -1,6 +1,6 @@
 {
-  "name": "티노코코 놀이터",
-  "short_name": "티노코코 놀이터",
+  "name": "티노코코 한글 놀이터",
+  "short_name": "한글 놀이터",
   "lang": "ko",
   "start_url": "./",
   "scope": "../",

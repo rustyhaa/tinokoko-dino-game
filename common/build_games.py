@@ -20,13 +20,13 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITES = ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2']
 GAMES = {   # 엔진(tk.js)으로 만든 게임
-    'bath':   ('티노코코 목욕탕',     '#d8f1ff'),
-    'boat':   ('티노코코 배 태우기',  '#9fdcff'),
-    'shapes': ('티노코코 그림자 짝꿍', '#fff3d6'),
-    'stars':  ('티노코코 별자리 잇기', '#1c2656'),
-    'garden': ('티노코코 꼬마 정원',  '#bfe9ff'),
-    'band':   ('티노코코 쿵짝 악단',  '#5a2a6e'),
-    'blow':   ('티노코코 비눗방울 후', '#a8e0ff'),
+    'bath':   ('티노코코 글자 목욕',   '#d8f1ff'),
+    'boat':   ('티노코코 이름표 배',   '#9fdcff'),
+    'shapes': ('티노코코 자음 짝꿍',   '#fff3d6'),
+    'stars':  ('티노코코 글자 별자리', '#1c2656'),
+    'garden': ('티노코코 글자 정원',   '#bfe9ff'),
+    'band':   ('티노코코 가나다 실로폰', '#5a2a6e'),
+    'blow':   ('티노코코 이름 방울',   '#a8e0ff'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
 
@@ -41,7 +41,7 @@ HTML = """<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="티노코코 놀이터">
+<meta name="apple-mobile-web-app-title" content="한글 놀이터">
 <link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
 <style>
   html,body{{margin:0;height:100%;overflow:hidden;background:{color};touch-action:none;
@@ -52,6 +52,7 @@ HTML = """<!doctype html>
 <body>
 <canvas id="c"></canvas>
 <script src="../shared/tk.js"></script>
+<script src="../shared/hangul.js"></script>
 <script src="game.js"></script>
 <script src="../shared/frame.js"></script>
 </body>
@@ -190,7 +191,7 @@ def build():
         write(os.path.join(ROOT, name, 'sw.js'), KILL_SW)
         p512 = os.path.join(ROOT, name, 'icons', 'icon-512.png')
         if os.path.exists(p512): os.remove(p512)
-    man = {'name': '티노코코 놀이터', 'short_name': '티노코코 놀이터', 'lang': 'ko', 'start_url': './', 'scope': '../', 'id': './',
+    man = {'name': '티노코코 한글 놀이터', 'short_name': '한글 놀이터', 'lang': 'ko', 'start_url': './', 'scope': '../', 'id': './',
            'display': 'fullscreen', 'display_override': ['fullscreen', 'standalone'], 'orientation': 'any',
            'background_color': '#eaf7ff', 'theme_color': '#8fd4ff',
            'icons': [{'src': '../shared/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
@@ -198,7 +199,7 @@ def build():
                      {'src': '../shared/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
     write(os.path.join(ROOT, 'games', 'manifest.webmanifest'), json.dumps(man, ensure_ascii=False, indent=2) + '\n')
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
-    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js']
+    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in list(GAMES) + STANDALONE:

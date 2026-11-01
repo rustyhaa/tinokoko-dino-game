@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>티노코코 무지개 방울</title>
+<title>티노코코 가나다 방울</title>
 <link rel="manifest" href="../games/manifest.webmanifest">
 <meta name="theme-color" content="#8fd4ff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -38,7 +38,7 @@
     z-index:2;background:rgba(255,255,255,.95);border-radius:14px;padding:10px 12px;display:grid;gap:8px;
     box-shadow:0 4px 18px rgba(30,60,90,.18);font:600 13px/1.2 system-ui,sans-serif;color:#335}
   #panel[hidden]{display:none}
-  #panel .row{display:grid;grid-template-columns:5.5em 1fr 1fr;gap:6px;align-items:center}
+  #panel .row{display:grid;grid-template-columns:5.5em repeat(3,1fr);gap:6px;align-items:center}
   #panel button{min-height:36px;border-radius:10px;border:1.5px solid #b9d3e6;background:#fff;color:#335;
     font:inherit;padding:0 10px;cursor:pointer}
   #panel button.sel{background:#3d7fb8;border-color:#3d7fb8;color:#fff}
@@ -57,13 +57,24 @@
 </button>
 </div>
 <div id="panel" hidden>
-  <div class="row"><span>터뜨릴 때</span><button data-k="voice" data-v="song">동요</button><button data-k="voice" data-v="color">색 이름</button></div>
+  <div class="row"><span>터뜨릴 때</span><button data-k="voice" data-v="letter">글자</button><button data-k="voice" data-v="song">동요</button><button data-k="voice" data-v="color">색 이름</button></div>
   <div class="row"><span>방울 크기</span><button data-k="size" data-v="1">보통</button><button data-k="size" data-v="1.3">크게</button></div>
   <div class="row"><span>방울 속도</span><button data-k="speed" data-v="1">보통</button><button data-k="speed" data-v="0.6">느리게</button></div>
 </div>
+<script src="../shared/hangul.js"></script>
 <script>
 (() => {
 'use strict';
+const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
+// 방울 일곱 색마다 글자 하나: 3단계(가나다)는 가 나 다 라 마 바 사, 그 전엔 이름·단어의 글자
+function pickSyl() {
+  if (HG.cfg().stage >= 3) return HG.GANA.slice();
+  const out = [];
+  ['티노', '코코'].concat(HG.pick(14).map(o => o.w)).forEach(w => [...w].forEach(c => { if (out.length < 7 && !out.includes(c)) out.push(c); }));
+  return out;
+}
+let SYL = pickSyl();
+const TK_OUT = i => `rgba(${COLS[i].map(v => Math.round(v * 0.55)).join(',')},.9)`;
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 const TAU = Math.PI * 2;
@@ -76,7 +87,7 @@ const FREQ = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33]; // 펜타�
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
 // 부모 설정 (이 기기 브라우저에만 저장, 실패해도 기본값으로 동작)
-const settings = { voice: 'song', size: 1, speed: 1 };
+const settings = { voice: 'letter', size: 1, speed: 1 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('tk-rainbow-settings') || '{}')); } catch (e) {}
 let W, H, S, R, gy, U;
 function resize() {
@@ -243,7 +254,7 @@ function pop(b, src) {
   bubbles.splice(bubbles.indexOf(b), 1);
   pops++; hint = false;
   const col = b.star ? [255, 200, 40] : COLS[b.c];
-  if (b.star) sSparkle(); else if (settings.voice === 'color') sPopColor(b.c); else sPop();
+  if (b.star) sSparkle(); else if (settings.voice === 'color') sPopColor(b.c); else if (settings.voice === 'letter') { noise(0.05, 2600, 0.22); tone(FREQ[b.c], 0, 0.25, 'sine', 0.18); HG.saySyl(SYL[b.c]); } else sPop();
   // 둘이 함께: 동시에 화면에 닿아 있는 두 손가락이(또는 터치+키보드·마우스처럼 다른 입력이) 0.5초 안에 각각 터뜨리면 하이파이브.
   // 한 아이가 같은 손으로 빠르게 두 번 탭하는 건 해당 안 됨 (탭마다 번호가 바뀌어도 '동시에 닿아 있음' 조건에서 걸러짐)
   if (src !== undefined && sleep <= 0) {
@@ -404,6 +415,7 @@ function startParty() {
   if (party > 0 || sleep > 0) return;
   party = 5.5; partyHop = 0; parties++;
   sFanfare();
+  if (HG.cfg().stage >= 3) setTimeout(() => HG.say('가나다라마바사!'), 900);
   twins.forEach(hop);
 }
 
@@ -559,7 +571,7 @@ function update(dt) {
                    rot: rand(0, TAU), vr: rand(-6, 6), ph: rand(0, TAU), life: 4, max: 4, c: COLS[(Math.random() * 7) | 0] });
     }
     if (party <= 0) {   // 바로 다음 판 — 배경도 낮 → 노을 → 밤으로 바뀜
-      flags = Array(7).fill(false);
+      flags = Array(7).fill(false); SYL = pickSyl();
       prevTheme = theme; theme = (theme + 1) % THEMES.length; themeBlend = 0;
     }
   }
@@ -666,6 +678,13 @@ function drawRainbow() {
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
   }
+  // 무지개 위 하늘에 일곱 칸: 켜진 색의 글자가 그 칸에 크게 나옴 (일곱 글자를 다 모으는 느낌)
+  const fs = Math.min(W * 0.85 / 7.6, Rr * 0.22), gx = cx - 3 * fs * 1.06, gy2 = Math.max(fs * 1.2 + 50, cy - Rr - fs * 0.9);
+  for (let i = 0; i < 7; i++) {
+    const x = gx + i * fs * 1.06, on = lit[i] > 0.5 || party > 0;
+    if (on) HG.drawWord(ctx, SYL[i] || '', x, gy2 - litPulse[i] * fs * 0.3, fs * (1 + litPulse[i] * 0.4), { color: '#ffffff', outline: TK_OUT(i) });
+    else { ctx.beginPath(); ctx.arc(x, gy2, fs * 0.16, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill(); }
+  }
   ctx.restore();
 }
 
@@ -762,6 +781,7 @@ function drawBubble(b) {
   ctx.beginPath(); ctx.arc(0, 0, r * 0.72, -2.6, -1.9); ctx.lineWidth = r * 0.1; ctx.lineCap = 'round';
   ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.stroke();
   ell(r * 0.42, r * 0.42, r * 0.08, r * 0.08); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
+  if (!b.star) HG.drawWord(ctx, SYL[b.c] || '', 0, r * 0.04, r * 0.78, { color: '#ffffff', outline: 'rgba(40,50,90,.55)' });   // 방울 속 글자
   if (b.star) {
     ctx.shadowColor = 'rgba(255,230,120,.95)'; ctx.shadowBlur = 18 + 8 * Math.sin(T * 6);
     star(0, 0, r * 0.55, '#fff3b0', Math.sin(T * 2) * 0.4);

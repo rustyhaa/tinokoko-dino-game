@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>티노코코 까꿍 숨바꼭질</title>
+<title>티노코코 글자 까꿍</title>
 <link rel="manifest" href="../games/manifest.webmanifest">
 <meta name="theme-color" content="#9fdcff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -33,9 +33,11 @@
     <path class="x" d="M16 9l5 6M21 9l-5 6"/>
   </svg>
 </button>
+<script src="../shared/hangul.js"></script>
 <script>
 (() => {
 'use strict';
+const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
 // =====================================================================
 // 티노코코 까꿍 숨바꼭질
 //  - 장면마다 물건 6개. 그중 둘 뒤에 티노와 코코가 숨고, 나머지 뒤에는 친구들이 있음.
@@ -165,7 +167,8 @@ function layout() {
 function buildScene() {
   const sc = SCENES[sceneIdx];
   const types = sc.objs.slice().sort(() => Math.random() - 0.5);
-  const contents = ['tino', 'coco', ...sc.friends].sort(() => Math.random() - 0.5);
+  // 물건 뒤: 티노·코코 + 그림 단어 넷 (이번 주 글자로 시작하는 단어가 더 자주)
+  const contents = ['tino', 'coco', ...HG.pick(4, { pic: true, cat: ['animal', 'food', 'thing'] }).map(o => o.w)].sort(() => Math.random() - 0.5);
   objs = types.map((type, i) => ({ type, content: contents[i], st: 'idle', t: 0, open: 0, wig: 0, jx: rand(-1, 1), hint: 0 }));
   found = 0; parts = [];
   layout();
@@ -177,10 +180,11 @@ function buildScene() {
 function tapObj(o) {
   if (phase !== 'play') return;
   o.wig = 0.5;
-  if (o.st === 'found') { o.cheer = 0.8; sGiggle(o.content); hearts(o); return; }   // 찾은 아이를 또 누르면 히히
+  if (o.st === 'found') { o.cheer = 0.8; sGiggle(o.content); hearts(o); HG.read(o.content === 'tino' ? '티노' : '코코'); return; }   // 찾은 아이를 또 누르면 히히
   if (o.st !== 'idle') return;
   o.st = 'up'; o.t = 0;
-  sRustle(); sBoing(); say('까꿍!');
+  sRustle(); sBoing();
+  HG.read(isTwin(o.content) ? (o.content === 'tino' ? '티노' : '코코') : o.content, '까꿍! ');   // "까꿍! 나, 비. 나비!"
   if (o.content === 'tino' || o.content === 'coco') sGiggle(o.content);
   burst(o.x, o.y - o.s * 1.0, o.content === 'tino' ? [255, 214, 50] : o.content === 'coco' ? [80, 160, 255] : [255, 255, 255], 10);
 }
@@ -219,7 +223,7 @@ function update(dt) {
         } else { o.st = 'hold'; o.t = 0; }
       }
     } else if (o.st === 'hold') {
-      o.t += dt; if (o.t > 1.4) { o.st = 'down'; o.t = 0; sDown(); }
+      o.t += dt; if (o.t > 3.0) { o.st = 'down'; o.t = 0; sDown(); }   // 단어를 다 읽을 만큼 보여줌
     } else if (o.st === 'down') {
       o.t += dt; o.open = 1 - ease(o.t / 0.4); if (o.t >= 0.4) { o.st = 'idle'; o.open = 0; }
     }
@@ -464,9 +468,14 @@ function drawPeeker(o) {
     const name = o.content === 'tino' ? 'tino_jump_v2' : (o.st === 'found' ? 'coco_laugh_v2' : 'coco_jump_v2');
     drawSprite(name, o.x, yb - lift, h);
   } else {
-    ctx.translate(o.x, yb); drawFriend(o.content, h);
+    ctx.translate(o.x, yb); HG.drawPic(ctx, o.content, h);
   }
   ctx.restore();
+  if (o.open > 0.6) {   // 튀어나온 그림 위에 이름 글자 (읽는 음절이 커짐)
+    const label = twin ? (o.content === 'tino' ? '티노' : '코코') : o.content;
+    const ly = Math.max(s * 0.45, yb - lift - h - s * 0.28);
+    HG.drawTag(ctx, label, o.x, ly, s * 0.3, { hi: HG.hi(label) });
+  }
 }
 
 // ---------- 그리기: 효과 ----------
