@@ -83,7 +83,6 @@ function update(dt) {
     boatX = Math.min(boat.x0, boatX + boat.w * 1.0 * dt);
     if (boatX >= boat.x0) { phase = 'play'; phaseT = 0; newSet(); sfx.sparkle(); lastSeat = TK.T; }
   }
-  if (phase === 'play' && TK.T - lastSeat > 8) { const f = friends.find(f => f.st === 'home'); if (f) { f.wig = 0.6; sfx.soft(); } lastSeat = TK.T - 5; }
 }
 
 function drawBg() {
@@ -126,11 +125,6 @@ function draw() {
   friends.filter(f => f.st === 'seated').forEach(drawFriendAt);
   ctx.restore();
   drawHull();
-  // 힌트: 오래 안 태우면 친구에서 배까지 반짝이 점선
-  if (phase === 'play' && TK.T - lastSeat > 6) {
-    const f = friends.find(f => f.st === 'home');
-    if (f) for (let k = 0; k < 6; k++) { const q = ((TK.T * 0.8 + k / 6) % 1), x = TK.lerp(f.x, boatX, q), y = TK.lerp(f.y - boat.fh * 0.5, d - boat.fh, q) - Math.sin(Math.PI * q) * boat.fh * 1.5; TK.star(x, y, 7 * TK.U, `rgba(255,255,255,${0.9 * (1 - q * 0.5)})`, TK.T * 2); }
-  }
   friends.filter(f => f.st === 'home' || f.st === 'appear' || f.st === 'back').forEach(drawFriendAt);
   friends.filter(f => f.st === 'drag' || f.st === 'fly').forEach(drawFriendAt);
   TK.drawParts();
@@ -154,6 +148,12 @@ window.__g = {
     for (let k = 0; k <= 14; k++) pts.push({ x: TK.lerp(f.x, to.x, k / 14), y: TK.lerp(f.y - boat.fh * 0.5, to.y, k / 14) });
     return [{ type: 'path', pts, wait: 450 }];
   },
+};
+// 별 시범: 모래밭 친구 하나를 배까지 끌고 가기
+window.__demo = () => {
+  if (phase !== 'play') return null;
+  const f = friends.find(f => f.st === 'home'); if (!f) return null;
+  return { kind: 'path', pts: [{ x: f.x, y: f.y - boat.fh * 0.5 }, { x: TK.lerp(f.x, boatX, 0.5), y: Math.min(f.y, boat.deck) - boat.fh * 1.6 }, { x: boatX, y: boat.deck - boat.fh * 0.3 }], say: '배에 태워 줘!' };
 };
 TK.start({ resize: layout, init() { layout(); boatX = boat.x0; newSet(); }, update, draw });
 })();
