@@ -18,7 +18,7 @@ const now = () => performance.now() / 1000;
 
 // ---------- 부모 설정 ----------
 // stage 1: 듣고 보기 / 2: + 자음 모양 (기본) / 3: + 가나다
-const DEF = { names: ['', ''], stage: 2, focus: [] };
+const DEF = { names: ['', ''], stage: 2, focus: [], fav: ['공룡', '고래'] };   // fav: 아이가 좋아하는 것 (켜 두면 관련 단어가 3배 자주)
 H.cfg = () => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem('tk-hangul') || '{}')); } catch (e) { return Object.assign({}, DEF); } };
 H.saveCfg = c => { try { localStorage.setItem('tk-hangul', JSON.stringify(c)); } catch (e) {} };
 
@@ -74,9 +74,14 @@ H.WORDS = [
   ['티노', 'name'], ['코코', 'name'], ['엄마', 'name'], ['아빠', 'name'],
   ['나비', 'animal'], ['토끼', 'animal'], ['개구리', 'animal'], ['해파리', 'animal'], ['게', 'animal'],
   ['오리', 'animal'], ['하마', 'animal'], ['고래', 'animal'], ['사자', 'animal'], ['거미', 'animal'],
+  ['공룡', 'animal'], ['티라노', 'animal'], ['범고래', 'animal'],
   ['사과', 'food'], ['바나나', 'food'], ['포도', 'food'], ['우유', 'food'], ['토마토', 'food'], ['오이', 'food'], ['피자', 'food'], ['치즈', 'food'], ['도토리', 'food'],
   ['모자', 'thing'], ['바지', 'thing'], ['나무', 'thing'], ['해', 'thing'], ['기차', 'thing'], ['라디오', 'thing'], ['지구', 'thing'],
 ].map(([w, cat]) => ({ w, cat, syl: [...w], cho: H.cho(w) }));
+// 좋아하는 것: 공룡·고래 묶음
+H.FAV = { '공룡': ['공룡', '티라노'], '고래': ['고래', '범고래'] };
+H.favWords = () => (H.cfg().fav || []).flatMap(k => H.FAV[k] || []);
+H.likes = k => (H.cfg().fav || []).includes(k);
 // 아이 이름(부모가 넣은 것)도 단어로
 H.words = () => {
   const names = (H.cfg().names || []).map(s => (s || '').trim()).filter(Boolean).slice(0, 2);
@@ -85,18 +90,18 @@ H.words = () => {
 H.word = w => H.words().find(o => o.w === w) || { w, cat: 'thing', syl: [...w], cho: H.cho(w) };
 // 단어 n개 고르기: 이번 주 글자로 시작하는 단어는 3배, 아이 이름은 2배 자주
 H.pick = (n, o = {}) => {
-  const f = H.cfg().focus || [];
+  const f = H.cfg().focus || [], fav = H.favWords();
   let pool = H.words().filter(x => (!o.cat || [].concat(o.cat).includes(x.cat)) && !(o.exclude || []).includes(x.w) && (!o.pic || H.hasPic(x.w)));
   const out = [];
   while (out.length < n && pool.length) {
-    const wts = pool.map(x => (f.includes(x.cho) ? 3 : 1) * (x.child ? 2 : 1));
+    const wts = pool.map(x => (f.includes(x.cho) ? 3 : 1) * (x.child ? 2 : 1) * (fav.includes(x.w) ? 3 : 1));
     let r = Math.random() * wts.reduce((a, b) => a + b, 0), i = 0;
     while (r > wts[i]) r -= wts[i++];
     out.push(pool[i]); pool = pool.filter((_, k) => k !== i);
   }
   return out;
 };
-H.example = j => { const c = H.WORDS.filter(x => x.cho === j && x.cat !== 'name'); return (c.length ? c : H.WORDS.filter(x => x.cho === j))[0] || { w: '', syl: [] }; };
+H.example = j => { const fav = H.favWords(), c = H.WORDS.filter(x => x.cho === j && x.cat !== 'name').sort((a, b) => fav.includes(b.w) - fav.includes(a.w)); return (c.length ? c : H.WORDS.filter(x => x.cho === j))[0] || { w: '', syl: [] }; };   // 좋아하는 것(공룡·고래)을 먼저
 // 친구 그림 종류 → 이름
 H.FRIEND_NAME = { crab: '게', fish: '물고기', starfish: '불가사리', jelly: '해파리', bunny: '토끼', frog: '개구리', chick: '병아리', butterfly: '나비', owl: '부엉이', skystar: '별' };
 
@@ -151,6 +156,30 @@ P('해', ({ ctx, s, T, ell, fill, eyes }) => { for (let k = 0; k < 8; k++) { con
 P('기차', ({ ctx, s, ell, fill }) => { ctx.fillStyle = '#e9504f'; ctx.fillRect(-s * .95, -s * 1.1, s * 1.3, s * .8); ctx.fillStyle = '#3aa7ff'; ctx.fillRect(s * .35, -s * .9, s * .6, s * .6); ctx.fillStyle = '#333'; ctx.fillRect(-s * .7, -s * 1.55, s * .3, s * .45); ctx.fillStyle = '#d8f1ff'; ctx.fillRect(-s * .55, -s * .95, s * .45, s * .3); for (const x of [-.6, 0, .6]) { ell(x * s, -s * .22, s * .22, s * .22); fill('#444'); } ell(-s * .55, -s * 1.75, s * .15, s * .1); fill('rgba(200,200,200,.8)'); });
 P('라디오', ({ ctx, s, ell, fill }) => { ctx.fillStyle = '#f0a04b'; ctx.fillRect(-s * .9, -s * 1.3, s * 1.8, s * 1.1); ell(-s * .35, -s * .75, s * .35, s * .35); fill('#6b4a2a'); ctx.fillStyle = '#fff3d6'; ctx.fillRect(s * .1, -s * 1.1, s * .6, s * .35); ell(s * .4, -s * .5, s * .1, s * .1); fill('#6b4a2a'); ctx.strokeStyle = '#555'; ctx.lineWidth = s * .05; ctx.beginPath(); ctx.moveTo(s * .5, -s * 1.3); ctx.lineTo(s * .8, -s * 1.85); ctx.stroke(); });
 P('지구', ({ ctx, s, ell, fill, eyes, smile }) => { ell(0, -s, s * .85, s * .85); fill('#4aa3e8'); ell(-s * .3, -s * 1.3, s * .32, s * .2, .4); fill('#5fbf5a'); ell(s * .35, -s * .7, s * .3, s * .22, -.3); fill('#5fbf5a'); ell(-s * .2, -s * .55, s * .2, s * .12); fill('#5fbf5a'); eyes(s * .25, -s * 1.05, s * .08); smile(-s * .8, s * .14); });
+P('공룡', ({ ctx, s, T, ell, fill, eyes, smile }) => {   // 목이 긴 아기 공룡
+  ctx.beginPath(); ctx.moveTo(-s * .5, -s * .55); ctx.quadraticCurveTo(-s * 1.2, -s * .5, -s * 1.15, -s * .15); ctx.quadraticCurveTo(-s * .8, -s * .35, -s * .4, -s * .3); fill('#7cc576');
+  for (const x of [-.45, -.15, .2, .45]) { ctx.fillStyle = '#6ab364'; ctx.fillRect(x * s - s * .1, -s * .45, s * .2, s * .45); }
+  ell(0, -s * .6, s * .65, s * .4); fill('#7cc576');
+  ctx.beginPath(); ctx.moveTo(s * .3, -s * .8); ctx.quadraticCurveTo(s * .55 + Math.sin(T * 2) * s * .03, -s * 1.4, s * .5, -s * 1.7); ctx.lineWidth = s * .28; ctx.lineCap = 'round'; ctx.strokeStyle = '#7cc576'; ctx.stroke();
+  ell(s * .62, -s * 1.78, s * .3, s * .22, -.2); fill('#7cc576'); ell(s * .7, -s * 1.83, s * .06, s * .07); fill('#222'); ell(s * .72, -s * 1.85, s * .02, s * .02); fill('#fff');
+  ctx.beginPath(); ctx.arc(s * .78, -s * 1.74, s * .1, .1 * Math.PI, .7 * Math.PI); ctx.strokeStyle = '#2f6a2f'; ctx.lineWidth = s * .04; ctx.stroke();
+  for (const [x, y] of [[-.2, -.75], [.15, -.82], [-.35, -.55], [.3, -.55]]) { ell(x * s, y * s, s * .07, s * .07); fill('#9fdc7c'); } });
+P('티라노', ({ ctx, s, ell, fill }) => {   // 초록 아기 티라노 (서 있는 모습)
+  ctx.beginPath(); ctx.moveTo(-s * .3, -s * .7); ctx.quadraticCurveTo(-s * 1.0, -s * .55, -s * 1.1, -s * .1); ctx.quadraticCurveTo(-s * .7, -s * .3, -s * .25, -s * .35); fill('#5fb85f');
+  ell(-s * .25, -s * .12, s * .2, s * .12); fill('#4fa84f'); ell(s * .25, -s * .12, s * .2, s * .12); fill('#4fa84f');
+  ell(0, -s * .7, s * .5, s * .55); fill('#5fb85f'); ell(s * .1, -s * .62, s * .3, s * .38); fill('#c9eba8');
+  ell(s * .2, -s * 1.45, s * .55, s * .42); fill('#5fb85f');
+  ctx.beginPath(); ctx.moveTo(s * .2, -s * 1.25); ctx.lineTo(s * .72, -s * 1.28); ctx.strokeStyle = '#2f6a2f'; ctx.lineWidth = s * .05; ctx.lineCap = 'round'; ctx.stroke();
+  for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(s * (.32 + k * .14), -s * 1.27); ctx.lineTo(s * (.38 + k * .14), -s * 1.19); ctx.lineTo(s * (.44 + k * .14), -s * 1.27); fill('#fff'); }
+  ell(s * .35, -s * 1.6, s * .09, s * .1); fill('#fff'); ell(s * .37, -s * 1.59, s * .05, s * .06); fill('#222');
+  ctx.strokeStyle = '#5fb85f'; ctx.lineWidth = s * .1; ctx.beginPath(); ctx.moveTo(s * .3, -s * .9); ctx.lineTo(s * .5, -s * .82); ctx.stroke();
+  for (const y of [-1.75, -1.35, -1.0]) { ctx.beginPath(); ctx.moveTo(-s * .25, y * s); ctx.lineTo(-s * .45, y * s + s * .1); ctx.lineTo(-s * .25, y * s + s * .2); fill('#ff9a2e'); } });
+P('범고래', ({ ctx, s, T, ell, fill, smile }) => {   // 검은 등·흰 배·눈 옆 흰 타원
+  ctx.beginPath(); ctx.moveTo(s * .7, -s * .7); ctx.quadraticCurveTo(s * 1.1, -s * 1.05 - Math.sin(T * 3) * s * .1, s * 1.2, -s * 1.25); ctx.lineTo(s * .95, -s * .72); fill('#222838');
+  ctx.beginPath(); ctx.moveTo(-s * .05, -s * 1.2); ctx.lineTo(s * .1, -s * 1.75); ctx.lineTo(s * .3, -s * 1.2); fill('#222838');
+  ell(-s * .1, -s * .75, s * .9, s * .55); fill('#222838'); ell(-s * .25, -s * .52, s * .65, s * .28); fill('#fbfbf7');
+  ell(-s * .55, -s * .95, s * .2, s * .11, -.3); fill('#fbfbf7'); ell(-s * .78, -s * .78, s * .06, s * .06); fill('#fff');
+  ctx.beginPath(); ctx.arc(-s * .78, -s * .62, s * .14, .2 * Math.PI, .8 * Math.PI); ctx.strokeStyle = '#555'; ctx.lineWidth = s * .05; ctx.stroke(); });
 P('*', ({ s, star }) => { star(0, -s, s * .95, '#ffd84a'); star(0, -s, s * .45, '#fff3b0'); });
 
 // 그림자: 그림을 한 색으로 (모양 맞추기용)

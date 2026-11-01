@@ -6,7 +6,12 @@
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
 let phase = 'play', phaseT = 0, rounds = 0, done = 0, lastTap = 0, box = {}, R = 10;
-let jamo = 'ㄱ', strokes = [], flat = [], lines = [], queue = [];
+let jamo = 'ㄱ', strokes = [], flat = [], lines = [], queue = [], fig = null, figN = 0;
+// 좋아하는 것 별자리 (세 판마다 하나): 고래·공룡 모양 점 — 한 바퀴 이어 닫힘
+const FIG = {
+  '고래': [[.08, .55], [.22, .34], [.45, .28], [.68, .36], [.82, .5], [.93, .3], [.98, .62], [.84, .6], [.62, .72], [.32, .72]],
+  '공룡': [[.08, .78], [.22, .58], [.3, .32], [.45, .18], [.6, .26], [.55, .42], [.72, .5], [.92, .72], [.62, .78], [.36, .82]],
+};
 let twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }];
 const bgStars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random() * 0.8, s: 0.5 + Math.random() * 1.2, ph: Math.random() * 6 }));
 const COL = [255, 236, 150];
@@ -19,9 +24,9 @@ function layout() {
   twins.forEach((t, i) => { t.h = port ? H2 * 0.2 : H2 * 0.3; t.x = i ? W * (port ? 0.78 : 0.86) : W * (port ? 0.22 : 0.14); t.yb = H2 * 0.97; });
 }
 function newJamo() {
-  if (!queue.length) queue = H.pickJamo(H.jamoSet().length);
-  jamo = queue.shift();
-  strokes = H.starPoints(jamo);
+  const favs = (H.cfg().fav || []).filter(k => FIG[k]);
+  if (rounds % 3 === 2 && favs.length) { fig = favs[figN++ % favs.length]; jamo = null; strokes = [{ pts: FIG[fig], closed: true }]; }
+  else { fig = null; if (!queue.length) queue = H.pickJamo(H.jamoSet().length); jamo = queue.shift(); strokes = H.starPoints(jamo); }
   flat = []; strokes.forEach((s, si) => s.pts.forEach((p, pi) => flat.push({ p, si, first: pi === 0 })));
   done = 0; lines = [];
 }
@@ -56,7 +61,7 @@ function update(dt) {
   phaseT += dt;
   twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.5; if (t.hop > 1) t.hop = -1; } });
   lines.forEach(l => l.t = Math.min(1, l.t + dt / 0.3));
-  if (phase === 'complete' && phaseT > 0.5) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => H.readJamo(jamo), 600); twins.forEach(t => t.hop = 0); }
+  if (phase === 'complete' && phaseT > 0.5) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => fig ? H.read(fig) : H.readJamo(jamo), 600); twins.forEach(t => t.hop = 0); }
   if (phase === 'party') {
     if (Math.random() < dt * 25) { const p = P((Math.random() * N()) | 0); TK.spark(p.x, p.y, COL, 2, 0.5); }
     if (phaseT > 4.2) { phase = 'fade'; phaseT = 0; }
@@ -74,7 +79,10 @@ function draw() {
   const alive = phase === 'party', fade = phase === 'fade' ? 1 - phaseT / 0.8 : 1;
   ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
   // 연한 안내선: 처음엔 아주 흐리게 자음 모양이 보임 (따라 긋기 느낌)
-  H.drawJamo(ctx, jamo, box.x + box.w / 2, box.y + box.h / 2, box.w, alive ? `rgba(255,236,150,${0.55 + 0.2 * Math.sin(TK.T * 4)})` : 'rgba(200,215,255,.10)', 0.12);
+  if (fig) {   // 고래·공룡 별자리: 다 이으면 안쪽이 은은하게 채워짐
+    ctx.beginPath(); FIG[fig].forEach((q, i) => { const x = box.x + q[0] * box.w, y = box.y + q[1] * box.h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath();
+    ctx.fillStyle = alive ? `rgba(120,190,255,${0.25 + 0.1 * Math.sin(TK.T * 4)})` : 'rgba(200,215,255,.06)'; ctx.fill();
+  } else H.drawJamo(ctx, jamo, box.x + box.w / 2, box.y + box.h / 2, box.w, alive ? `rgba(255,236,150,${0.55 + 0.2 * Math.sin(TK.T * 4)})` : 'rgba(200,215,255,.10)', 0.12);
   ctx.lineCap = 'round'; ctx.strokeStyle = TK.rgba(COL, 0.95); ctx.lineWidth = Math.max(4, R * 0.55);
   ctx.shadowColor = TK.rgba(COL, 0.9); ctx.shadowBlur = alive ? 18 : 8;
   lines.forEach(l => { const a = P(l.a), b = P(l.b); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(TK.lerp(a.x, b.x, l.t), TK.lerp(a.y, b.y, l.t)); ctx.stroke(); });
@@ -88,9 +96,9 @@ function draw() {
     ctx.shadowBlur = 0;
   }
   if (alive || phase === 'fade') {   // 완성: 자음 이름 + 그 자음으로 시작하는 그림
-    const ex = H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2;
+    const ex = fig || H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2;
     const ly = box.y + box.h + (port ? H2 * 0.05 : H2 * 0.06);
-    H.drawWord(ctx, H.JAMO_NAME[jamo], W / 2, ly, Math.min(W, H2) * 0.06, { color: '#fff6c8', outline: 'rgba(20,28,68,.9)', hi: -1 });
+    H.drawWord(ctx, fig || H.JAMO_NAME[jamo], W / 2, ly, Math.min(W, H2) * 0.06, { color: '#fff6c8', outline: 'rgba(20,28,68,.9)', hi: -1 });
     if (ex) { ctx.save(); ctx.translate(port ? W / 2 : box.x + box.w + W * 0.1, port ? ly + H2 * 0.16 : box.y + box.h * 0.7); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, ex, Math.min(W, H2) * 0.16); ctx.restore(); }
   }
   ctx.restore();

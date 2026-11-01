@@ -14,7 +14,8 @@ function pickSyls() {
   syls = out;
 }
 pickSyls();
-const FRIEND_POOL = ['bunny', 'frog', 'chick', 'owl', 'crab', 'starfish', 'butterfly', 'jelly'];
+// 합류하는 친구: 좋아하는 것(공룡·고래)을 먼저
+const friendPool = () => HG.favWords().concat(['토끼', '개구리', '나비', '오리', '하마', '게']);
 let phase = 'play', phaseT = 0, rounds = 0, hits = 0, beat = 0, friendIdx = 0, lastHit = 0;
 let inst = [], band = [], twins = [{ kind: 'tino', hop: -1, move: 0 }, { kind: 'coco', hop: -1, move: 0 }], notes = [], bars = [];
 
@@ -47,7 +48,7 @@ function hit(k, barI = 0) {
   band.forEach(f => f.hop = 0);
   if (phase === 'play' && hits >= 12) {   // 친구 합류
     hits = 0;
-    if (band.length < 3) { const kind = FRIEND_POOL[friendIdx++ % FRIEND_POOL.length]; band.push({ kind, x: 0, hx: 0, y: 0, t: 0, hop: -1, side: band.length % 2 ? 1 : -1 }); layout(); sfx.sparkle(); setTimeout(() => HG.read(HG.FRIEND_NAME[kind]), 400); }
+    if (band.length < 3) { const pool = friendPool(), kind = pool[friendIdx++ % pool.length]; band.push({ kind, x: 0, hx: 0, y: 0, t: 0, hop: -1, side: band.length % 2 ? 1 : -1 }); layout(); sfx.sparkle(); setTimeout(() => HG.read(kind), 400); }
     if (band.length === 3) { phase = 'party'; phaseT = 0; setTimeout(sfx.fanfare, 200); }
   }
 }
@@ -136,7 +137,7 @@ function draw() {
   // 커튼
   for (const sd of [0, 1]) { ctx.fillStyle = '#c0392b'; ctx.beginPath(); const x0 = sd ? W : 0, dx = sd ? -1 : 1; ctx.moveTo(x0, 0); ctx.lineTo(x0 + dx * W * 0.12, 0); ctx.quadraticCurveTo(x0 + dx * W * 0.05, floor * 0.5, x0 + dx * W * 0.09, floor); ctx.lineTo(x0, floor); ctx.fill(); }
   ctx.fillStyle = '#a93226'; for (let x = 0; x < W; x += 40 * TK.U) { ell(x + 20 * TK.U, 0, 24 * TK.U, 26 * TK.U); ctx.fill(); }
-  band.forEach((f, i) => { ctx.save(); ctx.translate(f.x, f.y - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); TK.drawFriend(f.kind, port ? H * 0.08 : H * 0.14); ctx.restore(); const nm = HG.FRIEND_NAME[f.kind]; HG.drawTag(ctx, nm, f.x, f.y + (port ? H * 0.025 : H * 0.04), port ? H * 0.018 : H * 0.03, { hi: HG.hi(nm) }); });
+  band.forEach((f, i) => { ctx.save(); ctx.translate(f.x, f.y - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); HG.drawPic(ctx, f.kind, port ? H * 0.08 : H * 0.14); ctx.restore(); const nm = f.kind; HG.drawTag(ctx, nm, f.x, f.y + (port ? H * 0.025 : H * 0.04), port ? H * 0.018 : H * 0.03, { hi: HG.hi(nm) }); });
   twins.forEach((t, i) => {
     const pose = phase === 'party' ? 'happy' : (t.move % 2 ? 'jump' : (t.kind === 'coco' ? 'happy' : 'idle'));
     const lean = Math.sin(TK.T * 3 + i * 1.6) * 0.06 + (t.move === 3 ? (i ? -0.12 : 0.12) : 0);
