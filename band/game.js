@@ -125,18 +125,19 @@ function drawInst(it) {
 }
 function draw() {
   const W = TK.W, H = TK.H, port = W < H, floor = port ? H * 0.58 : H * 0.68;
-  ctx.fillStyle = TK.grad(0, floor, '#3a1d52', '#6b3384'); ctx.fillRect(0, 0, W, floor);
+  const art = HG.drawBg(ctx, 'bg_band', 0, 0, W, floor + H * 0.04, 0.5, 0.85);   // 손그림 무대 (커튼 포함)
+  if (!art) { ctx.fillStyle = TK.grad(0, floor, '#3a1d52', '#6b3384'); ctx.fillRect(0, 0, W, floor); }
   // 조명
   for (let k = 0; k < 3; k++) {
     const x = W * (0.25 + k * 0.25) + Math.sin(TK.T * 0.8 + k * 2 + beat * 0.3) * W * 0.08;
-    ctx.fillStyle = TK.rgba(TK.COLS[(k * 2 + beat) % 7], phase === 'party' ? 0.28 : 0.13);
+    ctx.fillStyle = TK.rgba(TK.COLS[(k * 2 + beat) % 7], (phase === 'party' ? 0.28 : 0.13) * (art ? 0.6 : 1));
     ctx.beginPath(); ctx.moveTo(W * (0.2 + k * 0.3), 0); ctx.lineTo(x - W * 0.12, floor); ctx.lineTo(x + W * 0.12, floor); ctx.closePath(); ctx.fill();
   }
   ctx.fillStyle = TK.grad(floor, H, '#b9824f', '#8a5a33'); ctx.fillRect(0, floor, W, H - floor);
   ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 2; for (let y = floor + 20; y < H; y += 26) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   // 커튼
-  for (const sd of [0, 1]) { ctx.fillStyle = '#c0392b'; ctx.beginPath(); const x0 = sd ? W : 0, dx = sd ? -1 : 1; ctx.moveTo(x0, 0); ctx.lineTo(x0 + dx * W * 0.12, 0); ctx.quadraticCurveTo(x0 + dx * W * 0.05, floor * 0.5, x0 + dx * W * 0.09, floor); ctx.lineTo(x0, floor); ctx.fill(); }
-  ctx.fillStyle = '#a93226'; for (let x = 0; x < W; x += 40 * TK.U) { ell(x + 20 * TK.U, 0, 24 * TK.U, 26 * TK.U); ctx.fill(); }
+  if (!art) for (const sd of [0, 1]) { ctx.fillStyle = '#c0392b'; ctx.beginPath(); const x0 = sd ? W : 0, dx = sd ? -1 : 1; ctx.moveTo(x0, 0); ctx.lineTo(x0 + dx * W * 0.12, 0); ctx.quadraticCurveTo(x0 + dx * W * 0.05, floor * 0.5, x0 + dx * W * 0.09, floor); ctx.lineTo(x0, floor); ctx.fill(); }
+  ctx.fillStyle = '#a93226'; if (!art) for (let x = 0; x < W; x += 40 * TK.U) { ell(x + 20 * TK.U, 0, 24 * TK.U, 26 * TK.U); ctx.fill(); }
   band.forEach((f, i) => { ctx.save(); ctx.translate(f.x, f.y - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); HG.drawPic(ctx, f.kind, port ? H * 0.08 : H * 0.14); ctx.restore(); const nm = f.kind; HG.drawTag(ctx, nm, f.x, f.y + (port ? H * 0.025 : H * 0.04), port ? H * 0.018 : H * 0.03, { hi: HG.hi(nm) }); });
   twins.forEach((t, i) => {
     const pose = phase === 'party' ? 'happy' : (t.move % 2 ? 'jump' : (t.kind === 'coco' ? 'happy' : 'idle'));

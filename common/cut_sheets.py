@@ -3,7 +3,7 @@
 
 art/sheets/ 의 시트를 칸별로 잘라 art/cut/ 에 저장한다. 원본 시트는 건드리지 않는다.
   sheet1~3.png   4x4 캐릭터 시트 → 흰 배경을 투명으로, 320x320 PNG (시트 1024px 기준 칸 원래 크기 정도) (art/cut/w_나비.png …)
-  bgsheet1~2.png 2x2 배경 시트   → 흰 테두리 잘라냄, 가로 1600px + 세로(가운데 9:16) (art/cut/bg_stars.png, bg_stars_p.png …)
+  bgsheet1~2.png 2x2 배경 시트   → 흰 테두리 잘라냄, 원래 크기 (art/cut/bg_stars.png …). 게임이 화면 비율에 맞게 잘라 그림
 칸 나누기: 흰 틈(가로·세로로 거의 흰 줄)을 찾아 나누고, 개수가 안 맞으면 똑같이 나눔(경고 출력).
 확인용으로 art/cut/_contact.png (자른 결과 한눈에) 를 만든다.
 """
@@ -100,13 +100,9 @@ def main():
             if not nm: continue
             c = im.crop((x0, y0, x1, y1))
             if fn.startswith('bg'):
-                c = trim_white(c).convert('RGB')
-                land = c.resize((1600, round(1600 * c.height / c.width)), Image.LANCZOS)
-                land.save(os.path.join(OUT, nm + '.png')); made.append((nm, land))
-                pw = round(c.height * 9 / 16); px = (c.width - pw) // 2
-                por = c.crop((px, 0, px + pw, c.height)); por = por.resize((900, round(900 * por.height / por.width)), Image.LANCZOS)
-                por.save(os.path.join(OUT, nm + '_p.png'))
-                if c.width < 1000: print(f'  ! {nm}: 칸 폭 {c.width}px — 작아서 흐릴 수 있음 (더 큰 시트 권장)')
+                c = trim_white(c).convert('RGB')   # 원래 크기 그대로 (게임이 화면에 꽉 차게 잘라 그림)
+                c.save(os.path.join(OUT, nm + '.png')); made.append((nm, c))
+                if c.width < 1000: print(f'  ! {nm}: 칸 {c.width}x{c.height}px — 큰 화면에선 흐릴 수 있음')
             else:
                 o = fit(cutout(c), 320); o.save(os.path.join(OUT, nm + '.png')); made.append((nm, o))
     if made:   # 한눈에 보기

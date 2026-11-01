@@ -118,11 +118,13 @@ function update(dt) {
 
 function draw() {
   const W = TK.W, H2 = TK.H;
+  if (!H.drawBg(ctx, 'bg_stars', 0, 0, W, H2, 0.5, 1)) {   // 손그림 배경(달·언덕 포함)이 없을 때만 코드로
   ctx.fillStyle = TK.grad(0, H2, '#141c44', '#3b4b8c'); ctx.fillRect(0, 0, W, H2);
   bgStars.forEach(s => { const a = 0.35 + 0.55 * Math.abs(Math.sin(TK.T * 1.3 + s.ph)); ell(s.x * W, s.y * H2, s.s * TK.U * 1.5, s.s * TK.U * 1.5); ctx.fillStyle = `rgba(255,255,230,${a})`; ctx.fill(); });
   const mr = Math.min(W, H2) * 0.05, mx = W * 0.9, my = H2 * 0.1;
   ell(mx, my, mr, mr); ctx.fillStyle = '#fff4c2'; ctx.fill(); ell(mx - mr * 0.45, my - mr * 0.2, mr * 0.88, mr * 0.88); ctx.fillStyle = '#18214f'; ctx.fill();
   ctx.fillStyle = '#2f5d5a'; ctx.beginPath(); ctx.moveTo(0, H2); ctx.lineTo(0, H2 * 0.88); ctx.quadraticCurveTo(W * 0.25, H2 * 0.8, W * 0.5, H2 * 0.87); ctx.quadraticCurveTo(W * 0.75, H2 * 0.93, W, H2 * 0.84); ctx.lineTo(W, H2); ctx.fill();
+  } else bgStars.forEach((s, i) => { if (i % 3) return; const a = 0.25 + 0.5 * Math.abs(Math.sin(TK.T * 1.3 + s.ph)); ell(s.x * W, s.y * H2 * 0.6, s.s * TK.U * 1.3, s.s * TK.U * 1.3); ctx.fillStyle = `rgba(255,255,230,${a})`; ctx.fill(); });   // 반짝임만 살짝
   const alive = phase === 'party', fade = phase === 'fade' ? 1 - phaseT / 0.8 : 1;
   ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
   // 연한 안내선: 처음엔 아주 흐리게 자음 모양이 보임 (따라 긋기 느낌)

@@ -24,10 +24,15 @@ function place() {
   port = W < H2;
   hz = port ? 0.3 : 0.42;
   ps0 = port ? Math.min(W * 0.16, H2 * 0.075) : Math.min(W * 0.085, H2 * 0.15);
-  ps = ps0 * Math.min(1, (port ? 4.5 : 3.6) / n);   // 발자국이 많으면(긴 이름) 작게 — 친구·고래 크기는 ps0 기준
+  ps = ps0 * Math.min(1, 3.6 / n);   // 가로: 발자국이 많으면(긴 이름) 작게 — 친구·고래 크기는 ps0 기준
   if (port) {   // 세로: 위에서 아래로 지그재그 내려가 아래쪽 바다로
-    start = { x: W * 0.2, y: H2 * 0.4 }; sea = { x: 0, y: H2 * 0.82, w: W, h: H2 * 0.18 }; whale.x = W * 0.5; whale.y = H2 * 0.97;
-    prints.forEach((p, i) => { const t = (i + 1) / n; p.y = TK.lerp(start.y, H2 * 0.74, t); p.x = W * ((i + rounds) % 2 ? 0.3 : 0.7); });
+    // 책 읽듯이: 한 줄에 3칸, 왼쪽→오른쪽, 다음 줄로
+    const cols = Math.min(n, 3), rows = Math.ceil(n / 3);
+    ps = ps0 * (cols === 3 ? 0.8 : 1);
+    start = { x: W * 0.13, y: H2 * 0.45 }; sea = { x: 0, y: H2 * 0.82, w: W, h: H2 * 0.18 }; whale.x = W * 0.5; whale.y = H2 * 0.97;
+    prints.forEach((p, i) => { const r = Math.floor(i / 3), c = i % 3, inRow = Math.min(3, n - r * 3);
+      p.x = W * (inRow === 1 ? 0.5 : TK.lerp(0.3, 0.76, c / (inRow - 1 || 1)) + (inRow === 2 ? 0 : -0.04));
+      p.y = rows === 1 ? H2 * 0.62 : TK.lerp(H2 * 0.55, H2 * 0.75, r / (rows - 1)); });
     return;
   }
   start = { x: W * 0.14, y: H2 * 0.76 }; sea = { x: W * 0.78, y: H2 * 0.5, w: W * 0.22, h: H2 * 0.5 }; whale.x = W * 0.89; whale.y = H2 * 0.9;
@@ -115,6 +120,10 @@ function footprint(x, y, s, col, rot) {   // 세 발가락 공룡 발자국 (오
 }
 function draw() {
   const W = TK.W, H2 = TK.H, alive = phase === 'party' || phase === 'shore';
+  // 손그림 배경: 가로는 그림 속 바다에서 고래가 솟고, 세로는 그림 위 아래쪽에 바다를 덧그림
+  const art = H.drawBg(ctx, 'bg_steps', 0, 0, W, H2, port ? 0.35 : 0.5, 0.55);
+  if (art && !port) { const q = art.pt(0.9, 0.47); whale.x = Math.min(q.x, W - whaleSize() * 0.55); whale.y = q.y; }
+  if (!art) {
   ctx.fillStyle = TK.grad(0, H2 * hz, '#8fd4ff', '#d8f1ff'); ctx.fillRect(0, 0, W, H2);
   ell(W * 0.12, H2 * 0.12, Math.min(W, H2) * 0.06, Math.min(W, H2) * 0.06); ctx.fillStyle = '#ffe27a'; ctx.fill();
   clouds.forEach(c => { const x = c.x * W, y = c.y * H2, r = Math.min(W, H2) * 0.04 * c.s; ctx.fillStyle = 'rgba(255,255,255,.9)'; [[-1.2, 0.2, 0.8], [0, 0, 1.1], [1.2, 0.25, 0.75]].forEach(([dx, dy, k]) => { ell(x + dx * r, y + dy * r, r * k, r * k * 0.8); ctx.fill(); }); });
@@ -122,12 +131,15 @@ function draw() {
   ctx.fillStyle = '#9cc98a'; ctx.beginPath(); const hy = H2 * hz, mh = H2 * (port ? 0.08 : 0.14); ctx.moveTo(0, hy); ctx.quadraticCurveTo(W * 0.2, hy - mh, W * 0.42, hy - mh * 0.15); ctx.quadraticCurveTo(W * 0.62, hy - mh * 0.8, W * 0.85, hy); ctx.lineTo(W, hy - mh * 0.1); ctx.lineTo(W, hy + 10); ctx.lineTo(0, hy + 10); ctx.fill();
   // 모래밭
   ctx.fillStyle = TK.grad(H2 * hz, H2, '#f6dfa4', '#eac983'); ctx.fillRect(0, H2 * hz, W, H2);
+  }
+  if (!art || port) {
   // 바다
   ctx.fillStyle = TK.grad(sea.y, sea.y + sea.h, '#5cc4f0', '#2f8fd0');
   ctx.beginPath();
   if (port) { ctx.moveTo(0, sea.y); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, sea.y + Math.sin(x * 0.03 + TK.T * 2) * 5); ctx.lineTo(W, H2); ctx.lineTo(0, H2); }
   else { ctx.moveTo(sea.x, H2); for (let y = H2; y >= sea.y; y -= 20) ctx.lineTo(sea.x + Math.sin(y * 0.03 + TK.T * 2) * 6 + (H2 - y) * 0.15, y); ctx.lineTo(W, sea.y); ctx.lineTo(W, H2); }
   ctx.fill();
+  }
   // 출발 바위
   ell(start.x - ps * 0.1, start.y - ps * 0.2, ps * 0.85, ps * 0.32); ctx.fillStyle = '#b9a58a'; ctx.fill();
   ell(start.x - ps * 0.2, start.y - ps * 0.3, ps * 0.6, ps * 0.22); ctx.fillStyle = '#cdbb9f'; ctx.fill();
@@ -141,7 +153,7 @@ function draw() {
   // 발자국
   prints.forEach((p, i) => {
     const isNext = i === next && phase === 'play', wig = p.wig >= 0 ? Math.sin(p.wig * Math.PI * 4) * 0.15 * (1 - p.wig) : 0;
-    const a = i > 0 ? Math.atan2(p.y - prints[i - 1].y, p.x - prints[i - 1].x) : Math.atan2(p.y - start.y, p.x - start.x);
+    const a = port ? 0 : i > 0 ? Math.atan2(p.y - prints[i - 1].y, p.x - prints[i - 1].x) : Math.atan2(p.y - start.y, p.x - start.x);
     if (isNext) { const pr = (TK.T * 1.2) % 1; ell(p.x, p.y, ps * (0.9 + pr * 0.6), ps * (0.6 + pr * 0.4)); ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - pr)})`; ctx.lineWidth = 4; ctx.stroke(); }
     const sc = (isNext ? 1.08 + 0.05 * Math.sin(TK.T * 6) : 1) + p.glow * 0.15;
     footprint(p.x + 2, p.y + 3, ps * sc, 'rgba(150,110,60,.35)', a + wig);

@@ -277,6 +277,7 @@ snd.addEventListener('click', () => { muted = !muted; snd.classList.toggle('off'
 // ---------- 그리기: 배경 ----------
 function drawBg() {
   const sc = SCENES[sceneIdx].name, hz = H * 0.42;
+  if (HG.drawBg(ctx, 'bg_pk_' + sc, 0, 0, W, H, 0.5, sc === 'night' ? 1 : 0.6)) return;   // 손그림 배경
   let g;
   if (sc === 'beach') {
     g = ctx.createLinearGradient(0, 0, 0, hz); g.addColorStop(0, '#8fd4ff'); g.addColorStop(1, '#e2f5ff'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);

@@ -123,6 +123,21 @@ const PIMG = {};
 PIC_FILES.forEach(n => { const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; PIMG[n] = im; });
 H.picImg = w => { const im = PIMG[w]; return im && im.complete && im.naturalWidth ? im : null; };
 H.hasPic = w => !!PICS[w] || !!PIMG[w];
+// 배경 그림 (shared/pics/bg_*.webp): 처음 부를 때 읽음. 사각형 (x,y,w,h)를 빈틈없이 채우게 잘라 그림
+//  ax, ay: 잘릴 때 어느 쪽을 남길지 (0 왼쪽/위 … 1 오른쪽/아래). 그렸으면 그림 좌표→화면 좌표 함수 반환, 아직 없으면 null
+const BG = {};
+H.bgFit = (name, x, y, w, h, ax = 0.5, ay = 0.5) => {
+  let im = BG[name];
+  if (!im) { im = BG[name] = new Image(); im.src = SHARED + 'pics/' + name + '.webp'; }
+  if (!im.complete || !im.naturalWidth) return null;
+  const k = Math.max(w / im.naturalWidth, h / im.naturalHeight), dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+  const dx = x + (w - dw) * ax, dy = y + (h - dh) * ay;
+  return { im, dx, dy, dw, dh, pt: (u, v) => ({ x: dx + u * dw, y: dy + v * dh }) };
+};
+H.drawBg = (ctx, name, x, y, w, h, ax, ay) => {
+  const f = H.bgFit(name, x, y, w, h, ax, ay); if (!f) return null;
+  ctx.drawImage(f.im, f.dx, f.dy, f.dw, f.dh); return f;
+};
 H.drawPic = (ctx, w, h) => {
   const im = H.picImg(w);
   if (im) {   // 키 h 상자 안에 맞춤 (가로로 긴 고래는 폭 1.5h 까지), 밑변 가운데가 원점
