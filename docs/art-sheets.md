@@ -117,3 +117,26 @@ Panels in reading order (top-left, top-right, bottom-left, bottom-right):
 
 저장소 `art/sheets/` 에 `sheet1.png`~`sheet3.png`, `bgsheet1.png`, `bgsheet2.png` 로 올린다 (브랜치 `claude/tinokoko-games-pack`).
 자르기는 `python3 common/cut_sheets.py` (Claude가 실행) → `art/cut/` 에 칸별 파일.
+
+## 시트 4 — 글자 까꿍 숨는 물건 (`sheet4.png`, 14칸 + 빈칸 2)
+
+까꿍에서 그림을 가리는 큰 물건들. 시트 공통 문장 뒤에 붙인다. **뒤에 숨은 그림을 가릴 만큼 통통하고 큼직하게.**
+
+```
+1 big round gray beach rock
+2 sandcastle with three small towers and a little red flag
+3 red toy sand bucket with a blue handle
+4 big pink scallop seashell
+5 clump of green seaweed
+6 brown log lying on its side
+7 round leafy green bush
+8 tree stump with rings on top
+9 big red mushroom with white dots
+10 patch of colorful flowers
+11 mossy rock with green moss on top
+12 small orange camping tent
+13 round golden hay bale
+14 fluffy white cloud
+15 leave this cell completely empty pure white
+16 leave this cell completely empty pure white
+```
