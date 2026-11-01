@@ -94,7 +94,14 @@ function tapAt(x, y, isDown) {
   if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - tw.h); H.read(tw.kind === 'tino' ? '티노' : '코코'); return; }
   TK.spark(x, y, [255, 255, 255], 4, 0.4); sfx.soft();
 }
-TK.input({ down(p) { tapAt(p.x, p.y, true); }, move(p) { if (p.down) tapAt(p.x, p.y, false); }, key() { if (trace) { if (!traceDone()) { const h = head(); traceAt(h.x, h.y, 5); } } else connect(); } });
+// 손가락이 빨라 이벤트 사이가 멀면 그 사이를 촘촘히 채워서 판정 (긋기가 중간에 멈추지 않게)
+const lastPt = new Map();
+function moveTo(p) {
+  const q = lastPt.get(p.id) || p, d = TK.dist(q.x, q.y, p.x, p.y), k = trace ? Math.min(30, Math.ceil(d / Math.max(10, box.w * 0.04))) : 1;
+  for (let i = 1; i <= k; i++) tapAt(TK.lerp(q.x, p.x, i / k), TK.lerp(q.y, p.y, i / k), false);
+  lastPt.set(p.id, { x: p.x, y: p.y });
+}
+TK.input({ down(p) { lastPt.set(p.id, { x: p.x, y: p.y }); tapAt(p.x, p.y, true); }, move(p) { if (p.down) moveTo(p); }, up(p) { lastPt.delete(p.id); }, key() { if (trace) { if (!traceDone()) { const h = head(); traceAt(h.x, h.y, 5); } } else connect(); } });
 
 function update(dt) {
   phaseT += dt;

@@ -1,7 +1,7 @@
 // 티노코코 공룡 발자국 길 — 탭 하나로 노는 한글 놀이 (한글 놀이터)
 //  모래밭에 커다란 공룡 발자국이 바다까지 이어져 있고, 발자국마다 글자가 하나씩 찍혀 있다.
 //  반짝이는 다음 발자국을 톡 하면 티노(또는 코코)가 그 칸으로 쿵! 뛰고 그 글자를 소리 내 읽는다.
-//  한 친구가 앞장서면 다른 친구가 한 칸 뒤를 따라온다(판마다 앞장 바꿈 — 둘이 동등).
+//  톡할 때마다 뒤에 있는 친구가 앞 친구를 훌쩍 넘어 다음 칸으로 — 티노 쿵, 코코 쿵 번갈아(둘이 동등, 판마다 먼저 뛰는 친구 바뀜).
 //  끝까지 가면 바다에서 고래가 솟아 물을 뿜고 "공, 룡. 공룡!" 하고 단어를 완성해 읽는다.
 //  다른 발자국을 눌러도 살짝 흔들릴 뿐(실패 없음). 한참 멈추면 별 시범(frame.js)이 다음 발자국을 알려준다.
 (() => {
@@ -52,17 +52,17 @@ function pos(i) {
   if (i === -1) return start;
   return port ? { x: start.x + ps * 0.4, y: start.y - ps * 1.1 } : { x: start.x - ps * 0.85, y: start.y - ps * 0.55 };
 }
-const leader = () => twins[rounds % 2], follower = () => twins[(rounds + 1) % 2];
+const busy = () => twins.some(t => t.jump >= 0);
+const mover = () => twins[0].at < twins[1].at ? twins[0] : twins[1];   // 뒤에 있는 친구가 다음에 뜀
 const th = () => ps * (port ? 1.6 : 1.9);
 function hop(t, to) { const a = pos(t.at), b = pos(to); t.fx = a.x; t.fy = a.y; t.tx = b.x; t.ty = b.y; t.at = to; t.jump = 0; }
 
 function step() {
-  if (phase !== 'play' || next >= prints.length || leader().jump >= 0) return;
-  const i = next++;
-  hop(follower(), leader().at); hop(leader(), i);
+  if (phase !== 'play' || next >= prints.length || busy()) return;
+  hop(mover(), next++);
   sfx.boing();
 }
-function land(t) {   // 앞장선 친구가 발자국에 닿음: 쿵 + 글자 소리
+function land(t) {   // 뛴 친구가 발자국에 닿음: 쿵 + 글자 소리
   const p = prints[t.at]; if (!p || p.lit) return;
   p.lit = true; p.glow = 1;
   TK.tone(110, 0, 0.25, 'sine', 0.3, 60); TK.noise(0.18, 300, 0.25);
@@ -90,7 +90,7 @@ function update(dt) {
   clouds.forEach(c => { c.x += c.v * dt; if (c.x > 1.15) c.x = -0.15; });
   twins.forEach(t => {
     if (t.happy > 0) t.happy -= dt;
-    if (t.jump >= 0) { t.jump += dt / 0.45; if (t.jump >= 1) { t.jump = -1; t.x = t.tx; t.y = t.ty; if (t === leader()) land(t); } else { t.x = TK.lerp(t.fx, t.tx, t.jump); t.y = TK.lerp(t.fy, t.ty, t.jump); } }
+    if (t.jump >= 0) { t.jump += dt / 0.45; if (t.jump >= 1) { t.jump = -1; t.x = t.tx; t.y = t.ty; if (t.at >= 0) land(t); } else { t.x = TK.lerp(t.fx, t.tx, t.jump); t.y = TK.lerp(t.fy, t.ty, t.jump); } }
   });
   prints.forEach(p => { if (p.wig >= 0) { p.wig += dt / 0.4; if (p.wig > 1) p.wig = -1; } p.glow = Math.max(0, p.glow - dt * 1.5); });
   if (phase === 'shore') {
@@ -167,14 +167,14 @@ function draw() {
   });
   if (alive || phase === 'fade') {   // 완성: 단어 그림
     const k = clamp(phaseT / 0.5, 0, 1) * (phase === 'fade' ? 1 - phaseT / 0.9 : 1), x = W / 2 + (word.syl.length / 2 + 0.6) * fs * 1.02 + fs * 0.6;
-    if (phase !== 'shore') { ctx.save(); ctx.translate(Math.min(x, W - fs), ty + fs * 0.75); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, word.w, fs * 1.5); ctx.restore(); }
+    if (phase !== 'shore' && word.w !== '고래') {   /* 고래는 바다에 이미 있으니 한 번만 */ ctx.save(); ctx.translate(Math.min(x, W - fs), ty + fs * 0.75); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, word.w, fs * 1.5); ctx.restore(); }
   }
   TK.drawParts();
 }
 
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get word() { return word && word.w; }, get next() { return next; },
-  actions() { if (phase !== 'play' || next >= prints.length || leader().jump >= 0) return []; const p = prints[next]; return [{ type: 'tap', x: p.x, y: p.y, wait: 650 }]; },
+  actions() { if (phase !== 'play' || next >= prints.length || busy()) return []; const p = prints[next]; return [{ type: 'tap', x: p.x, y: p.y, wait: 650 }]; },
 };
 // 별 시범: 다음 발자국을 톡
 window.__demo = () => {

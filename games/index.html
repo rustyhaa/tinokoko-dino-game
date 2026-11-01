@@ -59,6 +59,8 @@
   details .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
   details ul{padding-left:1.1em;margin:8px 0 0}
   details li{margin:4px 0}
+  #upd{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;max-width:calc(100% - 32px);
+    border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 </style>
 </head>
 <body>
@@ -83,7 +85,7 @@
       <div class="tip" hidden><p><em>노는 법</em> 크게 반짝이는 별을 차례로 톡 하면 선이 이어져 자음이 완성돼요. 별은 쓰는 순서(획순)대로 놓여 있어요. 두 판에 한 번은 '긋기' 판: 반짝이 별을 손가락으로 따라 쓱 그으면 빛 길이 남아요(삐뚤어도 괜찮아요).</p><p><em>익히는 것</em> 자음 모양, 쓰기 순서 감각, 손가락으로 따라 쓰기.</p><p><em>같이 놀 때</em> 잠자기 전 차분한 놀이로 좋아요.</p></div></li>
     <li><a href="../steps/"><img src="../steps/icons/icon-192.png" alt=""><b>공룡 발자국 길</b><small>발자국을 톡! 쿵쿵 글자 길</small></a>
       <button class="help" aria-expanded="false" aria-label="공룡 발자국 길 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 반짝이는 발자국을 톡 하면 티노(또는 코코)가 쿵 뛰어 그 글자를 읽어요. 끝까지 가면 고래가 물을 뿜으며 "공, 룡. 공룡!" 하고 단어를 완성해요. 판마다 앞장서는 친구가 바뀌어요.</p><p><em>익히는 것</em> 음절 하나하나 → 단어로 잇기, 왼쪽에서 오른쪽으로 읽는 방향.</p><p><em>같이 놀 때</em> 발자국을 하나씩 짚으며 같이 소리 내 주세요. 다 간 뒤 발자국을 누르면 그 글자를 다시 읽어요.</p></div></li>
+      <div class="tip" hidden><p><em>노는 법</em> 반짝이는 발자국을 톡 하면 티노와 코코가 번갈아 훌쩍 뛰어 그 글자를 읽어요. 끝까지 가면 고래가 물을 뿜으며 "공, 룡. 공룡!" 하고 단어를 완성해요. 두 아이가 한 번씩 번갈아 누르기 좋아요.</p><p><em>익히는 것</em> 음절 하나하나 → 단어로 잇기, 왼쪽에서 오른쪽으로 읽는 방향.</p><p><em>같이 놀 때</em> 발자국을 하나씩 짚으며 같이 소리 내 주세요. 다 간 뒤 발자국을 누르면 그 글자를 다시 읽어요.</p></div></li>
     <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>쓱쓱 닦으면 단어가 나와요</small></a>
       <button class="help" aria-expanded="false" aria-label="글자 목욕 도움말">?</button>
       <div class="tip" hidden><p><em>노는 법</em> 벽 타일의 얼룩을 손가락으로 쓱쓱 문지르면 그림과 단어가 드러나며 읽어줘요. 두 장 다 닦으면 샤워.</p><p><em>익히는 것</em> 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 타일을 누르면 다시 읽어줘요.</p></div></li>
@@ -266,7 +268,16 @@ render(); setInterval(render, 15000);
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   const root = new URL('../', location.href).href;
   navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { if (r.scope !== root && r.scope.startsWith(root)) r.unregister(); })).catch(() => {});
-  navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});
+  navigator.serviceWorker.register('../sw.js', { scope: '../' }).then(r => r.update()).catch(() => {});
+  // 새 버전을 받아 바뀌면(처음 설치 말고) 작은 띠: 다시 열면 새 게임·수정이 바로 보임
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!had || document.getElementById('upd')) return;
+    const b = document.createElement('button'); b.id = 'upd'; b.type = 'button';
+    b.textContent = '새 버전이 준비됐어요 — 눌러서 다시 열기';
+    b.addEventListener('click', () => location.reload());
+    document.body.appendChild(b);
+  });
 }
 </script>
 </body>
