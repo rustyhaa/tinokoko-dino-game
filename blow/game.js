@@ -4,6 +4,10 @@
 //  방울 8개를 날리면 방울 잔치. 여러 손가락이면 방울도 여러 개 동시에.
 (() => {
 const { ctx, ell, rand, clamp, sfx, tone } = TK;
+const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
+// 큰 방울에 탈 단어: 이름(티노·코코·아이 이름·엄마·아빠)과 그림 단어를 번갈아
+let wq = [], wn = 0;
+const nextWord = () => { if (!wq.length) { wn++; wq = HG.pick(4, { cat: wn % 2 ? 'name' : ['animal', 'food', 'thing'] }).map(o => o.w); } return wq.shift(); };
 const FR = ['chick', 'bunny', 'frog', 'butterfly', 'starfish', 'owl', 'crab', 'jelly', 'skystar', 'fish'];
 let phase = 'play', phaseT = 0, rounds = 0, released = 0, frIdx = 0, RMAX = 100, RMIN = 14;
 let growing = new Map(), bubbles = [], fallers = [], twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }];
@@ -16,7 +20,7 @@ function layout() {
 const hue = () => Math.floor(rand(0, 360));
 function release(g) {
   const big = g.r > RMAX * 0.6;
-  bubbles.push({ x: g.x, y: g.y, r: g.r, vy: -rand(40, 70) * TK.U - g.r * 0.25, vx: rand(-20, 20) * TK.U, ph: rand(0, 6.28), h: g.h, friend: big ? FR[frIdx++ % FR.length] : null, age: 0 });
+  bubbles.push({ x: g.x, y: g.y, r: g.r, vy: -rand(40, 70) * TK.U - g.r * 0.25, vx: rand(-20, 20) * TK.U, ph: rand(0, 6.28), h: g.h, friend: big ? nextWord() : null, age: 0 });
   sfx.whoosh(); tone(400 + g.r * 3, 0, 0.25, 'sine', 0.1, 900 + g.r * 4);
   released++;
   const tw = g.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0;
@@ -27,7 +31,7 @@ function popBubble(b) {
   bubbles.splice(bubbles.indexOf(b), 1);
   sfx.pop(); TK.ring(b.x, b.y, b.r, [255, 255, 255], 80);
   for (let k = 0; k < 10; k++) { const a = rand(0, 6.28); TK.parts.push({ t: 'drop', x: b.x + Math.cos(a) * b.r, y: b.y + Math.sin(a) * b.r, vx: Math.cos(a) * 80 * TK.U, vy: Math.sin(a) * 80 * TK.U, r: rand(2, 4) * TK.U, life: 0.5, max: 0.5, c: [200, 230, 255], g: 200 }); }
-  if (b.friend) { fallers.push({ kind: b.friend, x: b.x, y: b.y + b.r * 0.4, t: 0, land: TK.H * rand(0.86, 0.94), st: 'fall' }); TK.say('안녕!'); }
+  if (b.friend) { fallers.push({ kind: b.friend, x: b.x, y: b.y + b.r * 0.4, t: 0, land: TK.H * rand(0.86, 0.94), st: 'fall' }); HG.read(b.friend); }
 }
 const bubbleAt = (x, y) => bubbles.filter(b => TK.dist(x, y, b.x, b.y) < b.r + 14 * TK.U).sort((a, c) => a.r - c.r)[0];
 
@@ -69,7 +73,7 @@ function update(dt) {
 
 function drawBubble(x, y, r, h, age, friend) {
   const wob = 1 + Math.sin(age * 5) * 0.03;
-  if (friend) { ctx.save(); ctx.translate(x, y + r * 0.55); ctx.rotate(Math.sin(age * 2) * 0.15); TK.drawFriend(friend, r * 1.0); ctx.restore(); }
+  if (friend) { ctx.save(); ctx.translate(x, y + r * 0.62); ctx.rotate(Math.sin(age * 2) * 0.12); HG.drawPic(ctx, friend, r * 0.85); ctx.restore(); HG.drawWord(ctx, friend, x, y - r * 0.5, r * 0.3); }
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
   g.addColorStop(0, 'rgba(255,255,255,.35)'); g.addColorStop(0.7, `hsla(${h},90%,75%,.18)`); g.addColorStop(1, `hsla(${(h + 60) % 360},90%,70%,.55)`);
   ell(x, y, r * wob, r / wob); ctx.fillStyle = g; ctx.fill();
@@ -83,7 +87,7 @@ function draw() {
   for (let k = 0; k < 3; k++) { const x = ((TK.T * 10 * (k + 1) + k * 300) % (W + 300)) - 150, y = H * (0.12 + k * 0.08), s = Math.min(W, H) * 0.05; ctx.fillStyle = 'rgba(255,255,255,.9)'; ell(x, y, s * 1.4, s * 0.7); ctx.fill(); ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill(); ell(x + s * 0.9, y + s * 0.1, s * 0.9, s * 0.6); ctx.fill(); }
   ctx.fillStyle = TK.grad(gy, H, '#9fdc7c', '#6fbf5a'); ctx.beginPath(); ctx.moveTo(0, gy); ctx.quadraticCurveTo(W * 0.5, gy - H * 0.05, W, gy); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   for (let k = 0; k < 9; k++) { const x = (k + 0.5) * W / 9, y = gy + H * (0.06 + (k % 3) * 0.05); for (let q = 0; q < 5; q++) { ell(x + Math.cos(q * 1.26) * 6 * TK.U, y + Math.sin(q * 1.26) * 6 * TK.U, 4.5 * TK.U, 4.5 * TK.U); ctx.fillStyle = TK.rgba(TK.COLS[k % 7], 1); ctx.fill(); } ell(x, y, 3.5 * TK.U, 3.5 * TK.U); ctx.fillStyle = '#fff3a0'; ctx.fill(); }
-  fallers.forEach(f => { ctx.save(); ctx.translate(f.x, f.y - (f.st === 'wave' ? Math.abs(Math.sin(f.t * 8)) * 10 * TK.U : 0)); ctx.rotate(f.st === 'fall' ? Math.sin(f.t * 3) * 0.2 : 0); TK.drawFriend(f.kind, RMAX * 0.7); ctx.restore(); if (f.st === 'fall') { ctx.save(); ctx.translate(f.x, f.y - RMAX * 0.95); ctx.beginPath(); ctx.arc(0, 0, RMAX * 0.45, Math.PI, 0); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill(); ctx.restore(); } });
+  fallers.forEach(f => { ctx.save(); ctx.translate(f.x, f.y - (f.st === 'wave' ? Math.abs(Math.sin(f.t * 8)) * 10 * TK.U : 0)); ctx.rotate(f.st === 'fall' ? Math.sin(f.t * 3) * 0.2 : 0); HG.drawPic(ctx, f.kind, RMAX * 0.7); ctx.restore(); if (f.st !== 'fall') HG.drawTag(ctx, f.kind, f.x, f.y + RMAX * 0.2, RMAX * 0.16, { hi: HG.hi(f.kind) }); if (f.st === 'fall') { ctx.save(); ctx.translate(f.x, f.y - RMAX * 0.95); ctx.beginPath(); ctx.arc(0, 0, RMAX * 0.45, Math.PI, 0); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill(); ctx.restore(); } });
   twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   bubbles.forEach(b => drawBubble(b.x, b.y, b.r, b.h, b.age, b.friend));
   growing.forEach(g => drawBubble(g.x, g.y, g.r, g.h, g.t, null));

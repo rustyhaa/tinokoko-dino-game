@@ -3,6 +3,7 @@
 //  흙 위를 문질러도 쑥쑥 자란다. 넷 다 자라면 바구니로 쏙쏙 수확 → 축하 → 다음엔 다른 씨앗.
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
+const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
 const SETS = [['tulip', 'carrot', 'sunflower', 'strawberry'], ['tomato', 'pumpkin', 'tulip2', 'carrot'], ['sunflower', 'strawberry', 'tomato', 'tulip']];
 const NAME = { tulip: '튤립', tulip2: '튤립', carrot: '당근', sunflower: '해바라기', strawberry: '딸기', tomato: '토마토', pumpkin: '호박' };
 let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastGrow = 0, S = 50;
@@ -27,7 +28,7 @@ function grow(p, amt) {
   if (st > p.stage) {
     p.stage = st; p.pop = 1;
     TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1], 0, 0.4, 'sine', 0.22); TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1] * 2, 0.03, 0.2, 'sine', 0.05);
-    if (st === 4) { sfx.sparkle(); TK.say(NAME[p.kind] + '!'); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
+    if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
   }
 }
 const plotAt = (x, y) => plots.find(p => Math.abs(x - p.x) < S * 1.1 && y > p.y - S * 3.2 && y < p.y + S * 0.6);
@@ -35,7 +36,7 @@ const plotAt = (x, y) => plots.find(p => Math.abs(x - p.x) < S * 1.1 && y > p.y 
 TK.input({
   down(p) {
     const q = plotAt(p.x, p.y);
-    if (q && phase === 'play') { if (q.g >= 4) { q.wig = 0.5; TK.say(NAME[q.kind]); } else { grow(q, 1); sfx.splash(); } p.lx = p.x; return; }
+    if (q && phase === 'play') { if (q.g >= 4) { q.wig = 0.5; HG.read(NAME[q.kind]); } else { grow(q, 1); sfx.splash(); } p.lx = p.x; return; }
     const tw = twins.find(t => Math.abs(p.x - t.x) < t.h * 0.3 && p.y > t.yb - t.h);
     if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - tw.h); return; }
     TK.ring(p.x, p.y, 14 * TK.U, [255, 255, 255]); sfx.soft();
@@ -125,11 +126,13 @@ function draw() {
     if (p.picked && phase !== 'play') return;
     const sc = 1 + p.pop * 0.25, sway = Math.sin(TK.T * 1.8 + p.x) * 0.04 + (p.wig > 0 ? Math.sin(p.wig * 40) * 0.1 : 0);
     ctx.save(); ctx.translate(p.x, p.y); ctx.scale(sc, sc); plant(p.kind, 0, 0, p.stage, S, sway); ctx.restore();
+    if (p.stage >= 4) HG.drawTag(ctx, NAME[p.kind], p.x, p.y + S * 0.62, S * 0.3, { hi: HG.hi(NAME[p.kind]) });   // 다 자라면 이름표가 피어남
   });
   // 바구니
   const b = basket;
   ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5, b.y - b.w * 0.18); ctx.lineTo(b.x + b.w * 0.5, b.y - b.w * 0.18); ctx.lineTo(b.x + b.w * 0.4, b.y + b.w * 0.12); ctx.lineTo(b.x - b.w * 0.4, b.y + b.w * 0.12); ctx.closePath(); ctx.fill();
   b.items.forEach((k, i) => icon(k, b.x - b.w * 0.3 + i * b.w * 0.2, b.y - b.w * 0.2, S * 0.7));
+  b.items.forEach((k, i) => { const nm = NAME[k], fs = Math.min(S * 0.24, b.w * 0.36 / ([...nm].length * 1.05)); HG.drawWord(ctx, nm, b.x - b.w * 0.3 + i * b.w * 0.2, b.y - b.w * 0.02 + (i % 2) * fs * 1.15, fs); });   // 바구니 단어 카드 (길이에 맞춰 크기, 두 줄 엇갈림)
   ctx.strokeStyle = '#a86e35'; ctx.lineWidth = 3; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5 + k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.lineTo(b.x + b.w * 0.5 - k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.stroke(); }
   flying.forEach(f => { const e = TK.ease(f.t); icon(f.kind, TK.lerp(f.x0, b.x, e), TK.lerp(f.y0, b.y - b.w * 0.2, e) - Math.sin(Math.PI * f.t) * S * 2, S * 0.7); });
   twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
