@@ -186,21 +186,22 @@ def build_pics():
     src, dst = os.path.join(ROOT, 'art', 'cut'), os.path.join(ROOT, 'shared', 'pics')
     names = []
     if not os.path.isdir(src):   # 자른 원본(art/cut, git 제외)이 없으면 이미 만든 webp 그대로
-        names = sorted(f[:-5] for f in os.listdir(dst) if f.endswith('.webp') and not f.startswith('bg_')) if os.path.isdir(dst) else []
+        names = sorted(f[:-5] for f in os.listdir(dst) if f.endswith('.webp') and not f.startswith(('bg_', 'o_'))) if os.path.isdir(dst) else []
     else:
         os.makedirs(dst, exist_ok=True)
         for f in sorted(os.listdir(src)):
             if f[:2] in ('w_', 'd_', 'h_', 'f_') and f.endswith('.png'):
                 n = f[2:-4]; names.append(n)
                 Image.open(os.path.join(src, f)).save(os.path.join(dst, n + '.webp'), 'WEBP', quality=82, method=6)
-            elif f.startswith('bg_') and f.endswith('.png'):   # 배경: 게임이 필요할 때만 읽음 (목록엔 안 넣음)
-                Image.open(os.path.join(src, f)).convert('RGB').save(os.path.join(dst, f[:-4] + '.webp'), 'WEBP', quality=85, method=6)
+            elif f.startswith(('bg_', 'o_')) and f.endswith('.png'):   # 배경·까꿍 물건: 필요할 때만 읽음 (목록엔 안 넣음)
+                im = Image.open(os.path.join(src, f)); im = im.convert('RGB') if f.startswith('bg_') else im   # 물건은 투명 유지
+                im.save(os.path.join(dst, f[:-4] + '.webp'), 'WEBP', quality=85, method=6)
     hj = os.path.join(ROOT, 'shared', 'hangul.js')
     with open(hj, encoding='utf-8') as fh: s = fh.read()
     a, b = s.index('/*PICS*/'), s.index('/*END*/')
     s = s[:a] + '/*PICS*/' + json.dumps(names, ensure_ascii=False) + s[b:]
     write(hj, s)
-    bgs = sorted(f for f in os.listdir(dst) if f.startswith('bg_')) if os.path.isdir(dst) else []
+    bgs = sorted(f for f in os.listdir(dst) if f.startswith(('bg_', 'o_'))) if os.path.isdir(dst) else []
     return ['shared/pics/%s.webp' % n for n in names] + ['shared/pics/' + f for f in bgs]
 
 

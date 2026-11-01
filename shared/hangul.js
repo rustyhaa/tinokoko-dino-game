@@ -134,6 +134,8 @@ H.bgFit = (name, x, y, w, h, ax = 0.5, ay = 0.5) => {
   const dx = x + (w - dw) * ax, dy = y + (h - dh) * ay;
   return { im, dx, dy, dw, dh, pt: (u, v) => ({ x: dx + u * dw, y: dy + v * dh }) };
 };
+// 필요할 때만 읽는 그림 (까꿍 물건 o_rock 등): 다 읽혔으면 Image, 아니면 null
+H.lazyImg = name => { let im = BG[name]; if (!im) { im = BG[name] = new Image(); im.src = SHARED + 'pics/' + name + '.webp'; } return im.complete && im.naturalWidth ? im : null; };
 H.drawBg = (ctx, name, x, y, w, h, ax, ay) => {
   const f = H.bgFit(name, x, y, w, h, ax, ay); if (!f) return null;
   ctx.drawImage(f.im, f.dx, f.dy, f.dw, f.dh); return f;

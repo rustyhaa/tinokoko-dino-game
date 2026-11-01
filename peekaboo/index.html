@@ -314,7 +314,11 @@ function drawObj(o) {
   ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(wg);
   // 그림자
   ell(0, 0, s * 0.95, s * 0.14); ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fill();
-  const t = o.type;
+  const t = o.type, art = HG.lazyImg('o_' + t);
+  if (art) {   // 손그림 물건: 폭 약 2s·높이 약 1.6s 안에 맞춰 밑변에 세움 (뒤의 그림을 가릴 만큼)
+    const k = Math.min(s * 2.1 / art.naturalWidth, s * 1.7 / art.naturalHeight), dw = art.naturalWidth * k, dh = art.naturalHeight * k;
+    ctx.drawImage(art, -dw / 2, -dh + s * 0.06, dw, dh); ctx.restore(); return;
+  }
   if (t === 'rock' || t === 'mossrock') {
     ctx.fillStyle = t === 'rock' ? '#9aa3ad' : '#8e9a8a';
     ell(0, -s * 0.5, s * 0.95, s * 0.6); ctx.fill(); ell(-s * 0.45, -s * 0.35, s * 0.55, s * 0.4); ctx.fill(); ell(s * 0.5, -s * 0.3, s * 0.5, s * 0.35); ctx.fill();

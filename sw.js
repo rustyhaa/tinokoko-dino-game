@@ -1,7 +1,7 @@
 // 티노코코 놀이터 오프라인 저장 (사이트 맨 위에 하나). 한 번 열면 인터넷 없이도 모든 게임이 열린다.
 // 저장된 것을 먼저 보여주고, 인터넷이 되면 뒤에서 새 파일로 바꿔 둔다 (다음에 열 때 반영).
 // VERSION 과 목록은 common/build_games.py 가 만든다.
-const VERSION = 'playground-1bc4e01790';
+const VERSION = 'playground-d79db75347';
 const PRECACHE = [
  "./",
  "./index.html",
@@ -78,6 +78,20 @@ const PRECACHE = [
  "./shared/pics/bg_shapes.webp",
  "./shared/pics/bg_stars.webp",
  "./shared/pics/bg_steps.webp",
+ "./shared/pics/o_bucket.webp",
+ "./shared/pics/o_bush.webp",
+ "./shared/pics/o_castle.webp",
+ "./shared/pics/o_cloud.webp",
+ "./shared/pics/o_flowers.webp",
+ "./shared/pics/o_hay.webp",
+ "./shared/pics/o_log.webp",
+ "./shared/pics/o_mossrock.webp",
+ "./shared/pics/o_mushroom.webp",
+ "./shared/pics/o_rock.webp",
+ "./shared/pics/o_shell.webp",
+ "./shared/pics/o_stump.webp",
+ "./shared/pics/o_tent.webp",
+ "./shared/pics/o_weed.webp",
  "./shared/assets/tino_run_v2.png",
  "./shared/assets/tino_jump_v2.png",
  "./shared/assets/coco_run_v2.png",

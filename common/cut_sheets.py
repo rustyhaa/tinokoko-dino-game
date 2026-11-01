@@ -2,7 +2,7 @@
 """격자 시트 자르기 (저장소 루트에서: python3 common/cut_sheets.py)
 
 art/sheets/ 의 시트를 칸별로 잘라 art/cut/ 에 저장한다. 원본 시트는 건드리지 않는다.
-  sheet1~3.png   4x4 캐릭터 시트 → 흰 배경을 투명으로, 320x320 PNG (시트 1024px 기준 칸 원래 크기 정도) (art/cut/w_나비.png …)
+  sheet1~3.png   4x4 캐릭터 시트 → 흰 배경을 투명으로, 여백 없이 긴 변 최대 320px PNG (art/cut/w_나비.png …)
   bgsheet1~2.png 2x2 배경 시트   → 흰 테두리 잘라냄, 원래 크기 (art/cut/bg_stars.png …). 게임이 화면 비율에 맞게 잘라 그림
 칸 나누기: 흰 틈(가로·세로로 거의 흰 줄)을 찾아 나누고, 개수가 안 맞으면 똑같이 나눔(경고 출력).
 확인용으로 art/cut/_contact.png (자른 결과 한눈에) 를 만든다.
@@ -106,7 +106,9 @@ def main():
                 c.save(os.path.join(OUT, nm + '.png')); made.append((nm, c))
                 if c.width < 1000: print(f'  ! {nm}: 칸 {c.width}x{c.height}px — 큰 화면에선 흐릴 수 있음')
             else:
-                o = fit(cutout(c), 320); o.save(os.path.join(OUT, nm + '.png')); made.append((nm, o))
+                o = cutout(c); k = 320 / max(o.size)   # 여백 없이 그림에 딱 맞게 (게임이 밑변에 세움)
+                if k < 1: o = o.resize((round(o.width * k), round(o.height * k)), Image.LANCZOS)
+                o.save(os.path.join(OUT, nm + '.png')); made.append((nm, o))
     if made:   # 한눈에 보기
         t = 160; cols = 8; rows = (len(made) + cols - 1) // cols
         sheet = Image.new('RGB', (cols * t, rows * t), (200, 210, 225))
