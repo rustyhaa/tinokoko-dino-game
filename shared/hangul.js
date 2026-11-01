@@ -74,12 +74,18 @@ H.WORDS = [
   ['티노', 'name'], ['코코', 'name'], ['엄마', 'name'], ['아빠', 'name'],
   ['나비', 'animal'], ['토끼', 'animal'], ['개구리', 'animal'], ['해파리', 'animal'], ['게', 'animal'],
   ['오리', 'animal'], ['하마', 'animal'], ['고래', 'animal'], ['사자', 'animal'], ['거미', 'animal'],
-  ['공룡', 'animal'], ['티라노', 'animal'], ['범고래', 'animal'],
+  ['공룡', 'animal'],
+  // 공룡 7종·고래 7종 (좋아하는 것 '공룡'·'고래'를 켜면 자주 나옴). 이름이 길어 글자 칸이 좁은 곳은 자동으로 작게 씀
+  ['티라노사우루스', 'animal'], ['트리케라톱스', 'animal'], ['스테고사우루스', 'animal'], ['브라키오사우루스', 'animal'],
+  ['안킬로사우루스', 'animal'], ['스피노사우루스', 'animal'], ['프테라노돈', 'animal'],
+  ['혹등고래', 'animal'], ['대왕고래', 'animal'], ['범고래', 'animal'], ['향유고래', 'animal'], ['돌고래', 'animal'], ['벨루가', 'animal'], ['일각고래', 'animal'],
   ['사과', 'food'], ['바나나', 'food'], ['포도', 'food'], ['우유', 'food'], ['토마토', 'food'], ['오이', 'food'], ['피자', 'food'], ['치즈', 'food'], ['도토리', 'food'],
   ['모자', 'thing'], ['바지', 'thing'], ['나무', 'thing'], ['해', 'thing'], ['기차', 'thing'], ['라디오', 'thing'], ['지구', 'thing'],
 ].map(([w, cat]) => ({ w, cat, syl: [...w], cho: H.cho(w) }));
 // 좋아하는 것: 공룡·고래 묶음
-H.FAV = { '공룡': ['공룡', '티라노'], '고래': ['고래', '범고래'] };
+H.DINOS = ['티라노사우루스', '트리케라톱스', '스테고사우루스', '브라키오사우루스', '안킬로사우루스', '스피노사우루스', '프테라노돈'];
+H.WHALES = ['혹등고래', '대왕고래', '범고래', '향유고래', '돌고래', '벨루가', '일각고래'];
+H.FAV = { '공룡': ['공룡'].concat(H.DINOS), '고래': ['고래'].concat(H.WHALES) };
 H.favWords = () => (H.cfg().fav || []).flatMap(k => H.FAV[k] || []);
 H.likes = k => (H.cfg().fav || []).includes(k);
 // 아이 이름(부모가 넣은 것)도 단어로
@@ -111,8 +117,35 @@ const IMG = {};
 function sprite(ctx, n, h) { const im = IMG[n]; if (!im.complete || !im.naturalWidth) return; const w = h * im.naturalWidth / im.naturalHeight; ctx.drawImage(im, -w / 2, -h, w, h); }
 const PICS = {};
 const P = (names, fn) => names.split(' ').forEach(n => PICS[n] = fn);
-H.hasPic = w => !!PICS[w];
+// 손그림 일러스트 (art/ 시트에서 잘라 build_games.py 가 shared/pics/ 에 넣음). 있으면 코드 그림 대신 이것
+const PIC_FILES = /*PICS*/["브라키오사우루스", "스테고사우루스", "스피노사우루스", "안킬로사우루스", "트리케라톱스", "티라노사우루스", "프테라노돈", "물고기", "별", "병아리", "부엉이", "불가사리", "대왕고래", "돌고래", "범고래", "벨루가", "일각고래", "향유고래", "혹등고래", "개구리", "거미", "게", "고래", "공룡", "기차", "나무", "나비", "도토리", "라디오", "모자", "바나나", "바지", "사과", "사자", "아빠", "엄마", "오리", "오이", "우유", "지구", "치즈", "토끼", "토마토", "포도", "피자", "하마", "해", "해파리"]/*END*/;
+const PIMG = {};
+PIC_FILES.forEach(n => { const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; PIMG[n] = im; });
+H.picImg = w => { const im = PIMG[w]; return im && im.complete && im.naturalWidth ? im : null; };
+H.hasPic = w => !!PICS[w] || !!PIMG[w];
+// 배경 그림 (shared/pics/bg_*.webp): 처음 부를 때 읽음. 사각형 (x,y,w,h)를 빈틈없이 채우게 잘라 그림
+//  ax, ay: 잘릴 때 어느 쪽을 남길지 (0 왼쪽/위 … 1 오른쪽/아래). 그렸으면 그림 좌표→화면 좌표 함수 반환, 아직 없으면 null
+const BG = {};
+H.bgFit = (name, x, y, w, h, ax = 0.5, ay = 0.5) => {
+  let im = BG[name];
+  if (!im) { im = BG[name] = new Image(); im.src = SHARED + 'pics/' + name + '.webp'; }
+  if (!im.complete || !im.naturalWidth) return null;
+  const k = Math.max(w / im.naturalWidth, h / im.naturalHeight), dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+  const dx = x + (w - dw) * ax, dy = y + (h - dh) * ay;
+  return { im, dx, dy, dw, dh, pt: (u, v) => ({ x: dx + u * dw, y: dy + v * dh }) };
+};
+// 필요할 때만 읽는 그림 (까꿍 물건 o_rock 등): 다 읽혔으면 Image, 아니면 null
+H.lazyImg = name => { let im = BG[name]; if (!im) { im = BG[name] = new Image(); im.src = SHARED + 'pics/' + name + '.webp'; } return im.complete && im.naturalWidth ? im : null; };
+H.drawBg = (ctx, name, x, y, w, h, ax, ay) => {
+  const f = H.bgFit(name, x, y, w, h, ax, ay); if (!f) return null;
+  ctx.drawImage(f.im, f.dx, f.dy, f.dw, f.dh); return f;
+};
 H.drawPic = (ctx, w, h) => {
+  const im = H.picImg(w);
+  if (im) {   // 키 h 상자 안에 맞춤 (가로로 긴 고래는 폭 1.5h 까지), 밑변 가운데가 원점
+    const k = Math.min(h / im.naturalHeight, h * 1.5 / im.naturalWidth), dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+    ctx.drawImage(im, -dw / 2, -dh, dw, dh); return;
+  }
   const f = PICS[w] || PICS['*'];
   const s = h / 2, T = now();
   const ell = (x, y, rx, ry, rot = 0) => { ctx.beginPath(); ctx.ellipse(x, y, Math.max(rx, .01), Math.max(ry, .01), rot, 0, TAU); };
@@ -195,7 +228,9 @@ H.drawSil = (ctx, w, x, yb, h, color) => {
 // ---------- 글자 그리기 ----------
 // 가운데 (x,y)에 단어를 음절별로 그림. hi: 강조할 음절 번호, 'all' 이면 전부 반짝
 H.drawWord = (ctx, w, x, y, size, o = {}) => {
-  const syl = [...w], gap = size * 1.02, x0 = x - (syl.length - 1) * gap / 2;
+  const syl = [...w];
+  if (o.maxW && syl.length * size * 1.02 > o.maxW) size = o.maxW / (syl.length * 1.02);   // 긴 이름은 폭에 맞춰 작게
+  const gap = size * 1.02, x0 = x - (syl.length - 1) * gap / 2;
   ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   syl.forEach((ch, i) => {
     const on = o.hi === 'all' || o.hi === i, sc = on ? 1.25 : 1;
@@ -210,7 +245,8 @@ H.drawWord = (ctx, w, x, y, size, o = {}) => {
 };
 // 이름표(둥근 카드 위 글자)
 H.drawTag = (ctx, w, x, y, size, o = {}) => {
-  const n = [...w].length, wd = n * size * 1.02 + size * .7, ht = size * 1.45;
+  const n = [...w].length; if (n > 4) size *= Math.max(0.5, 4.5 / n);   // 긴 이름표(공룡 이름 등)는 글자를 줄여 옆과 안 겹치게
+  const wd = n * size * 1.02 + size * .7, ht = size * 1.45;
   ctx.save(); ctx.beginPath(); const r = ht / 2; ctx.moveTo(x - wd / 2 + r, y - ht / 2); ctx.arcTo(x + wd / 2, y - ht / 2, x + wd / 2, y + ht / 2, r); ctx.arcTo(x + wd / 2, y + ht / 2, x - wd / 2, y + ht / 2, r); ctx.arcTo(x - wd / 2, y + ht / 2, x - wd / 2, y - ht / 2, r); ctx.arcTo(x - wd / 2, y - ht / 2, x + wd / 2, y - ht / 2, r); ctx.closePath();
   ctx.fillStyle = o.bg || 'rgba(255,255,255,.92)'; ctx.fill(); ctx.lineWidth = Math.max(2, size * .08); ctx.strokeStyle = o.border || '#f0c879'; ctx.stroke(); ctx.restore();
   H.drawWord(ctx, w, x, y + size * .03, size, Object.assign({ outline: 'rgba(0,0,0,0)' }, o));
@@ -220,12 +256,21 @@ H.drawTag = (ctx, w, x, y, size, o = {}) => {
 const muted = () => (window.TK && TK.muted) || !!(document.getElementById('snd') && document.getElementById('snd').classList.contains('off'));
 H.voices = new Map();   // 부모 녹음: 글자 → 재생 주소
 let curAudio = null;
+// 기기 한국어 음성 중 품질 좋은 것을 먼저 (Premium·Enhanced·Neural·Natural·Online·Google 이름) — 없으면 첫 한국어 음성
+H.koVoice = () => {
+  try {
+    const ko = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)); if (!ko.length) return null;
+    const score = v => (/premium|enhanced|neural|natural|online/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 2 : 0) + (/yuna|sunhi|heami/i.test(v.name) ? 1 : 0) - (/compact|novelty|eloquence/i.test(v.name) ? 5 : 0);
+    return ko.sort((a, b) => score(b) - score(a))[0];
+  } catch (e) { return null; }
+};
+H.PITCH = 1.05;   // 예전 1.3: 기계음처럼 들려서 낮춤
 function tts(text, rate = 0.92) {
   try {
     const ss = window.speechSynthesis; if (!ss) return;
     ss.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; }
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = 1.3;
-    const v = ss.getVoices().find(v => /^ko/i.test(v.lang)); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = H.PITCH;
+    const v = H.koVoice(); if (v) u.voice = v;
     ss.speak(u);
   } catch (e) {}
 }

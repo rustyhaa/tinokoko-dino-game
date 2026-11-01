@@ -181,7 +181,32 @@ def write(path, text):
         f.write(text)
 
 
+def build_pics():
+    """art/cut/{w,d,h,f}_이름.png (cut_sheets.py 결과) → shared/pics/이름.webp, 목록을 hangul.js 에 써 넣음."""
+    src, dst = os.path.join(ROOT, 'art', 'cut'), os.path.join(ROOT, 'shared', 'pics')
+    names = []
+    if not os.path.isdir(src):   # 자른 원본(art/cut, git 제외)이 없으면 이미 만든 webp 그대로
+        names = sorted(f[:-5] for f in os.listdir(dst) if f.endswith('.webp') and not f.startswith(('bg_', 'o_'))) if os.path.isdir(dst) else []
+    else:
+        os.makedirs(dst, exist_ok=True)
+        for f in sorted(os.listdir(src)):
+            if f[:2] in ('w_', 'd_', 'h_', 'f_') and f.endswith('.png'):
+                n = f[2:-4]; names.append(n)
+                Image.open(os.path.join(src, f)).save(os.path.join(dst, n + '.webp'), 'WEBP', quality=82, method=6)
+            elif f.startswith(('bg_', 'o_')) and f.endswith('.png'):   # 배경·까꿍 물건: 필요할 때만 읽음 (목록엔 안 넣음)
+                im = Image.open(os.path.join(src, f)); im = im.convert('RGB') if f.startswith('bg_') else im   # 물건은 투명 유지
+                im.save(os.path.join(dst, f[:-4] + '.webp'), 'WEBP', quality=85, method=6)
+    hj = os.path.join(ROOT, 'shared', 'hangul.js')
+    with open(hj, encoding='utf-8') as fh: s = fh.read()
+    a, b = s.index('/*PICS*/'), s.index('/*END*/')
+    s = s[:a] + '/*PICS*/' + json.dumps(names, ensure_ascii=False) + s[b:]
+    write(hj, s)
+    bgs = sorted(f for f in os.listdir(dst) if f.startswith(('bg_', 'o_'))) if os.path.isdir(dst) else []
+    return ['shared/pics/%s.webp' % n for n in names] + ['shared/pics/' + f for f in bgs]
+
+
 def build():
+    pics = build_pics()
     os.makedirs(os.path.join(ROOT, 'shared', 'assets'), exist_ok=True)
     for s in SPRITES:
         shutil.copy2(os.path.join(ROOT, 'assets', s + '.png'), os.path.join(ROOT, 'shared', 'assets', s + '.png'))
@@ -211,7 +236,7 @@ def build():
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
     files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
-    files += ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
+    files += pics + ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in list(GAMES) + STANDALONE:
         files += [name + '/', name + '/index.html', name + '/icons/icon-192.png']
         if name in GAMES: files.append(name + '/game.js')

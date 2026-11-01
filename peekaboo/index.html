@@ -135,8 +135,8 @@ function say(text) {
   try {
     const ss = window.speechSynthesis; if (!ss || muted) return;
     ss.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = 1.5;
-    const v = ss.getVoices().find(v => /^ko/i.test(v.lang)); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = (window.H && H.PITCH) || 1.05;
+    const v = ((window.H && H.koVoice && H.koVoice()) || speechSynthesis.getVoices().find(v => /^ko/i.test(v.lang))); if (v) u.voice = v;
     ss.speak(u);
   } catch (e) {}
 }
@@ -277,6 +277,7 @@ snd.addEventListener('click', () => { muted = !muted; snd.classList.toggle('off'
 // ---------- 그리기: 배경 ----------
 function drawBg() {
   const sc = SCENES[sceneIdx].name, hz = H * 0.42;
+  if (HG.drawBg(ctx, 'bg_pk_' + sc, 0, 0, W, H, 0.5, sc === 'night' ? 1 : 0.6)) return;   // 손그림 배경
   let g;
   if (sc === 'beach') {
     g = ctx.createLinearGradient(0, 0, 0, hz); g.addColorStop(0, '#8fd4ff'); g.addColorStop(1, '#e2f5ff'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
@@ -313,7 +314,11 @@ function drawObj(o) {
   ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(wg);
   // 그림자
   ell(0, 0, s * 0.95, s * 0.14); ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fill();
-  const t = o.type;
+  const t = o.type, art = HG.lazyImg('o_' + t);
+  if (art) {   // 손그림 물건: 폭 약 2s·높이 약 1.6s 안에 맞춰 밑변에 세움 (뒤의 그림을 가릴 만큼)
+    const k = Math.min(s * 2.1 / art.naturalWidth, s * 1.7 / art.naturalHeight), dw = art.naturalWidth * k, dh = art.naturalHeight * k;
+    ctx.drawImage(art, -dw / 2, -dh + s * 0.06, dw, dh); ctx.restore(); return;
+  }
   if (t === 'rock' || t === 'mossrock') {
     ctx.fillStyle = t === 'rock' ? '#9aa3ad' : '#8e9a8a';
     ell(0, -s * 0.5, s * 0.95, s * 0.6); ctx.fill(); ell(-s * 0.45, -s * 0.35, s * 0.55, s * 0.4); ctx.fill(); ell(s * 0.5, -s * 0.3, s * 0.5, s * 0.35); ctx.fill();

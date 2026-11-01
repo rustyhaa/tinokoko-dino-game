@@ -54,6 +54,17 @@
   .tip[hidden]{display:none}
   .tip p{margin:0}
   .tip em{font-style:normal;font-weight:700;color:var(--accent)}
+  details.more{background:none;border:0;padding:0;font-size:inherit}
+  details.more>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--card);border:2px dashed var(--line);border-radius:20px;padding:12px 16px}
+  details.more>summary::-webkit-details-marker{display:none}
+  details.more>summary:hover,details.more>summary:focus-visible{border-color:var(--accent);outline:none}
+  details.more>summary small{color:var(--sub);margin-left:auto}
+  details.more[open]>summary small::before{content:'카드 닫기';}
+  details.more[open]>summary small{font-size:0}
+  details.more[open]>summary small::before{font-size:.86rem}
+  .more-ic{width:44px;height:44px;border-radius:14px;background:var(--chip);border:2px solid var(--line);display:grid;place-items:center;font:800 1.4rem/1 system-ui,sans-serif;color:var(--accent);transition:transform .2s}
+  details.more[open] .more-ic{transform:rotate(45deg)}
+  details.more>ul.games{margin-top:14px}
   details{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 14px;font-size:.92rem}
   summary{font-weight:700;cursor:pointer;min-height:28px}
   details .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
@@ -86,28 +97,34 @@
     <li><a href="../steps/"><img src="../steps/icons/icon-192.png" alt=""><b>공룡 발자국 길</b><small>발자국을 톡! 쿵쿵 글자 길</small></a>
       <button class="help" aria-expanded="false" aria-label="공룡 발자국 길 도움말">?</button>
       <div class="tip" hidden><p><em>노는 법</em> 반짝이는 발자국을 톡 하면 티노와 코코가 번갈아 훌쩍 뛰어 그 글자를 읽어요. 끝까지 가면 고래가 물을 뿜으며 "공, 룡. 공룡!" 하고 단어를 완성해요. 두 아이가 한 번씩 번갈아 누르기 좋아요.</p><p><em>익히는 것</em> 음절 하나하나 → 단어로 잇기, 왼쪽에서 오른쪽으로 읽는 방향.</p><p><em>같이 놀 때</em> 발자국을 하나씩 짚으며 같이 소리 내 주세요. 다 간 뒤 발자국을 누르면 그 글자를 다시 읽어요.</p></div></li>
-    <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>쓱쓱 닦으면 단어가 나와요</small></a>
-      <button class="help" aria-expanded="false" aria-label="글자 목욕 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 벽 타일의 얼룩을 손가락으로 쓱쓱 문지르면 그림과 단어가 드러나며 읽어줘요. 두 장 다 닦으면 샤워.</p><p><em>익히는 것</em> 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 타일을 누르면 다시 읽어줘요.</p></div></li>
-    <li><a href="../rainbow-bubbles/"><img src="../rainbow-bubbles/icons/icon-192.png" alt=""><b>가나다 방울</b><small>방울 속 글자를 톡</small></a>
-      <button class="help" aria-expanded="false" aria-label="가나다 방울 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 방울마다 글자가 들어 있어 톡 터뜨리면 그 소리를 내요. 일곱 개가 다 모이면 무지개 완성. 3단계는 가나다라마바사.</p><p><em>익히는 것</em> 글자 하나하나의 소리.</p><p><em>같이 놀 때</em> 오른쪽 위 톱니에서 '동요'·'색 이름'으로도 바꿀 수 있어요.</p></div></li>
     <li><a href="../band/"><img src="../band/icons/icon-192.png" alt=""><b>가나다 실로폰</b><small>두드리면 글자가 노래해요</small></a>
       <button class="help" aria-expanded="false" aria-label="가나다 실로폰 도움말">?</button>
       <div class="tip" hidden><p><em>노는 법</em> 실로폰 바마다 글자가 있어 치면 그 글자를 소리 내요. 쓸면 차례로. 북·나팔·탬버린도 있고, 친구가 이름표를 달고 와요.</p><p><em>익히는 것</em> 글자 소리, 순서.</p><p><em>같이 놀 때</em> "가, 나, 다" 같이 불러 주세요.</p></div></li>
-    <li><a href="../boat/"><img src="../boat/icons/icon-192.png" alt=""><b>이름표 배</b><small>친구를 끌어 배에 태워요</small></a>
-      <button class="help" aria-expanded="false" aria-label="이름표 배 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 이름표를 단 친구를 배 쪽으로 끌면 자석처럼 앉고 "기역, 게!"처럼 첫소리와 이름을 읽어줘요. 넷이 타면 출발.</p><p><em>익히는 것</em> 첫소리, 동물 이름.</p><p><em>같이 놀 때</em> 두 아이가 한 친구씩 동시에 끌 수 있어요.</p></div></li>
-    <li><a href="../garden/"><img src="../garden/icons/icon-192.png" alt=""><b>글자 정원</b><small>쑥쑥 자라면 이름표가 피어요</small></a>
-      <button class="help" aria-expanded="false" aria-label="글자 정원 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 흙을 톡 누르거나 문지르면 비가 내려 자라고, 다 자라면 "당근" 이름표가 피어나요. 바구니에 단어 카드가 모여요.</p><p><em>익히는 것</em> 채소·꽃 이름, 원인과 결과.</p></div></li>
-    <li><a href="../blow/"><img src="../blow/icons/icon-192.png" alt=""><b>이름 방울</b><small>꾹 누르면 이름이 날아가요</small></a>
-      <button class="help" aria-expanded="false" aria-label="이름 방울 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 화면을 꾹 누르고 있으면 방울이 커지고, 크게 키우면 이름·단어가 타고 날아가요. 톡 치면 읽어줘요.</p><p><em>익히는 것</em> 아이 이름·가족 단어. 아래 '아이 이름'에 넣으면 등장해요.</p></div></li>
-    <li><a href="../"><span class="ic" aria-hidden="true">R</span><b>동시점프 러너</b><small>기존 달리기 게임 · 집 버튼 있음</small></a>
-      <button class="help" aria-expanded="false" aria-label="동시점프 러너 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 달리다가 탭으로 점프해 돌멩이를 넘어요. 실패와 점수가 있는 예전 게임이라 한글·별 시범·잘 시간은 없어요.</p></div></li>
   </ul>
+
+  <details class="more" id="more">
+    <summary><span class="more-ic" aria-hidden="true">+</span><b>다른 게임 6개</b><small>카드 열기</small></summary>
+    <ul class="games">
+      <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>쓱쓱 닦으면 단어가 나와요</small></a>
+        <button class="help" aria-expanded="false" aria-label="글자 목욕 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 벽 타일의 얼룩을 손가락으로 쓱쓱 문지르면 그림과 단어가 드러나며 읽어줘요. 두 장 다 닦으면 샤워.</p><p><em>익히는 것</em> 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 타일을 누르면 다시 읽어줘요.</p></div></li>
+      <li><a href="../rainbow-bubbles/"><img src="../rainbow-bubbles/icons/icon-192.png" alt=""><b>가나다 방울</b><small>방울 속 글자를 톡</small></a>
+        <button class="help" aria-expanded="false" aria-label="가나다 방울 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 방울마다 글자가 들어 있어 톡 터뜨리면 그 소리를 내요. 일곱 개가 다 모이면 무지개 완성. 3단계는 가나다라마바사.</p><p><em>익히는 것</em> 글자 하나하나의 소리.</p><p><em>같이 놀 때</em> 오른쪽 위 톱니에서 '동요'·'색 이름'으로도 바꿀 수 있어요.</p></div></li>
+      <li><a href="../boat/"><img src="../boat/icons/icon-192.png" alt=""><b>이름표 배</b><small>친구를 끌어 배에 태워요</small></a>
+        <button class="help" aria-expanded="false" aria-label="이름표 배 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 이름표를 단 친구를 배 쪽으로 끌면 자석처럼 앉고 "기역, 게!"처럼 첫소리와 이름을 읽어줘요. 넷이 타면 출발.</p><p><em>익히는 것</em> 첫소리, 동물 이름.</p><p><em>같이 놀 때</em> 두 아이가 한 친구씩 동시에 끌 수 있어요.</p></div></li>
+      <li><a href="../garden/"><img src="../garden/icons/icon-192.png" alt=""><b>글자 정원</b><small>쑥쑥 자라면 이름표가 피어요</small></a>
+        <button class="help" aria-expanded="false" aria-label="글자 정원 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 흙을 톡 누르거나 문지르면 비가 내려 자라고, 다 자라면 "당근" 이름표가 피어나요. 바구니에 단어 카드가 모여요.</p><p><em>익히는 것</em> 채소·꽃 이름, 원인과 결과.</p></div></li>
+      <li><a href="../blow/"><img src="../blow/icons/icon-192.png" alt=""><b>이름 방울</b><small>꾹 누르면 이름이 날아가요</small></a>
+        <button class="help" aria-expanded="false" aria-label="이름 방울 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 화면을 꾹 누르고 있으면 방울이 커지고, 크게 키우면 이름·단어가 타고 날아가요. 톡 치면 읽어줘요.</p><p><em>익히는 것</em> 아이 이름·가족 단어. 아래 '아이 이름'에 넣으면 등장해요.</p></div></li>
+      <li><a href="../"><span class="ic" aria-hidden="true">R</span><b>동시점프 러너</b><small>기존 달리기 게임 · 집 버튼 있음</small></a>
+        <button class="help" aria-expanded="false" aria-label="동시점프 러너 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 달리다가 탭으로 점프해 돌멩이를 넘어요. 실패와 점수가 있는 예전 게임이라 한글·별 시범·잘 시간은 없어요.</p></div></li>
+    </ul>
+  </details>
 
   <h2 style="font-size:1.15rem;margin:8px 0 0">부모 설정</h2>
 
@@ -121,7 +138,7 @@
   <div class="panel">
     <b>좋아하는 것</b>
     <div class="seg" id="favSeg"><button data-v="공룡">🦕 공룡</button><button data-v="고래">🐳 고래</button></div>
-    <p class="note">켜 두면 공룡(공룡·티라노)·고래(고래·범고래)가 모든 게임에 더 자주 나와요. 별자리엔 고래·공룡 별자리, 정원엔 공룡알, 목욕탕엔 장난감 고래, 실로폰엔 공룡·고래 친구가 와요.</p>
+    <p class="note">켜 두면 공룡 7종(티라노사우루스·트리케라톱스·스테고사우루스·브라키오사우루스·안킬로사우루스·스피노사우루스·프테라노돈)과 고래 7종(혹등고래·대왕고래·범고래·향유고래·돌고래·벨루가·일각고래)이 모든 게임에 더 자주 나와요. 별자리엔 고래·공룡 별자리, 정원엔 공룡알, 목욕탕엔 장난감 고래, 실로폰엔 공룡·고래 친구가 와요.</p>
   </div>
 
   <div class="panel">
@@ -176,6 +193,10 @@
 <script src="../shared/hangul.js"></script>
 <script>
 // ---------- 도움말 ----------
+// 다른 게임 카드: 열림 상태를 이 기기에 기억
+const more = document.getElementById('more');
+try { if (localStorage.getItem('tk-more') === '1') more.open = true; } catch (e) {}
+more.addEventListener('toggle', () => { try { localStorage.setItem('tk-more', more.open ? '1' : '0'); } catch (e) {} });
 document.querySelectorAll('.help').forEach(b => b.addEventListener('click', () => {
   const tip = b.nextElementSibling, open = b.getAttribute('aria-expanded') !== 'true';
   b.setAttribute('aria-expanded', String(open)); tip.hidden = !open;

@@ -93,9 +93,11 @@ function piece(p, x, y, sc, sil, alive) {
 }
 function drawBg() {
   const W = TK.W, H2 = TK.H, port = W < H2;
-  ctx.fillStyle = '#fff3d6'; ctx.fillRect(0, 0, W, H2);
-  ctx.strokeStyle = 'rgba(214,170,110,.18)'; ctx.lineWidth = 3;
-  for (let y = 20; y < H2; y += 34) { ctx.beginPath(); ctx.moveTo(0, y); ctx.bezierCurveTo(W * 0.3, y + 8, W * 0.6, y - 8, W, y + 4); ctx.stroke(); }
+  if (!H.drawBg(ctx, 'bg_shapes', 0, 0, W, H2, 0.5, 1)) {   // 손그림 놀이방 배경
+    ctx.fillStyle = '#fff3d6'; ctx.fillRect(0, 0, W, H2);
+    ctx.strokeStyle = 'rgba(214,170,110,.18)'; ctx.lineWidth = 3;
+    for (let y = 20; y < H2; y += 34) { ctx.beginPath(); ctx.moveTo(0, y); ctx.bezierCurveTo(W * 0.3, y + 8, W * 0.6, y - 8, W, y + 4); ctx.stroke(); }
+  }
   const b = port ? { x: W * 0.06, y: H2 * 0.09, w: W * 0.88, h: H2 * 0.42 } : { x: W * 0.15, y: H2 * 0.08, w: W * 0.7, h: H2 * 0.46 };
   TK.rr(b.x, b.y, b.w, b.h, 22 * TK.U); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = '#f0c879'; ctx.lineWidth = 8 * TK.U; ctx.stroke();
   const t = port ? { x: W * 0.08, y: H2 * 0.61, w: W * 0.84, h: H2 * 0.35 } : { x: W * 0.18, y: H2 * 0.6, w: W * 0.64, h: H2 * 0.32 };

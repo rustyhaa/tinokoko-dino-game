@@ -122,8 +122,8 @@ TK.say = text => {
   try {
     const ss = window.speechSynthesis; if (!ss || TK.muted) return;
     ss.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = 1.45;
-    const v = ss.getVoices().find(v => /^ko/i.test(v.lang)); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = (window.H && H.PITCH) || 1.05;
+    const v = ((window.H && H.koVoice && H.koVoice()) || speechSynthesis.getVoices().find(v => /^ko/i.test(v.lang))); if (v) u.voice = v;
     ss.speak(u);
   } catch (e) {}
 };

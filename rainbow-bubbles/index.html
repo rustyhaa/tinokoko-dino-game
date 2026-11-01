@@ -181,8 +181,8 @@ function sayColor(c) {
     if (!ss || muted) return;
     ss.cancel();
     const u = new SpeechSynthesisUtterance(COLOR_NAMES[c]);
-    u.lang = 'ko-KR'; u.rate = 0.95; u.pitch = 1.35; u.volume = 1;
-    const v = ss.getVoices().find(v => /^ko/i.test(v.lang));
+    u.lang = 'ko-KR'; u.rate = 0.95; u.pitch = (window.H && H.PITCH) || 1.05; u.volume = 1;
+    const v = ((window.H && H.koVoice && H.koVoice()) || speechSynthesis.getVoices().find(v => /^ko/i.test(v.lang)));
     if (v) u.voice = v;
     ss.speak(u);
   } catch (e) {}
