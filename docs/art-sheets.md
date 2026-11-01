@@ -1,11 +1,11 @@
 # 한 번에 던지는 그림 요청 (격자 시트 방식)
 
-그림 62장을 하나씩 뽑지 않고, **한 장에 16개씩 격자로** 그리게 해서 **4번 + 배경 7번 = 11번**에 끝낸다.
+그림 55장을 하나씩 뽑지 않고 격자로 그리게 해서 **캐릭터 시트 3번 + 배경 시트 2번 = 5번**에 끝낸다.
 받은 시트는 Claude가 칸별로 잘라 배경을 지우고 이름을 붙인다 (`docs/art-prompts.md` 의 파일 이름 그대로).
 
 - 도구: Meta AI(뮤즈 이미지), ChatGPT, Gemini 어느 것이든. 참고 그림 첨부가 되면 `assets/tino_jump_v2.png`·`assets/coco_laugh_v2.png` 를 함께 붙인다.
 - 칸이 합쳐지거나 순서가 틀리거나 글자가 들어간 칸만 나중에 따로 다시 뽑으면 된다.
-- 받은 그림은 대화에 첨부하거나 저장소 `art/` 폴더에 올리기. 파일 이름은 `sheet1.png` … `bg_stars.png` 처럼.
+- 받은 그림은 저장소 `art/sheets/` 에 올리기 (맨 아래 '올리는 곳').
 
 ## 시트 공통 문장 (매 시트 앞에 붙임)
 
@@ -78,22 +78,42 @@ Cells in reading order (left to right, top to bottom):
 16 glowing yellow star with a smiling face
 ```
 
-## 배경 7장 (각각 따로, 가로 16:9 한 장만)
+## 배경 시트 2장 (2×2 격자, 캐릭터 시트처럼 잘라 씀)
 
-세로 화면은 Claude가 가운데를 잘라 쓴다. 그래서 **중요한 것은 가운데, 양옆은 비슷한 풍경이 이어지게** 요청한다.
+한 장에 배경 4칸씩, **2번 요청**으로 7장면을 받는다. 세로 화면은 Claude가 각 칸의 가운데를 잘라 쓴다.
+배경은 칸이 커야 하므로 **도구에서 고를 수 있는 가장 큰 크기(정사각형)** 로 받는다.
+
+### 배경 공통 문장 (매 시트 앞에 붙임)
 
 ```
-Wide 16:9 background scenery, same hand-drawn picture-book colored-pencil style, warm pastel.
-No characters, no animals, no people, no text. Calm simple middle area. The left and right thirds continue the same scenery so the center can be cropped to portrait.
-Scene:
+Draw one square image split into a 2x2 grid of 4 separate wide 16:9 background scenes, with a thick pure white gap between the panels and a white border around the outside. Each panel is its own complete scene; nothing crosses from one panel to another.
+Art style for every panel (match the attached characters if provided): hand-drawn children's picture-book illustration, soft colored-pencil and crayon texture, thin dark brown ink lines, warm pastel colors, gentle paper grain.
+Background scenery only: no characters, no animals, no people, no text, no letters, no numbers, no labels.
+In each panel keep the middle calm, simple and low-contrast (game objects go on top), and let the left and right sides continue the same scenery.
+Panels in reading order (top-left, top-right, bottom-left, bottom-right):
 ```
 
-| 파일 | 장면 (Scene: 뒤에 붙임) |
-|---|---|
-| `bg_stars.png` | calm night sky deep navy to indigo, tiny stars, crescent moon upper right, dark teal grassy hill along the bottom |
-| `bg_steps.png` | sunny beach, light blue sky with clouds, soft green hills far away, wide empty warm sand in the middle and bottom, calm sea on the right |
-| `bg_band.png` | cozy small stage, purple curtains both sides, warm spotlights, wooden floor at the bottom, empty |
-| `bg_shapes.png` | cozy playroom front view, cream wall, wooden table top filling the lower third, sunny window |
-| `bg_pk_beach.png` | bright beach, sand in the lower half, sea and sky above |
-| `bg_pk_forest.png` | sunny forest meadow, grass in the lower half, trees far back |
-| `bg_pk_night.png` | quiet night meadow, big soft moon, dark blue sky, grass in the lower half |
+### 배경 시트 A (`bgsheet1.png`)
+
+```
+1 calm night sky from deep navy to soft indigo, a few tiny stars, crescent moon in the upper right, gentle dark teal grassy hill along the bottom
+2 sunny beach, light blue sky with a few clouds, soft green hills far away, wide empty warm sand across the middle and bottom (no footprints), calm sea on the right side
+3 cozy small theater stage, purple curtains on both sides, warm spotlights, wooden stage floor along the bottom, empty stage
+4 cozy playroom front view, cream wall, soft wooden table top filling the lower third, a sunny window
+```
+
+### 배경 시트 B (`bgsheet2.png`)
+
+```
+1 bright beach, sand in the lower half, calm sea and sky above, open empty space on the sand
+2 sunny forest meadow, soft grass in the lower half, trees far in the back
+3 quiet night meadow, big soft moon, dark blue sky, grass in the lower half
+4 leave this panel completely empty pure white
+```
+
+칸 순서 → 파일: A1 `bg_stars` · A2 `bg_steps` · A3 `bg_band` · A4 `bg_shapes` · B1 `bg_pk_beach` · B2 `bg_pk_forest` · B3 `bg_pk_night`
+
+## 올리는 곳
+
+저장소 `art/sheets/` 에 `sheet1.png`~`sheet3.png`, `bgsheet1.png`, `bgsheet2.png` 로 올린다 (브랜치 `claude/tinokoko-games-pack`).
+자르기는 `python3 common/cut_sheets.py` (Claude가 실행) → `art/cut/` 에 칸별 파일.
