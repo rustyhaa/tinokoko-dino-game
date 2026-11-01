@@ -233,6 +233,8 @@ function play(key) {
   const url = H.voices.get(key); if (!url) return false;
   try { if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) curAudio.pause(); curAudio = new Audio(url); curAudio.play().catch(() => {}); return true; } catch (e) { return false; }
 }
+// 하던 말 멈추기 (화면이 가려질 때 frame.js 가 부름)
+H.hush = () => { try { if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
 H.say = (text, key) => { if (muted()) return; if (!play(key || text)) tts(text); };
 // 단어 읽기: "나, 비. 나비!" (부모 녹음이 있으면 그 목소리로 단어만)
 H.reading = null;
