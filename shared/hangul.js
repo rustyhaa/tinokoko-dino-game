@@ -261,35 +261,42 @@ let curAudio = null;
 // 기기 한국어 음성 고르기: 기기 안에 있는 음성(localService)을 먼저 — 인터넷이 필요한 음성은 오프라인이면 소리가 안 남.
 //  그다음 품질 좋은 이름(Premium·Enhanced·Neural). 하나도 없으면 null (lang 만 ko-KR 로 말하게 둠)
 H.koVoice = () => {
+  if (H._voice) return H._voice;   // 한 번 고르면 끝까지 같은 목소리 (중간에 바뀌면 억양이 달라짐)
   try {
     const ko = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)); if (!ko.length) return null;
     const score = v => (v.localService ? 10 : (navigator.onLine === false ? -20 : 0)) + (/premium|enhanced|neural/i.test(v.name) ? 3 : 0) + (/yuna|sunhi|heami/i.test(v.name) ? 1 : 0) - (/compact|novelty|eloquence/i.test(v.name) ? 5 : 0);
-    return ko.slice().sort((a, b) => score(b) - score(a))[0];
+    return (H._voice = ko.slice().sort((a, b) => score(b) - score(a))[0]);
   } catch (e) { return null; }
 };
-H.PITCH = 1.05;   // 예전 1.3: 기계음처럼 들려서 낮춤
+// 목소리 목록은 늦게 오는 기기가 있어 미리 불러 둠 (첫 말부터 같은 목소리로)
+try { if (window.speechSynthesis) { speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', () => H.koVoice()); } } catch (e) {}
+// 억양을 고르게: 모든 말을 같은 빠르기·높이로, 느낌표·물음표 없이 마침표로 차분하게 끝냄
+H.RATE = 0.9; H.PITCH = 1.0;
+const calm = t => { t = String(t || '').replace(/[!?~]+/g, '.').replace(/\s*,\s*/g, ', ').trim(); return /[.]$/.test(t) ? t : t + '.'; };
 // 기기마다 소리가 안 나는 경우를 막는 말하기 (모든 게임·틀이 이것을 씀)
 //  · 늘 바로 말함 (아이폰은 손가락을 뗀 그 순간에 말해야 허락함 — 늦추면 무시됨)
 //  · 하던 말을 끊은 직후라 무시됐으면(시작 신호 없음) 0.12초 뒤 한 번 더 (cancel 직후 speak 를 버리는 브라우저)
 //  · 말 객체를 붙잡아 둠 (중간에 지워져 말이 끊기는 크롬 버그), 멈춰 있으면 resume
+//  · parts 가 여럿이면 하나씩 따로 이어 말함 (글자마다 같은 억양) — onStart(i) 로 몇 번째를 말하는지 알려 줌
 let speakT = 0;
-H.speak = (text, rate = 0.92, pitch = H.PITCH) => {
+H.speakSeq = (parts, onStart) => {
   try {
-    const ss = window.speechSynthesis; if (!ss || !text) return;
+    const ss = window.speechSynthesis; if (!ss || !parts.length) return;
     if (curAudio) { curAudio.pause(); curAudio = null; }
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = pitch;
-    const v = H.koVoice(); if (v) u.voice = v;
+    const v = H.koVoice();
+    const us = parts.map((t, i) => { const u = new SpeechSynthesisUtterance(calm(t)); u.lang = 'ko-KR'; u.rate = H.RATE; u.pitch = H.PITCH; if (v) u.voice = v; u.onstart = () => { if (i === 0) started = true; if (onStart) onStart(i); }; return u; });
     let started = false;
-    H._u = u; u.onstart = () => { started = true; }; u.onend = u.onerror = () => { if (H._u === u) H._u = null; };
+    H._u = us; us[us.length - 1].onend = us[us.length - 1].onerror = () => { if (H._u === us) H._u = null; if (onStart) onStart(-1); };
     clearTimeout(speakT);
-    const go = () => { try { if (ss.paused) ss.resume(); ss.speak(u); } catch (e) {} };
+    const go = () => { try { if (ss.paused) ss.resume(); us.forEach(u => ss.speak(u)); } catch (e) {} };
     const busy = ss.speaking || ss.pending;
     if (busy) ss.cancel();
     go();
-    if (busy) speakT = setTimeout(() => { if (!started && H._u === u && !ss.speaking && !ss.pending) go(); }, 120);
+    if (busy) speakT = setTimeout(() => { if (!started && H._u === us && !ss.speaking && !ss.pending) go(); }, 120);
   } catch (e) {}
 };
-function tts(text, rate = 0.92) { H.speak(text, rate); }
+H.speak = text => H.speakSeq([text]);   // 빠르기·높이는 늘 같음 (예전 rate 인자는 무시)
+function tts(text) { H.speak(text); }
 // 부모 녹음 재생. 브라우저가 재생을 막으면(자동 재생 제한 등) 기기 음성으로 대신 말함
 function play(key, fallback) {
   const url = H.voices.get(key); if (!url) return false;
@@ -310,33 +317,35 @@ H.speaking = () => !!(curAudio && !curAudio.paused && !curAudio.ended) || !!(win
 // 하던 말 멈추기 (화면이 가려질 때 frame.js 가 부름)
 H.hush = () => { try { clearTimeout(speakT); if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
 H.say = (text, key) => { if (muted()) return; if (!play(key || text, () => tts(text))) tts(text); };
-// 단어 읽기: "나, 비. 나비!" (부모 녹음이 있으면 그 목소리로 단어만)
+// 단어 읽기: "나." "비." "나비." — 글자마다 따로, 같은 억양으로 (부모 녹음이 있으면 그 목소리로 단어만)
 H.reading = null;
 H.read = (w, pre = '') => {
   const syl = [...w];
-  H.reading = { w, t0: now(), n: syl.length };
+  const r = H.reading = { w, t0: now(), n: syl.length, idx: null, end: 0 };
   H.log('w', w);
   if (muted()) return;
-  const line = pre + (syl.length > 1 ? syl.join(', ') + '. ' + w + '!' : w + '!');
-  if (play(w, () => tts(line, 0.85))) return;
-  tts(line, 0.85);
+  const parts = (pre ? [pre] : []).concat(syl.length > 1 ? syl : [], [w]), off = pre ? 1 : 0;
+  const seq = () => H.speakSeq(parts, i => { if (H.reading !== r) return; if (i < 0) { r.idx = 'all'; r.end = now() + 1.0; } else if (i >= off) { const k = i - off; r.idx = syl.length > 1 && k < syl.length ? k : 'all'; } });   // 글자 차례면 그 글자, 단어 차례면 전부
+  if (play(w, seq)) return;
+  seq();
 };
-// 지금 강조할 음절 (게임이 그릴 때 물어봄)
+// 지금 강조할 음절 (게임이 그릴 때 물어봄): 말하는 글자에 맞춰. 음성 신호가 없으면 시간으로 짐작
 H.hi = w => {
   const r = H.reading; if (!r || r.w !== w) return -1;
-  const t = now() - r.t0, per = 0.55;
+  if (r.idx !== null) return r.end && now() > r.end ? -1 : r.idx;
+  const t = now() - r.t0, per = 0.6;
   if (t < r.n * per) return Math.floor(t / per);
   if (t < r.n * per + 1.4) return 'all';
   return -1;
 };
-// 자음 읽기: "기역! 고래의 기역"
+// 자음 읽기: "기역." "고래." — 자음 이름 다음 그 자음으로 시작하는 단어
 H.readJamo = j => {
   H.log('j', j); if (muted()) return;
-  const ex = H.example(j).w, line = H.JAMO_NAME[j] + '! ' + (ex ? ex + '의 ' + H.JAMO_NAME[j] : '');
-  if (play(j, () => tts(line, 0.9))) return;
-  tts(line, 0.9);
+  const ex = H.example(j).w, parts = [H.JAMO_NAME[j]].concat(ex ? [ex] : []);
+  if (play(j, () => H.speakSeq(parts))) return;
+  H.speakSeq(parts);
 };
-H.saySyl = s => { H.log('s', s); if (!muted() && !play(s, () => tts(s, 0.9))) tts(s, 0.9); };
+H.saySyl = s => { H.log('s', s); if (!muted() && !play(s, () => tts(s))) tts(s); };
 
 // ---------- 부모 녹음 (IndexedDB, 이 기기에만) ----------
 let dbp = null;
