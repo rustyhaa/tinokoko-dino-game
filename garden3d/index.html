@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>티노코코 글자 정원 3D</title>
+<meta name="theme-color" content="#bfe6fb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="한글 놀이터">
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#bfe6fb;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #c{display:none}
+</style>
+<script>
+// 3D(WebGL)가 안 되는 기기는 기존 2D 정원으로
+(function () { try { var c = document.createElement('canvas'); if (!(c.getContext('webgl2') || c.getContext('webgl'))) throw 0; } catch (e) { location.replace('../garden/'); } })();
+</script>
+<script type="importmap">{"imports":{"three":"../shared/vendor/three/three.module.min.js","three/addons/":"../shared/vendor/three/addons/"}}</script>
+</head>
+<body>
+<canvas id="c" width="1" height="1"></canvas>
+<script src="../shared/tk.js"></script>
+<script src="../shared/hangul.js"></script>
+<script src="../shared/music.js"></script>
+<script type="module" src="game.js"></script>
+<script src="../shared/frame.js"></script>
+</body>
+</html>

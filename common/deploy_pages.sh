@@ -6,7 +6,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-PATHS=(index.html sw.js shared games common docs bath boat shapes stars garden band blow rainbow-bubbles peekaboo steps)
+# 배포할 경로: 공통 파일 + build_games.py 의 게임 목록(GAMES·STANDALONE·THREE_D)에서 자동으로 (새 게임 폴더를 빠뜨리지 않게)
+GAME_DIRS=$(python3 -c "import sys; sys.path.insert(0,'common'); import build_games as b; print(' '.join(list(b.GAMES) + b.STANDALONE + b.THREE_D))")
+PATHS=(index.html sw.js shared games common docs $GAME_DIRS)
 
 python3 common/build_games.py
 if [ -n "$(git status --porcelain -- "${PATHS[@]}")" ]; then
