@@ -1,8 +1,13 @@
 # 핸드오프: 티노코코 한글 놀이터 — 다음 단계(docs/next-plan.md) 진행
 
-## 다음 한 걸음
-B-1 따라 긋기·B-4 공룡 발자국 길·업데이트 알림까지 끝나고 gh-pages 배포됨(2026-11-01). 사용자는 테스트 작업(C-1)은 건너뛰라고 함.
-다음 후보: B-2 녹음 마법사(이제 음절 녹음도 필요 — 발자국 길이 `H.saySyl` 로 음절을 읽음), B-6 이번 주 리포트, B-3 쌍둥이 나란히. 실기기 점검(A)은 여전히 미확인.
+## 다음 한 걸음 (2026-11-07 갱신)
+사용자 지시: "외부 연결·도움 없이 할 수 있는 개선을 다 찾아 진행, 모든 권한" + 테스트는 짧게(열림·오류만), 끝나면 커밋·푸시·배포까지 한 번에 (`bash common/deploy_pages.sh`).
+- 방금 끝: **글자 정원 3D** (`garden3d/`, three.js) 배포·실사이트 확인 완료. 다음 후보(같은 방식, 코드만):
+  1. 실로폰 3D (`band3d/`) — 개선판 렌더 `docs/three-review/proto/band2.html` 을 실제 게임으로
+  2. 공룡 발자국 길 3D (`steps3d/`) — 예시 `proto/steps.html`
+  3. 3D 정원 다듬기: 수확 때 열매가 바구니로 날아가기, 잔치 때 티노·코코 춤, 구름이 비 뿌릴 때 물웅덩이
+- 사용자 결정 대기: 음성 갈아엎기(대본 방식 `docs/voice-script.md` / Google 키) — **보류**. AI 3D 모델(티노·코코) — 미정.
+- 하지 말 것: '후~ 불기'(내 이름 방울 마이크) **삭제 금지** — 사용자가 유지하라고 함(기본 꺼짐).
 
 ## 작업 위치
 - 저장소: `rustyhaa/tinokoko-dino-game`, 클론 `/home/user/tinokoko-dino-game` (새 세션이면 `git clone` 후 `git checkout claude/tinokoko-games-pack`)
@@ -12,6 +17,9 @@ B-1 따라 긋기·B-4 공룡 발자국 길·업데이트 알림까지 끝나고
 - 백업(건드리지 말 것): `backup/playground-20261101`(한글 전 코드 9ea35fc), `backup/gh-pages-20261101`(한글 전 배포 c052520)
 
 ## 끝난 것 (Playwright Chromium으로 확인, 콘솔 오류 0)
+- 2026-11-07: 메인 5개+숨김 카드, 손그림 그림 48·배경 7·까꿍 물건 14(`art/sheets` → `common/cut_sheets.py` → `shared/pics`), 공룡 7·고래 7종,
+  음성 통일(H.speakSeq: 같은 목소리·빠르기 0.9·높이 1.0, 글자마다 따로 읽기), 짝꿍 손 뗄 때 읽기(H.readOnRelease), 코드 배경음악(`shared/music.js`),
+  첫소리 배(boat), 내 이름 방울(blow, 마이크 '후~'는 부모 설정에서만), 글자 정원 3D(garden3d), 배포 스크립트 `common/deploy_pages.sh`(게임 목록 자동)
 - 9개 게임 한글 전환 + 부모 설정(아이 이름·단계①②③·이번 주 글자·녹음·기기 음성 시험·오늘 본 글자·잘 시간) — `tests/play.js`, `hangul_test.js`
 - 공룡·고래 반영(좋아하는 것 설정, 별자리·공룡알·장난감 고래·실로폰 친구, 단어 3배) — `tests/fav_test.js`
 - 집 버튼 톡 한 번(러너 포함), 별 시범, 잘 시간, 놀이터 앱 하나+오프라인 — `frame_test.js`, `home_test.js`
