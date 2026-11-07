@@ -57,7 +57,7 @@ function tick() {
   // 소리 크기: 기본 아주 작게, 글자 읽는 중엔 더 작게, 꺼야 할 때 0
   const off = !M.enabled() || muted() || window.__paused || document.hidden;
   const talking = window.H && H.speaking && H.speaking();
-  out.gain.setTargetAtTime(off ? 0 : talking ? 0.13 : 0.4, ac.currentTime, talking ? 0.08 : 0.4);   // 효과음의 약 1/3, 읽는 동안 그 1/3
+  out.gain.setTargetAtTime(off ? 0 : talking ? 0.35 : 1, ac.currentTime, talking ? 0.08 : 0.4);   // 효과음과 비슷한 크기, 읽는 동안 1/3
   if (off || ac.state !== 'running') { nextT = 0; return; }
   const S = STYLES[style], e = 60 / S.bpm / 2;   // 8분음표 길이
   if (!nextT || nextT < ac.currentTime - 0.5) nextT = ac.currentTime + 0.1;

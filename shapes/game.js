@@ -29,9 +29,10 @@ function newSet() {
   pieces.forEach(p => { p.x = p.hx; p.y = p.hy; });
 }
 function readPiece(p) { if (mode === 'jamo') H.readJamo(p.key); else H.read(p.key); }
-function snap(p) {
+function snap(p, dragging) {
   p.st = 'fly'; p.t = 0; p.fx = p.x; p.fy = p.y; p.ptr = null;
-  sfx.ting(TK.pick([1046.5, 1174.7, 1318.5, 1568])); readPiece(p);
+  sfx.ting(TK.pick([1046.5, 1174.7, 1318.5, 1568]));
+  if (dragging) H.readOnRelease(() => readPiece(p)); else readPiece(p);   // 끌던 중이면 손을 뗄 때 읽음 (아이폰 등은 그때만 소리 허락)
   const tw = slots[p.slot].x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0;
 }
 const pieceAt = (x, y) => pieces.filter(p => p.st === 'home' && TK.dist(x, y, p.x, p.y) < S * 1.25).sort((a, b) => TK.dist(x, y, a.x, a.y) - TK.dist(x, y, b.x, b.y))[0];
@@ -51,7 +52,7 @@ TK.input({
   move(p) {
     const q = pieces.find(q => q.st === 'drag' && q.ptr === p.id); if (!q) return;
     q.x = p.x + q.ox; q.y = p.y + q.oy;
-    if (nearOwn(q, 1.0)) snap(q);   // 제 그림자 가까이 오면 자석처럼 딱
+    if (nearOwn(q, 1.0)) snap(q, true);   // 제 그림자 가까이 오면 자석처럼 딱
   },
   up(p) {
     const q = pieces.find(q => q.st === 'drag' && q.ptr === p.id); if (!q) return;

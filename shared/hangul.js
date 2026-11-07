@@ -269,8 +269,8 @@ H.koVoice = () => {
 };
 H.PITCH = 1.05;   // 예전 1.3: 기계음처럼 들려서 낮춤
 // 기기마다 소리가 안 나는 경우를 막는 말하기 (모든 게임·틀이 이것을 씀)
-//  · 말하는 중이면 끊고 0.08초 뒤에 말함 (cancel 바로 뒤 speak 가 조용히 무시되는 브라우저가 있음)
-//  · 조용할 땐 바로 말함 (아이폰은 손가락을 뗀 그 순간에 말해야 허락하는 경우가 있음)
+//  · 늘 바로 말함 (아이폰은 손가락을 뗀 그 순간에 말해야 허락함 — 늦추면 무시됨)
+//  · 하던 말을 끊은 직후라 무시됐으면(시작 신호 없음) 0.12초 뒤 한 번 더 (cancel 직후 speak 를 버리는 브라우저)
 //  · 말 객체를 붙잡아 둠 (중간에 지워져 말이 끊기는 크롬 버그), 멈춰 있으면 resume
 let speakT = 0;
 H.speak = (text, rate = 0.92, pitch = H.PITCH) => {
@@ -279,10 +279,14 @@ H.speak = (text, rate = 0.92, pitch = H.PITCH) => {
     if (curAudio) { curAudio.pause(); curAudio = null; }
     const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = pitch;
     const v = H.koVoice(); if (v) u.voice = v;
-    H._u = u; u.onend = u.onerror = () => { if (H._u === u) H._u = null; };
+    let started = false;
+    H._u = u; u.onstart = () => { started = true; }; u.onend = u.onerror = () => { if (H._u === u) H._u = null; };
     clearTimeout(speakT);
     const go = () => { try { if (ss.paused) ss.resume(); ss.speak(u); } catch (e) {} };
-    if (ss.speaking || ss.pending) { ss.cancel(); speakT = setTimeout(go, 80); } else go();
+    const busy = ss.speaking || ss.pending;
+    if (busy) ss.cancel();
+    go();
+    if (busy) speakT = setTimeout(() => { if (!started && H._u === u && !ss.speaking && !ss.pending) go(); }, 120);
   } catch (e) {}
 };
 function tts(text, rate = 0.92) { H.speak(text, rate); }
@@ -296,6 +300,12 @@ function play(key, fallback) {
     return true;
   } catch (e) { return false; }
 }
+// 손가락을 움직이는 도중(끌기)에 읽어야 할 때: 손가락을 떼는 순간 읽음 (그때만 음성을 허락하는 기기가 있음)
+//  1.2초 안에 손을 안 떼면 그냥 읽음
+let pendingRead = null, pendingT = 0;
+H.readOnRelease = fn => { pendingRead = fn; clearTimeout(pendingT); pendingT = setTimeout(flushRead, 1200); };
+function flushRead() { clearTimeout(pendingT); const f = pendingRead; pendingRead = null; if (f) try { f(); } catch (e) {} }
+['pointerup', 'touchend', 'mouseup', 'keyup'].forEach(ev => addEventListener(ev, flushRead, { passive: true }));
 H.speaking = () => !!(curAudio && !curAudio.paused && !curAudio.ended) || !!(window.speechSynthesis && speechSynthesis.speaking);   // 배경음악 줄이기용
 // 하던 말 멈추기 (화면이 가려질 때 frame.js 가 부름)
 H.hush = () => { try { clearTimeout(speakT); if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
