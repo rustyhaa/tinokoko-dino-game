@@ -29,6 +29,6 @@ B-1 따라 긋기·B-4 공룡 발자국 길·업데이트 알림까지 끝나고
 - 게임 약속: `window.__demo()`(별 시범 내용), `window.__g.actions()`(자동 테스트용 다음 입력), `window.__paused`(잘 시간·나갈 때 멈춤).
 - 게임 파일 안의 `H` 는 화면 높이인 곳이 있어 한글 모듈은 `HG = window.H` 로 씀(boat·garden·blow·band·rainbow·peekaboo).
 - 사용자 규칙: 스프라이트 원본 PNG 수정 금지(사본만), 실패·점수·수집 금지, 아이 화면 안내 글자 금지. 커밋 끝에 Co-Authored-By/Claude-Session 줄.
-- 게임 파일 한 줄짜리 블록 중간에 `//` 주석을 끼우면 뒤가 통째로 주석이 됨 → `/* */` 사용 (steps 에서 한 번 깨짐).
+- **규칙(같은 실수 2회)**: 한 줄짜리 코드 중간에 `//` 주석을 넣지 말 것 — 뒤가 통째로 주석이 되어 문법 오류. 줄 중간 설명은 `/* */`. (steps, garden3d 에서 깨짐) 수정 뒤엔 `node --check`(모듈은 .mjs 로 복사) 로 확인.
 - 헛다리: frame.js 경로를 `../` 고정으로 했다가 루트 러너에서 깨짐 → `document.currentScript.src` 기준으로 바꿈. 무지개 줄 끝 글자는 너무 작아 무지개 위 일곱 칸 줄로 옮김. `pkill -f http.server` 는 실행 중인 셸까지 죽이니 `pgrep -f "^python3 -m http.server"` 로 골라 kill.
 - 이 세션 GitHub Pages 설정 API는 막혀 있음(사용자가 직접 설정 완료함).

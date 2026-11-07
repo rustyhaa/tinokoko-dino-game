@@ -30,6 +30,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
+THREE_D = ['garden3d']   # three.js 로 만든 3D 판 (index.html·game.js 직접 작성, shared/vendor/three 사용)
 
 HTML = """<!doctype html>
 <html lang="ko">
@@ -246,6 +247,12 @@ def build():
     files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += pics + ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
+    for name in THREE_D:
+        files += [name + '/', name + '/index.html', name + '/game.js']
+    vend = os.path.join(ROOT, 'shared', 'vendor', 'three')
+    for dp, dn, fn in os.walk(vend):
+        for f in sorted(fn):
+            if f.endswith('.js'): files.append(os.path.relpath(os.path.join(dp, f), ROOT).replace(os.sep, '/'))
     for name in list(GAMES) + STANDALONE:
         files += [name + '/', name + '/index.html', name + '/icons/icon-192.png']
         if name in GAMES: files.append(name + '/game.js')
