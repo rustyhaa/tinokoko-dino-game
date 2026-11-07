@@ -101,7 +101,7 @@ if (CFG.home) document.body.appendChild(home);
 
 // ---------- 소리 (틀 자체용: 인사·자장가·잠깐 효과) ----------
 let fa = null;
-function faudio() { if (!fa) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; fa = new C(); } if (fa.state === 'suspended') fa.resume(); return fa; }
+function faudio() { if (!fa) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; fa = new C(); } if (fa.state !== 'running' && fa.state !== 'closed') fa.resume(); return fa; }
 function ftone(f, delay, dur, vol, type = 'sine') {
   if (!fa || isMuted()) return;
   const t = fa.currentTime + delay, o = fa.createOscillator(), gn = fa.createGain();
@@ -110,6 +110,7 @@ function ftone(f, delay, dur, vol, type = 'sine') {
 }
 function say(text) {
   try {
+    if (window.H && H.speak) { if (!isMuted()) H.speak(text, 1.0); return; }   // 공통 말하기 (기기별 무음 대비)
     const ss = window.speechSynthesis; if (!ss || isMuted()) return;
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = (window.H && H.PITCH) || 1.05;

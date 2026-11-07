@@ -171,6 +171,12 @@
     <div id="todayList" class="row"></div>
   </details>
 
+  <div class="panel" role="group" aria-labelledby="musicTitle">
+    <b id="musicTitle">배경음악</b>
+    <div class="seg" id="musicSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
+    <span class="note">별자리·발자국 길·짝꿍·까꿍에서 아주 작게 흘러요. 글자를 읽을 땐 더 작아져요. 실로폰은 아이가 연주하니 음악 없음.</span>
+  </div>
+
   <div class="panel" role="group" aria-labelledby="sleepTitle">
     <b id="sleepTitle">잘 시간</b>
     <div class="seg" id="sleepSeg">
@@ -193,6 +199,11 @@
 <script src="../shared/hangul.js"></script>
 <script>
 // ---------- 도움말 ----------
+// 배경음악 켬/끔 (music.js 가 tk-music 을 읽음)
+const musicSeg = document.getElementById('musicSeg');
+function renderMusic() { let v = '1'; try { v = localStorage.getItem('tk-music') === '0' ? '0' : '1'; } catch (e) {} musicSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); }
+musicSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; try { localStorage.setItem('tk-music', b.dataset.v); } catch (err) {} renderMusic(); });
+renderMusic();
 // 다른 게임 카드: 열림 상태를 이 기기에 기억
 const more = document.getElementById('more');
 try { if (localStorage.getItem('tk-more') === '1') more.open = true; } catch (e) {}

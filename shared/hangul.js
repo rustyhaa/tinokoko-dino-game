@@ -15,6 +15,8 @@ const SHARED = new URL('.', SRC).href;
 const TAU = Math.PI * 2;
 H.FONT = '"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Gothic",sans-serif';
 const now = () => performance.now() / 1000;
+// 아이폰 무음 스위치가 켜져 있어도 효과음(WebAudio)이 나오게: 미디어 재생으로 분류 (Safari 16.4+, 없으면 무시)
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
 
 // ---------- 부모 설정 ----------
 // stage 1: 듣고 보기 / 2: + 자음 모양 (기본) / 3: + 가나다
@@ -256,31 +258,48 @@ H.drawTag = (ctx, w, x, y, size, o = {}) => {
 const muted = () => (window.TK && TK.muted) || !!(document.getElementById('snd') && document.getElementById('snd').classList.contains('off'));
 H.voices = new Map();   // 부모 녹음: 글자 → 재생 주소
 let curAudio = null;
-// 기기 한국어 음성 중 품질 좋은 것을 먼저 (Premium·Enhanced·Neural·Natural·Online·Google 이름) — 없으면 첫 한국어 음성
+// 기기 한국어 음성 고르기: 기기 안에 있는 음성(localService)을 먼저 — 인터넷이 필요한 음성은 오프라인이면 소리가 안 남.
+//  그다음 품질 좋은 이름(Premium·Enhanced·Neural). 하나도 없으면 null (lang 만 ko-KR 로 말하게 둠)
 H.koVoice = () => {
   try {
     const ko = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)); if (!ko.length) return null;
-    const score = v => (/premium|enhanced|neural|natural|online/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 2 : 0) + (/yuna|sunhi|heami/i.test(v.name) ? 1 : 0) - (/compact|novelty|eloquence/i.test(v.name) ? 5 : 0);
-    return ko.sort((a, b) => score(b) - score(a))[0];
+    const score = v => (v.localService ? 10 : (navigator.onLine === false ? -20 : 0)) + (/premium|enhanced|neural/i.test(v.name) ? 3 : 0) + (/yuna|sunhi|heami/i.test(v.name) ? 1 : 0) - (/compact|novelty|eloquence/i.test(v.name) ? 5 : 0);
+    return ko.slice().sort((a, b) => score(b) - score(a))[0];
   } catch (e) { return null; }
 };
 H.PITCH = 1.05;   // 예전 1.3: 기계음처럼 들려서 낮춤
-function tts(text, rate = 0.92) {
+// 기기마다 소리가 안 나는 경우를 막는 말하기 (모든 게임·틀이 이것을 씀)
+//  · 말하는 중이면 끊고 0.08초 뒤에 말함 (cancel 바로 뒤 speak 가 조용히 무시되는 브라우저가 있음)
+//  · 조용할 땐 바로 말함 (아이폰은 손가락을 뗀 그 순간에 말해야 허락하는 경우가 있음)
+//  · 말 객체를 붙잡아 둠 (중간에 지워져 말이 끊기는 크롬 버그), 멈춰 있으면 resume
+let speakT = 0;
+H.speak = (text, rate = 0.92, pitch = H.PITCH) => {
   try {
-    const ss = window.speechSynthesis; if (!ss) return;
-    ss.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; }
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = H.PITCH;
+    const ss = window.speechSynthesis; if (!ss || !text) return;
+    if (curAudio) { curAudio.pause(); curAudio = null; }
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = rate; u.pitch = pitch;
     const v = H.koVoice(); if (v) u.voice = v;
-    ss.speak(u);
+    H._u = u; u.onend = u.onerror = () => { if (H._u === u) H._u = null; };
+    clearTimeout(speakT);
+    const go = () => { try { if (ss.paused) ss.resume(); ss.speak(u); } catch (e) {} };
+    if (ss.speaking || ss.pending) { ss.cancel(); speakT = setTimeout(go, 80); } else go();
   } catch (e) {}
-}
-function play(key) {
+};
+function tts(text, rate = 0.92) { H.speak(text, rate); }
+// 부모 녹음 재생. 브라우저가 재생을 막으면(자동 재생 제한 등) 기기 음성으로 대신 말함
+function play(key, fallback) {
   const url = H.voices.get(key); if (!url) return false;
-  try { if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) curAudio.pause(); curAudio = new Audio(url); curAudio.play().catch(() => {}); return true; } catch (e) { return false; }
+  try {
+    if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) curAudio.pause();
+    const a = curAudio = new Audio(url);
+    const pr = a.play(); if (pr && pr.catch) pr.catch(() => { if (curAudio === a) curAudio = null; if (fallback) fallback(); });
+    return true;
+  } catch (e) { return false; }
 }
+H.speaking = () => !!(curAudio && !curAudio.paused && !curAudio.ended) || !!(window.speechSynthesis && speechSynthesis.speaking);   // 배경음악 줄이기용
 // 하던 말 멈추기 (화면이 가려질 때 frame.js 가 부름)
-H.hush = () => { try { if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
-H.say = (text, key) => { if (muted()) return; if (!play(key || text)) tts(text); };
+H.hush = () => { try { clearTimeout(speakT); if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
+H.say = (text, key) => { if (muted()) return; if (!play(key || text, () => tts(text))) tts(text); };
 // 단어 읽기: "나, 비. 나비!" (부모 녹음이 있으면 그 목소리로 단어만)
 H.reading = null;
 H.read = (w, pre = '') => {
@@ -288,8 +307,9 @@ H.read = (w, pre = '') => {
   H.reading = { w, t0: now(), n: syl.length };
   H.log('w', w);
   if (muted()) return;
-  if (play(w)) return;
-  tts(pre + (syl.length > 1 ? syl.join(', ') + '. ' + w + '!' : w + '!'), 0.85);
+  const line = pre + (syl.length > 1 ? syl.join(', ') + '. ' + w + '!' : w + '!');
+  if (play(w, () => tts(line, 0.85))) return;
+  tts(line, 0.85);
 };
 // 지금 강조할 음절 (게임이 그릴 때 물어봄)
 H.hi = w => {
@@ -302,11 +322,11 @@ H.hi = w => {
 // 자음 읽기: "기역! 고래의 기역"
 H.readJamo = j => {
   H.log('j', j); if (muted()) return;
-  if (play(j)) return;
-  const ex = H.example(j).w;
-  tts(H.JAMO_NAME[j] + '! ' + (ex ? ex + '의 ' + H.JAMO_NAME[j] : ''), 0.9);
+  const ex = H.example(j).w, line = H.JAMO_NAME[j] + '! ' + (ex ? ex + '의 ' + H.JAMO_NAME[j] : '');
+  if (play(j, () => tts(line, 0.9))) return;
+  tts(line, 0.9);
 };
-H.saySyl = s => { H.log('s', s); if (!muted() && !play(s)) tts(s, 0.9); };
+H.saySyl = s => { H.log('s', s); if (!muted() && !play(s, () => tts(s, 0.9))) tts(s, 0.9); };
 
 // ---------- 부모 녹음 (IndexedDB, 이 기기에만) ----------
 let dbp = null;

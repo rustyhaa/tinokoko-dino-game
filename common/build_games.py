@@ -54,6 +54,7 @@ HTML = """<!doctype html>
 <canvas id="c"></canvas>
 <script src="../shared/tk.js"></script>
 <script src="../shared/hangul.js"></script>
+<script src="../shared/music.js"></script>
 <script src="game.js"></script>
 <script src="../shared/frame.js"></script>
 </body>
@@ -234,7 +235,7 @@ def build():
                      {'src': '../shared/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
     write(os.path.join(ROOT, 'games', 'manifest.webmanifest'), json.dumps(man, ensure_ascii=False, indent=2) + '\n')
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
-    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js']
+    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += pics + ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in list(GAMES) + STANDALONE:
