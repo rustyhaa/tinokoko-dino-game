@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#000}</style></head><body><script type="module">
+import { THREE, setup, sprite, label, round, done } from './common.js';
+const { r, scene, cam } = setup('#8fd4ff', '#e6f7ff');
+cam.position.set(0, 4.6, 13); cam.lookAt(0, 0.9, 0);
+// 바다 (물결)
+const sg = new THREE.PlaneGeometry(40, 30, 160, 120); const pa = sg.attributes.position;
+for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i); pa.setZ(i, Math.sin(x * 0.9) * 0.08 + Math.cos(y * 1.3 + x * 0.4) * 0.06); } sg.computeVertexNormals();
+const sea = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: 0x45b3ea, roughness: 0.25, metalness: 0.05 })); sea.rotation.x = -Math.PI / 2; sea.receiveShadow = true; scene.add(sea);
+// 해·섬
+const sun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffe37a })); sun.position.set(-7, 7, -12); scene.add(sun);
+const isl = new THREE.Mesh(new THREE.SphereGeometry(3.2, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf3d79a, roughness: 0.95 })); isl.scale.set(1.3, 0.28, 1); isl.position.set(-6.2, -0.05, 0.5); isl.receiveShadow = true; scene.add(isl);
+// 배
+const boat = new THREE.Group();
+const hs = new THREE.Shape(); hs.moveTo(-2.4, 0.9); hs.lineTo(2.6, 0.9); hs.quadraticCurveTo(2.3, 0, 1.6, -0.1); hs.lineTo(-1.8, -0.1); hs.quadraticCurveTo(-2.3, 0.2, -2.4, 0.9);
+const hull = new THREE.Mesh(new THREE.ExtrudeGeometry(hs, { depth: 1.6, bevelEnabled: true, bevelSize: 0.12, bevelThickness: 0.12, bevelSegments: 6 }), new THREE.MeshStandardMaterial({ color: 0xe9644f, roughness: 0.5 })); hull.geometry.translate(0, 0, -0.8); hull.castShadow = true; boat.add(hull);
+const stripe = new THREE.Mesh(new THREE.BoxGeometry(4.9, 0.12, 1.86), new THREE.MeshStandardMaterial({ color: 0xffffff })); stripe.position.set(0.1, 0.62, 0); boat.add(stripe);
+const deck = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.08, 1.5), new THREE.MeshStandardMaterial({ color: 0xc8925a, roughness: 0.8 })); deck.position.set(0.1, 0.9, 0); deck.receiveShadow = true; boat.add(deck);
+const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.6, 16), new THREE.MeshStandardMaterial({ color: 0x8a5a33 })); mast.position.set(0.3, 2.7, -0.3); mast.castShadow = true; boat.add(mast);
+const ss = new THREE.Shape(); ss.moveTo(0, 0); ss.lineTo(0, 3.0); ss.quadraticCurveTo(1.0, 1.4, 1.9, 0.1); ss.lineTo(0, 0);
+const sail = new THREE.Mesh(new THREE.ShapeGeometry(ss, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.7 })); sail.position.set(0.4, 1.2, -0.3); sail.castShadow = true; boat.add(sail);
+const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.35), new THREE.MeshStandardMaterial({ color: 0xffd23a, side: THREE.DoubleSide })); flag.position.set(0.62, 4.35, -0.3); boat.add(flag);
+boat.position.set(1.0, -0.15, 0); boat.rotation.y = -0.18; scene.add(boat);
+// 배에 탄 친구들 + 이름표
+for (const [w, x] of [['토끼', -1.2], ['개구리', 1.5]]) { const s = await sprite('shared/pics/' + w + '.webp', 1.2); s.position.set(x, 0.95, 0.25); boat.add(s); const l = label(w, 0.45); l.position.set(x, 2.45, 0.3); boat.add(l); }
+// 아직 안 탄 친구 (끌어다 태우기)
+const duck = await sprite('shared/pics/오리.webp', 1.1); duck.position.set(-5.4, 0.85, 1.4); scene.add(duck);
+const dl = label('오리', 0.45, { hi: 0 }); dl.position.set(-5.4, 2.25, 1.45); scene.add(dl);
+const wh = await sprite('shared/pics/혹등고래.webp', 1.3); wh.position.set(5.0, -0.25, 2.2); scene.add(wh);
+const wl = label('혹등고래', 0.42); wl.position.set(5.0, 1.35, 2.25); scene.add(wl);
+const tino = await sprite('shared/assets/tino_jump_v2.png', 1.9); tino.position.set(-7.3, 0.7, 0.4); scene.add(tino);
+r.render(scene, cam); done();
+</script></body></html>

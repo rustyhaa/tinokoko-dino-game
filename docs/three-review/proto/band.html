@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#000}</style></head><body><script type="module">
+import { THREE, setup, sprite, label, round, done } from './common.js';
+const { r, scene, cam } = setup('#3a1d52', '#6b3384');
+cam.position.set(0, 6.2, 8.6); cam.lookAt(0, 0.9, 0.2);
+// 손그림 무대 배경 + 나무 바닥
+new THREE.TextureLoader().load('shared/pics/bg_band.webp', t => { t.colorSpace = THREE.SRGBColorSpace; const bg = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshBasicMaterial({ map: t })); bg.position.set(0, 5.5, -5); scene.add(bg); });
+const wood = (() => { const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d'); for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#b9824f' : '#a8743f'; g.fillRect(0, i * 64, 512, 64); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, i * 64, 512, 3); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: wood, roughness: 0.7 })); floor.rotation.x = -Math.PI / 2; floor.position.z = 2; floor.receiveShadow = true; scene.add(floor);
+// 실로폰: 받침 + 무지개 건반 + 글자
+const xy = new THREE.Group(); const cols = [0xff5a5f, 0xff9f43, 0xffd632, 0x4cd264, 0x3aa7ff, 0x7a6cf0];
+for (const z of [-0.9, 0.9]) { const rail = round(7.4, 0.35, 0.3, 0.1, 0x6b4426, { rough: 0.7 }); rail.rotation.x = -Math.PI / 2; rail.position.set(0, 0.25, z * (1 - 0)); xy.add(rail); }
+['가', '나', '다', '라', '마', '바'].forEach((ch, i) => {
+  const x = -3.0 + i * 1.2, len = 2.9 - i * 0.22;
+  const bar = round(0.95, len, 0.22, 0.12, cols[i], { rough: 0.3, mat: { clearcoat: 1 } }); bar.rotation.x = -Math.PI / 2; bar.position.set(x, 0.62 + (i === 2 ? -0.08 : 0), 0); xy.add(bar);
+  for (const z of [-len / 2 + 0.3, len / 2 - 0.3]) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 12), new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.6, roughness: 0.3 })); pin.position.set(x, 0.86, z); xy.add(pin); }
+  const l = label(ch, 0.62, { bg: 'rgba(255,255,255,0)', border: 'rgba(0,0,0,0)', color: '#ffffff' }); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.88 + (i === 2 ? -0.08 : 0), 0.35); xy.add(l);
+});
+xy.position.set(0, 0, 1.4); scene.add(xy);
+// 채 2개 (하나는 '다'를 치는 중)
+const mallet = (x, z, rot) => { const g = new THREE.Group(); const st = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0xd8b07a })); st.position.y = 1.1; g.add(st); const hd = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe94b6b, roughness: 0.4 })); g.add(hd); g.traverse(o => o.castShadow = true); g.position.set(x, 1.05, z); g.rotation.set(rot[0], 0, rot[1]); scene.add(g); };
+mallet(-0.6, 1.4, [0.5, 0.5]); mallet(3.6, 2.6, [0.9, -0.3]);
+// 친 건반에서 반짝 + 음표 느낌
+for (let k = 0; k < 14; k++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.06 + Math.random() * 0.08), new THREE.MeshBasicMaterial({ color: 0xfff3a0 })); const a = Math.random() * 6.28; s.position.set(-0.6 + Math.cos(a) * (0.3 + Math.random() * 0.8), 1.3 + Math.random() * 1.2, 1.4 + Math.sin(a) * 0.5); scene.add(s); }
+const big = label('다', 0.9, { color: '#ff6b3d' }); big.position.set(-0.6, 3.1, 1.2); scene.add(big);
+// 티노·코코가 무대 뒤에서 춤
+const tino = await sprite('shared/assets/tino_jump_v2.png', 2.6); tino.position.set(-3.6, 0, -1.6); scene.add(tino);
+const coco = await sprite('shared/assets/coco_laugh_v2.png', 2.6); coco.position.set(3.6, 0, -1.6); scene.add(coco);
+r.render(scene, cam); done();
+</script></body></html>

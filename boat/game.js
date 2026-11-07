@@ -1,12 +1,13 @@
-// 티노코코 배 태우기 — 끌어다 놓기 하나로 노는 놀이
-//  모래밭의 친구 넷을 손가락으로 끌어 티노·코코의 배에 태운다. 배 근처까지만 끌어와도 자석처럼 쏙 앉는다.
-//  엉뚱한 데 놓으면 친구가 제자리로 폴짝 돌아갈 뿐. 넷이 다 타면 뱃고동 뿌우 → 출항 → 빈 배로 돌아와 새 친구들.
-//  여러 손가락 동시 끌기 OK (두 아이가 각자 한 친구씩).
+// 티노코코 첫소리 배 — 톡(또는 끌기) 하나로 노는 놀이
+//  배 돛과 뱃머리에 자음 하나(예: ㄱ). 그 자음으로 시작하는 친구(고래·거미·기차…)를 톡 하거나 끌어 오면
+//  폴짝 배에 앉고 "기역. 고래." 하고 읽는다. 다른 소리 친구는 손을 흔들며 모래밭에서 '다음 배'를 기다린다(실패 없음).
+//  맞는 친구가 다 타면 뱃고동 → 출항 → 다음 배는 기다리던 친구의 첫소리로 돌아온다.
+//  1단계(듣고 보기)는 자음 없이 누구나 탄다. 여러 손가락 동시 OK (두 아이가 각자 한 친구씩).
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
 const HG = window.H;   // 한글 모듈 (이 파일 안의 H 는 화면 높이)
 const SETS = [['crab', 'bunny', 'chick', 'frog'], ['starfish', 'owl', 'butterfly', 'jelly'], ['fish', 'skystar', 'bunny', 'chick'], ['frog', 'crab', 'owl', 'butterfly']];
-let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastSeat = 0;
+let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastSeat = 0, jamo = null, waiting = [];
 let boat = {}, friends = [], twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }], boatX = 0;
 
 function layout() {
@@ -20,10 +21,32 @@ function layout() {
 }
 const seatPos = i => ({ x: boatX + boat.w * (-0.21 + i * 0.14), y: boat.deck + boat.h * 0.12 + bobY() });
 const bobY = () => Math.sin(TK.T * 1.6) * boat.h * 0.06;
+// 이번 배의 자음과 친구 넷 고르기: 그 자음 친구 2~3 + 다른 소리 친구(기다리던 친구 먼저)
 function newSet() {
-  friends = HG.pick(4, { cat: 'animal', pic: true }).map(o => ({ kind: o.w, st: 'appear', t: 0, x: 0, y: 0, hx: 0, hy: 0, seat: -1, wig: 0, ptr: null }));
+  const pool = HG.words().filter(o => o.cat !== 'name' && HG.hasPic(o.w) && [...o.w].length <= 5);
+  const by = j => pool.filter(o => o.cho === j);
+  let kinds;
+  if (HG.cfg().stage <= 1) { jamo = null; kinds = HG.pick(4, { cat: 'animal', pic: true }).map(o => o.w); }
+  else {
+    const set = HG.jamoSet().filter(j => by(j).length >= 2);
+    const wj = waiting.map(w => HG.cho(w)).find(j => set.includes(j));
+    jamo = wj || TK.pick(set.length ? set : ['ㄱ']);
+    const fav = HG.favWords();
+    const match = TK.shuffle(by(jamo).map(o => o.w)).sort((a, b) => fav.includes(b) - fav.includes(a));
+    const keep = waiting.filter(w => HG.cho(w) === jamo).concat(match.filter(w => !waiting.includes(w)));
+    const yes = keep.slice(0, rounds % 2 ? 3 : 2);
+    const others = waiting.filter(w => HG.cho(w) !== jamo).concat(TK.shuffle(pool.filter(o => o.cho !== jamo && !waiting.includes(o.w)).map(o => o.w)));
+    kinds = TK.shuffle(yes.concat(others.slice(0, 4 - yes.length)));
+  }
+  friends = kinds.map(w => ({ kind: w, st: 'appear', t: 0, x: 0, y: 0, hx: 0, hy: 0, seat: -1, wig: 0, ptr: null }));
   layout();
   friends.forEach(f => { f.x = f.hx; f.y = f.hy; TK.spark(f.hx, f.hy - boat.fh * 0.5, [255, 255, 255], 6, 0.6); });
+}
+const fits = f => !jamo || HG.cho(f.kind) === jamo;   // 이 배에 탈 친구인가
+const need = () => friends.filter(fits);
+function wave(f) {   // 다른 소리 친구: 제자리에서 손 흔들며 이름만 (다음 배를 기다림)
+  f.wig = 0.7; f.st = f.st === 'drag' ? 'back' : f.st; if (f.st === 'back') { f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; }
+  TK.tone(660, 0, 0.12, 'sine', 0.08); HG.read(f.kind);
 }
 const inBoatZone = (x, y) => Math.abs(x - boatX) < boat.w * 0.5 && y > boat.deck - boat.th * 1.1 && y < boat.deck + boat.h * 1.2;
 function seat(f) {
@@ -31,8 +54,8 @@ function seat(f) {
   const free = [0, 1, 2, 3].filter(i => !used.includes(i)).sort((a, b) => Math.abs(seatPos(a).x - f.x) - Math.abs(seatPos(b).x - f.x));
   f.seat = free[0]; f.st = 'fly'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; lastSeat = TK.T;
   sfx.boing(); TK.tone(TK.pick([784, 880, 988]), 0.15, 0.15, 'triangle', 0.12, 1200);
-  // 탈 때 이름을 읽어줌. 2단계 이상이면 첫소리를 먼저 "기역, 게!"
-  HG.read(f.kind, HG.cfg().stage >= 2 ? HG.JAMO_NAME[HG.cho(f.kind)] + ', ' : '');
+  // 탈 때 읽어줌: 자음 배면 "기역." "고래." (1단계는 이름만)
+  HG.read(f.kind, jamo ? HG.JAMO_NAME[jamo] : '');
   const tw = seatPos(f.seat).x < boatX ? twins[0] : twins[1]; tw.hop = 0;
 }
 function sendHome(f) { f.st = 'back'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; sfx.soft(); }
@@ -42,7 +65,7 @@ TK.input({
   down(p) {
     if (phase !== 'play') return;
     const f = friendAt(p.x, p.y);
-    if (f && f.st === 'home') { f.st = 'drag'; f.ptr = p.id; f.ox = f.x - p.x; f.oy = f.y - p.y; f.wig = 0.3; sfx.rustle(); return; }
+    if (f && f.st === 'home') { f.st = 'drag'; f.ptr = p.id; f.ox = f.x - p.x; f.oy = f.y - p.y; f.wig = 0.3; f.px = p.x; f.py = p.y; sfx.rustle(); return; }
     if (f && f.st === 'seated') { f.wig = 0.5; TK.tone(TK.pick([784, 880, 988]), 0, 0.15, 'triangle', 0.12, 1200); HG.read(f.kind); return; }
     const tw = twins.find(t => Math.abs(p.x - t.x) < boat.th * 0.3 && p.y > t.yb - boat.th && p.y < t.yb);
     if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - boat.th * 1.05); HG.read(tw.kind === 'tino' ? '티노' : '코코'); return; }
@@ -51,13 +74,14 @@ TK.input({
   move(p) {
     const f = friends.find(f => f.st === 'drag' && f.ptr === p.id); if (!f) return;
     f.x = p.x + f.ox; f.y = p.y + f.oy;
-    if (inBoatZone(f.x, f.y - boat.fh * 0.4)) seat(f);   // 배 근처면 자석처럼 쏙
+    if (inBoatZone(f.x, f.y - boat.fh * 0.4)) { if (fits(f)) seat(f); else wave(f); }   // 배 근처면 자석처럼 쏙 (다른 소리 친구는 손 흔들고 돌아감)
   },
   up(p) {
     const f = friends.find(f => f.st === 'drag' && f.ptr === p.id); if (!f) return;
-    if (inBoatZone(f.x, f.y - boat.fh * 0.4)) seat(f); else sendHome(f);
+    const tap = TK.dist(p.x, p.y, f.px, f.py) < 18;   // 톡: 거의 안 움직였으면 태우기(맞는 친구) / 손 흔들기(다른 친구)
+    if (tap || inBoatZone(f.x, f.y - boat.fh * 0.4)) { if (fits(f)) seat(f); else wave(f); } else sendHome(f);
   },
-  key() { const f = friends.find(f => f.st === 'home'); if (f && phase === 'play') seat(f); },
+  key() { const f = friends.find(f => f.st === 'home' && fits(f)); if (f && phase === 'play') seat(f); },
 });
 
 function update(dt) {
@@ -75,12 +99,12 @@ function update(dt) {
     }
     if (f.st === 'seated') { const s = seatPos(f.seat); f.x = s.x; f.y = s.y; }
   });
-  if (phase === 'play' && friends.length && friends.every(f => f.st === 'seated')) { phase = 'party'; phaseT = 0; sfx.horn(); TK.say('출발!'); twins.forEach(t => t.hop = 0); }
+  if (phase === 'play' && friends.length && need().every(f => f.st === 'seated')) { waiting = friends.filter(f => !fits(f)).map(f => f.kind); phase = 'party'; phaseT = 0; sfx.horn(); TK.say('출발!'); twins.forEach(t => t.hop = 0); }
   if (phase === 'party') {
     TK.confetti(dt);
     if (phaseT > 1.0) boatX += boat.w * 0.9 * dt * Math.min(1, (phaseT - 1) * 1.5);
     if (Math.random() < dt * 10) TK.ring(boatX - boat.w * 0.5, boat.deck + boat.h * 0.9, 6 * TK.U, [255, 255, 255], 60);
-    if (boatX - boat.w * 0.6 > TK.W) { phase = 'return'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; friends = []; boatX = -boat.w * 0.6; }
+    if (boatX - boat.w * 0.6 > TK.W) { phase = 'return'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; friends = friends.filter(f => !fits(f)); boatX = -boat.w * 0.6; }
   }
   if (phase === 'return') {
     boatX = Math.min(boat.x0, boatX + boat.w * 1.0 * dt);
@@ -107,6 +131,7 @@ function drawBoatBack() {
   ctx.beginPath(); ctx.moveTo(x + w * 0.016, d - w * 0.6); ctx.quadraticCurveTo(x + w * 0.2 + flap, d - w * 0.35, x + w * 0.016, d - w * 0.12); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill();
   ctx.beginPath(); ctx.moveTo(x - w * 0.016, d - w * 0.55); ctx.quadraticCurveTo(x - w * 0.15 - flap, d - w * 0.33, x - w * 0.016, d - w * 0.14); ctx.closePath(); ctx.fillStyle = '#ffe9a8'; ctx.fill();
   ctx.beginPath(); ctx.moveTo(x, d - w * 0.62); ctx.lineTo(x + w * 0.09, d - w * 0.6 + flap); ctx.lineTo(x, d - w * 0.57); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+  if (jamo) HG.drawJamo(ctx, jamo, x + w * 0.075 + flap * 0.5, d - w * 0.37, w * 0.11, '#e9644f', 0.18);   // 돛의 자음
 }
 function drawHull() {
   const x = boatX, d = boat.deck + bobY(), w = boat.w, h = boat.h;
@@ -115,7 +140,12 @@ function drawHull() {
   ctx.quadraticCurveTo(x - w * 0.44, d + h, x - w * 0.5, d); ctx.closePath();
   ctx.fillStyle = '#e9644f'; ctx.fill();
   ctx.fillStyle = '#ffffff'; ctx.fillRect(x - w * 0.47, d + h * 0.18, w * 0.94, h * 0.14);
-  for (let k = 0; k < 5; k++) { ell(x - w * 0.28 + k * w * 0.14, d + h * 0.58, h * 0.13, h * 0.13); ctx.fillStyle = '#ffe9a8'; ctx.fill(); ctx.strokeStyle = '#b8412f'; ctx.lineWidth = 2; ctx.stroke(); }
+  for (let k = 0; k < 5; k++) { if (jamo && k === 2) continue; ell(x - w * 0.28 + k * w * 0.14, d + h * 0.58, h * 0.13, h * 0.13); ctx.fillStyle = '#ffe9a8'; ctx.fill(); ctx.strokeStyle = '#b8412f'; ctx.lineWidth = 2; ctx.stroke(); }
+  if (jamo) {   // 뱃머리 자음 표지 (크게)
+    const r = h * 0.48, pulse = 1 + 0.05 * Math.sin(TK.T * 4);
+    ell(x, d + h * 0.5, r * pulse, r * pulse); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = '#f0c879'; ctx.lineWidth = Math.max(3, h * 0.06); ctx.stroke();
+    HG.drawJamo(ctx, jamo, x, d + h * 0.5, r * 1.3, '#e9644f', 0.17);
+  }
   ctx.fillStyle = 'rgba(255,255,255,.5)';
   for (let k = 0; k < 3; k++) { ell(x - w * 0.4 + k * w * 0.4 + Math.sin(TK.T * 2 + k) * 4, d + h * 1.02, w * 0.12, h * 0.1); ctx.fill(); }
 }
@@ -144,10 +174,10 @@ function drawFriendAt(f) {
 }
 
 window.__g = {
-  get phase() { return phase; }, get rounds() { return rounds; },
+  get phase() { return phase; }, get rounds() { return rounds; }, get jamo() { return jamo; }, get friends() { return friends.map(f => f.kind + ':' + f.st); },
   actions() {   // 자동 확인용: 아직 모래밭에 있는 친구 하나를 배로 끄는 경로
     if (phase !== 'play') return [];
-    const f = friends.find(f => f.st === 'home'); if (!f) return [];
+    const f = friends.find(f => f.st === 'home' && fits(f)); if (!f) return [];
     const pts = [], to = { x: boatX, y: boat.deck - boat.fh * 0.2 };
     for (let k = 0; k <= 14; k++) pts.push({ x: TK.lerp(f.x, to.x, k / 14), y: TK.lerp(f.y - boat.fh * 0.5, to.y, k / 14) });
     return [{ type: 'path', pts, wait: 450 }];
@@ -156,8 +186,8 @@ window.__g = {
 // 별 시범: 모래밭 친구 하나를 배까지 끌고 가기
 window.__demo = () => {
   if (phase !== 'play') return null;
-  const f = friends.find(f => f.st === 'home'); if (!f) return null;
-  return { kind: 'path', pts: [{ x: f.x, y: f.y - boat.fh * 0.5 }, { x: TK.lerp(f.x, boatX, 0.5), y: Math.min(f.y, boat.deck) - boat.fh * 1.6 }, { x: boatX, y: boat.deck - boat.fh * 0.3 }], say: '배에 태워 줘!' };
+  const f = friends.find(f => f.st === 'home' && fits(f)); if (!f) return null;
+  return { kind: 'path', pts: [{ x: f.x, y: f.y - boat.fh * 0.5 }, { x: TK.lerp(f.x, boatX, 0.5), y: Math.min(f.y, boat.deck) - boat.fh * 1.6 }, { x: boatX, y: boat.deck - boat.fh * 0.3 }], say: jamo ? HG.JAMO_NAME[jamo] + ' 친구를 배에 태워 줘' : '배에 태워 줘' };
 };
 TK.start({ resize: layout, init() { layout(); boatX = boat.x0; newSet(); }, update, draw });
 })();

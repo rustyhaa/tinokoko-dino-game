@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#000}</style></head><body><script type="module">
+import { THREE, setup, sprite, label, round, done } from './common.js';
+const { r, scene, cam } = setup('#cfeefe', '#f2fbff');
+cam.position.set(0, 4.6, 9.6); cam.lookAt(0, 2.3, 0);
+// 타일 벽·바닥
+const tile = (c1, c2, n) => { const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); g.fillStyle = c2; g.fillRect(0, 0, 512, 512); g.fillStyle = c1; const s = 512 / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) g.fillRect(i * s + 3, j * s + 3, s - 6, s - 6); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; };
+const wt = tile('#e3f4fd', '#c9e5f3', 8); wt.repeat.set(3, 1.6);
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), new THREE.MeshStandardMaterial({ map: wt, roughness: 0.35 })); wall.position.set(0, 4, -2.2); wall.receiveShadow = true; scene.add(wall);
+const ft = tile('#f7efe2', '#e6d9c4', 8); ft.repeat.set(4, 2);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.6 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+// 벽 그림 타일 2장 (하나는 거품에 덮여 있음 → 문지르면 나옴)
+for (const w of ['나비', '고래']) {
+  const x = w === '나비' ? -2.3 : 2.3, card = round(2.0, 2.0, 0.08, 0.18, 0xffffff); card.position.set(x, 4.1, -2.12); scene.add(card);
+  const p = await sprite('shared/pics/' + w + '.webp', 1.45); p.position.set(x, 3.35, -1.86); scene.add(p);
+  const l = label(w, 0.5); l.position.set(x, 2.78, -1.84); scene.add(l);
+  if (w === '고래') for (let k = 0; k < 26; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.18 + Math.random() * 0.22, 20, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 })); const a = Math.random() * 6.28, rr = Math.random() * 0.75; b.position.set(x + 0.1 + Math.cos(a) * rr, 4.1 + Math.sin(a) * rr * 0.9, -1.7 + Math.random() * 0.1); b.castShadow = true; scene.add(b); }
+}
+// 욕조
+const tub = round(6.2, 1.3, 2.6, 0.45, 0xffffff, { rough: 0.25 }); tub.position.set(0, 0.75, 0.4); scene.add(tub);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 2.2), new THREE.MeshPhysicalMaterial({ color: 0x8fd6ff, roughness: 0.1, transmission: 0.2, transparent: true, opacity: 0.92, clearcoat: 1 })); water.rotation.x = -Math.PI / 2; water.position.set(0, 1.52, 0.4); scene.add(water);
+// 티노·코코가 욕조 안에서
+const tino = await sprite('shared/assets/tino_jump_v2.png', 2.4); tino.position.set(-1.5, 0.75, 0.0); scene.add(tino);
+const coco = await sprite('shared/assets/coco_laugh_v2.png', 2.4); coco.position.set(1.5, 0.75, 0.0); scene.add(coco);
+// 앞쪽 욕조 벽이 몸을 가리도록 한 번 더 (물 위로 상체만)
+
+// 거품
+for (let k = 0; k < 45; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.25, 20, 16), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.15, clearcoat: 1, transparent: true, opacity: 0.95 })); b.position.set(-2.8 + Math.random() * 5.6, 1.55 + Math.random() * 0.2, 0.2 + Math.random() * 1.4); b.castShadow = true; scene.add(b); }
+for (let k = 0; k < 9; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 32, 24), new THREE.MeshPhysicalMaterial({ color: 0xcfefff, roughness: 0, transmission: 0.9, thickness: 0.2, iridescence: 1, transparent: true, opacity: 0.6 })); b.position.set(-3 + Math.random() * 6, 2.8 + Math.random() * 2.2, 0.5 + Math.random()); scene.add(b); }
+// 고무 오리
+const duck = new THREE.Group(), yel = new THREE.MeshStandardMaterial({ color: 0xffd23a, roughness: 0.35 });
+const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), yel); body.scale.set(1.25, 0.8, 1); duck.add(body);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 24), yel); head.position.set(0.32, 0.42, 0); duck.add(head);
+const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.25, 16), new THREE.MeshStandardMaterial({ color: 0xff8a2a })); beak.rotation.z = -Math.PI / 2; beak.position.set(0.62, 0.38, 0); duck.add(beak);
+for (const z of [-0.12, 0.12]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 8), new THREE.MeshStandardMaterial({ color: 0x222222 })); e.position.set(0.5, 0.5, z); duck.add(e); }
+duck.traverse(o => o.castShadow = true); duck.position.set(0.1, 1.75, 1.1); duck.rotation.y = -0.5; scene.add(duck);
+r.render(scene, cam); done();
+</script></body></html>
