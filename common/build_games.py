@@ -21,12 +21,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITES = ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2']
 GAMES = {   # 엔진(tk.js)으로 만든 게임
     'bath':   ('티노코코 글자 목욕',   '#d8f1ff'),
-    'boat':   ('티노코코 이름표 배',   '#9fdcff'),
+    'boat':   ('티노코코 첫소리 배',   '#9fdcff'),
     'shapes': ('티노코코 자음 짝꿍',   '#fff3d6'),
     'stars':  ('티노코코 글자 별자리', '#1c2656'),
     'garden': ('티노코코 글자 정원',   '#bfe9ff'),
     'band':   ('티노코코 가나다 실로폰', '#5a2a6e'),
-    'blow':   ('티노코코 이름 방울',   '#a8e0ff'),
+    'blow':   ('티노코코 내 이름 방울', '#a8e0ff'),
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
