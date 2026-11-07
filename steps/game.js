@@ -195,5 +195,6 @@ window.__demo = () => {
   if (phase !== 'play' || next >= prints.length) return null;
   const p = prints[next]; return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 발자국을 톡!' };
 };
+if (window.TKMusic) TKMusic.play('beach');   // 잔잔한 배경음악 (music.js)
 TK.start({ resize() { if (word) { place(); twins.forEach(t => { if (t.jump < 0) { const p = pos(t.at); t.x = p.x; t.y = p.y; } }); } }, init() { newRound(); }, update, draw });
 })();

@@ -78,7 +78,7 @@ TK.audio = () => {
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
     ac = new C(); master = ac.createGain(); master.gain.value = TK.muted ? 0 : 0.6; master.connect(ac.destination);
   }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state !== 'running' && ac.state !== 'closed') ac.resume();   // 아이폰 'interrupted'(전화·다른 앱 뒤) 포함
   return ac;
 };
 TK.audioState = () => ac ? ac.state : 'none';
@@ -120,6 +120,7 @@ TK.sfx = {
 };
 TK.say = text => {
   try {
+    if (window.H && H.speak) { if (!TK.muted) H.speak(text, 1.0); return; }   // 공통 말하기 (기기별 무음 대비)
     const ss = window.speechSynthesis; if (!ss || TK.muted) return;
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = (window.H && H.PITCH) || 1.05;

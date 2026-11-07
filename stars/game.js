@@ -189,5 +189,6 @@ window.__demo = () => {
   if (phase !== 'play' || done >= N()) return null;
   const p = P(done); return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 별을 톡!' };
 };
+if (window.TKMusic) TKMusic.play('night');   // 잔잔한 배경음악 (music.js)
 TK.start({ resize: layout, init() { layout(); newJamo(); lastTap = TK.T; }, update, draw });
 })();

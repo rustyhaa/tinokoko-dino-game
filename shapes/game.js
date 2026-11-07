@@ -148,5 +148,6 @@ window.__demo = () => {
   const s = slots[p.slot];
   return { kind: 'path', pts: [{ x: p.x, y: p.y }, { x: s.x, y: s.y }], say: '같은 모양에 쏙!' };
 };
+if (window.TKMusic) TKMusic.play('play');   // 잔잔한 배경음악 (music.js)
 TK.start({ resize: layout, init() { newSet(); }, update, draw });
 })();

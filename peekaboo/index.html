@@ -34,6 +34,8 @@
   </svg>
 </button>
 <script src="../shared/hangul.js"></script>
+<script src="../shared/music.js"></script>
+<script>window.TKMusic && TKMusic.play('play');</script>
 <script>
 (() => {
 'use strict';
@@ -98,7 +100,7 @@ function audio() {
     if (!C) return null;
     ac = new C(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(ac.destination);
   }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state !== 'running' && ac.state !== 'closed') ac.resume();   // 아이폰 'interrupted'(전화·다른 앱 뒤) 포함
   return ac;
 }
 function tone(f, delay = 0, dur = 0.3, type = 'sine', vol = 0.3, f2 = 0) {
@@ -133,6 +135,7 @@ function sFanfare() {
 }
 function say(text) {
   try {
+    if (window.H && H.speak) { if (!muted) H.speak(text, 1.0); return; }   // 공통 말하기 (기기별 무음 대비)
     const ss = window.speechSynthesis; if (!ss || muted) return;
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.0; u.pitch = (window.H && H.PITCH) || 1.05;

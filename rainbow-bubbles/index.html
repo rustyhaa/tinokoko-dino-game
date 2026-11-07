@@ -130,7 +130,7 @@ function audio() {
     master.gain.value = muted ? 0 : 0.6;
     master.connect(ac.destination);
   }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state !== 'running' && ac.state !== 'closed') ac.resume();
   return ac;
 }
 function tone(f, delay = 0, dur = 0.35, type = 'sine', vol = 0.3, f2 = 0) {
@@ -177,6 +177,7 @@ function nextNote() {
 const COLOR_NAMES = ['빨강', '주황', '노랑', '초록', '파랑', '남색', '보라'];
 function sayColor(c) {
   try {
+    if (window.H && H.speak) { if (!muted) H.speak(COLOR_NAMES[c], 0.95); return; }   // 공통 말하기 (기기별 무음 대비)
     const ss = window.speechSynthesis;
     if (!ss || muted) return;
     ss.cancel();
