@@ -30,6 +30,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
+THREE_D = ['garden3d']   # three.js 로 만든 3D 판 (index.html·game.js 직접 작성, shared/vendor/three 사용)
 
 HTML = """<!doctype html>
 <html lang="ko">
@@ -182,6 +183,11 @@ def write(path, text):
         f.write(text)
 
 
+def fresh(src, out):
+    """이미 만든 webp 가 원본보다 새로우면 다시 만들지 않음 (다시 인코딩하면 바이트가 달라져 배포 확인이 멈춤)"""
+    return os.path.exists(out) and os.path.getmtime(out) >= os.path.getmtime(src)
+
+
 def build_pics():
     """art/cut/{w,d,h,f}_이름.png (cut_sheets.py 결과) → shared/pics/이름.webp, 목록을 hangul.js 에 써 넣음."""
     src, dst = os.path.join(ROOT, 'art', 'cut'), os.path.join(ROOT, 'shared', 'pics')
@@ -193,10 +199,13 @@ def build_pics():
         for f in sorted(os.listdir(src)):
             if f[:2] in ('w_', 'd_', 'h_', 'f_') and f.endswith('.png'):
                 n = f[2:-4]; names.append(n)
-                Image.open(os.path.join(src, f)).save(os.path.join(dst, n + '.webp'), 'WEBP', quality=82, method=6)
+                out = os.path.join(dst, n + '.webp')
+                if not fresh(os.path.join(src, f), out): Image.open(os.path.join(src, f)).save(out, 'WEBP', quality=82, method=6)
             elif f.startswith(('bg_', 'o_')) and f.endswith('.png'):   # 배경·까꿍 물건: 필요할 때만 읽음 (목록엔 안 넣음)
+                out = os.path.join(dst, f[:-4] + '.webp')
+                if fresh(os.path.join(src, f), out): continue
                 im = Image.open(os.path.join(src, f)); im = im.convert('RGB') if f.startswith('bg_') else im   # 물건은 투명 유지
-                im.save(os.path.join(dst, f[:-4] + '.webp'), 'WEBP', quality=85, method=6)
+                im.save(out, 'WEBP', quality=85, method=6)
     hj = os.path.join(ROOT, 'shared', 'hangul.js')
     with open(hj, encoding='utf-8') as fh: s = fh.read()
     a, b = s.index('/*PICS*/'), s.index('/*END*/')
@@ -238,6 +247,12 @@ def build():
     files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += pics + ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
+    for name in THREE_D:
+        files += [name + '/', name + '/index.html', name + '/game.js']
+    vend = os.path.join(ROOT, 'shared', 'vendor', 'three')
+    for dp, dn, fn in os.walk(vend):
+        for f in sorted(fn):
+            if f.endswith('.js'): files.append(os.path.relpath(os.path.join(dp, f), ROOT).replace(os.sep, '/'))
     for name in list(GAMES) + STANDALONE:
         files += [name + '/', name + '/index.html', name + '/icons/icon-192.png']
         if name in GAMES: files.append(name + '/game.js')

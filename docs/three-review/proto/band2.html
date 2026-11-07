@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#000}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+</head><body><script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+
+const W = innerWidth, H = innerHeight;
+const r = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+r.setPixelRatio(1); r.setSize(W, H);
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.VSMShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.0; r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+// ① 이미지 기반 조명: 방 안 반사광을 만들어 모든 재질에 은은한 반사·하이라이트
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.4;
+scene.background = new THREE.Color(0x2a1238); 
+const cam = new THREE.PerspectiveCamera(32, W / H, 0.1, 100); cam.position.set(0, 6.6, 10.2); cam.lookAt(0, 0.6, 0.6);
+const loader = new THREE.TextureLoader();
+const tex = u => new Promise(res => loader.load(u, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; res(t); }));
+
+// ② 조명: 따뜻한 무대 핀 조명(부드러운 가장자리) + 차가운 뒤쪽 윤곽광 + 약한 채움광
+scene.add(new THREE.HemisphereLight(0xffe8d0, 0x3a2140, 0.25));
+const key = new THREE.SpotLight(0xffd9a0, 120, 30, 0.45, 0.8, 1.6); key.position.set(-3, 11, 6); key.target.position.set(0, 0, 0.8);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 12; key.shadow.blurSamples = 20; key.shadow.bias = -0.0004; scene.add(key, key.target);
+const rim = new THREE.DirectionalLight(0x9fc6ff, 1.4); rim.position.set(4, 5, -8); scene.add(rim);
+const pink = new THREE.PointLight(0xff7ab8, 6, 12, 1.5); pink.position.set(4, 3, 3); scene.add(pink);
+
+// 손그림 무대 배경 (멀리, 초점 밖으로 흐려짐)
+const bgT = await tex('shared/pics/bg_band.webp');
+const bg = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), new THREE.MeshBasicMaterial({ map: bgT, color: 0x8e7aa0 })); bg.position.set(0, 6, -7); scene.add(bg);
+// 나무 바닥: 결 무늬 + 거칠기 무늬 (빛 반사가 고르지 않게)
+const wc = document.createElement('canvas'); wc.width = wc.height = 1024; const g = wc.getContext('2d');
+for (let i = 0; i < 16; i++) { g.fillStyle = ['#b87f4b', '#a96f3d', '#c08a55', '#a3693a'][i % 4]; g.fillRect(0, i * 64, 1024, 64); for (let k = 0; k < 40; k++) { g.strokeStyle = `rgba(70,35,10,${Math.random() * 0.12})`; g.lineWidth = 1 + Math.random() * 2; g.beginPath(); const y = i * 64 + Math.random() * 64; g.moveTo(0, y); for (let x = 0; x <= 1024; x += 64) g.lineTo(x, y + Math.sin(x * 0.01 + k) * 3); g.stroke(); } g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, i * 64, 1024, 2); }
+const woodT = new THREE.CanvasTexture(wc); woodT.colorSpace = THREE.SRGBColorSpace; woodT.wrapS = woodT.wrapT = THREE.RepeatWrapping; woodT.repeat.set(2.5, 2.5); woodT.anisotropy = 8;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshPhysicalMaterial({ map: woodT, roughness: 0.55, clearcoat: 0.2, clearcoatRoughness: 0.6 })); floor.rotation.x = -Math.PI / 2; floor.position.z = 2; floor.receiveShadow = true; scene.add(floor);
+
+// ③ 재질: 건반은 래커 칠한 나무(유광 코팅), 받침은 진한 원목, 채 머리는 펠트(보송한 광택)
+const xy = new THREE.Group(); const cols = [0xff5a5f, 0xff9a3c, 0xffcf33, 0x4cc964, 0x3aa0ff, 0x7a62f0];
+const railMat = new THREE.MeshPhysicalMaterial({ color: 0x5a3519, roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.3 });
+for (const z of [-0.95, 0.95]) { const rail = new THREE.Mesh(new RoundedBoxGeometry(7.6, 0.32, 0.36, 6, 0.12), railMat); rail.position.set(0, 0.2, z); rail.castShadow = rail.receiveShadow = true; xy.add(rail); }
+const lbl = (ch) => { const c = document.createElement('canvas'); c.width = c.height = 256; const q = c.getContext('2d'); q.font = '800 190px "Noto Sans KR",sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillStyle = 'rgba(255,255,255,.95)'; q.shadowColor = 'rgba(0,0,0,.25)'; q.shadowBlur = 10; q.shadowOffsetY = 6; q.fillText(ch, 128, 138); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+['가', '나', '다', '라', '마', '바'].forEach((ch, i) => {
+  const x = -3.05 + i * 1.22, len = 2.95 - i * 0.22, hit = i === 2;
+  const bar = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.24, len, 8, 0.11), new THREE.MeshPhysicalMaterial({ color: cols[i], roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.12, sheen: 0.15, sheenColor: new THREE.Color(0xffffff) }));
+  bar.position.set(x, 0.52 - (hit ? 0.07 : 0), 0); bar.rotation.z = hit ? 0.02 : 0; bar.castShadow = bar.receiveShadow = true; xy.add(bar);
+  for (const z of [-len / 2 + 0.28, len / 2 - 0.28]) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.12, 20), new THREE.MeshPhysicalMaterial({ color: 0xdedede, metalness: 1, roughness: 0.22 })); pin.position.set(x, 0.68 - (hit ? 0.07 : 0), z); pin.castShadow = true; xy.add(pin); }
+  const l = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.78), new THREE.MeshStandardMaterial({ map: lbl(ch), transparent: true, roughness: 0.6, emissive: hit ? 0xffffff : 0x000000, emissiveMap: hit ? lbl(ch) : null, emissiveIntensity: hit ? 0.6 : 0 }));
+  l.rotation.x = -Math.PI / 2; l.position.set(x, 0.65 - (hit ? 0.07 : 0), 0.32); xy.add(l);
+});
+xy.position.set(0, 0, 1.2); xy.rotation.y = 0.0; scene.add(xy);
+const mallet = (pos, rot, glow) => {
+  const m = new THREE.Group();
+  const st = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 2.3, 20), new THREE.MeshPhysicalMaterial({ color: 0xe0b98a, roughness: 0.4, clearcoat: 0.8 })); st.position.y = 1.15; m.add(st);
+  const hd = new THREE.Mesh(new THREE.SphereGeometry(0.24, 48, 32), new THREE.MeshPhysicalMaterial({ color: 0xe8406a, roughness: 0.85, sheen: 1, sheenRoughness: 0.4, sheenColor: new THREE.Color(0xffb3c8) })); m.add(hd);
+  m.traverse(o => { o.castShadow = true; }); m.position.copy(pos); m.rotation.set(rot[0], rot[1], rot[2]); scene.add(m);
+};
+mallet(new THREE.Vector3(-0.62, 0.92, 1.25), [0.55, 0, 0.45]); mallet(new THREE.Vector3(3.9, 1.05, 2.9), [0.95, 0, -0.35]);
+// ④ 친 자리에서 빛나는 반짝이 + 동그란 물결 (빛 번짐 효과가 붙음)
+const spark = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.92, 0.55).multiplyScalar(4) });
+for (let k = 0; k < 26; k++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.035 + Math.random() * 0.07), spark); const a = Math.random() * 6.28, rr = 0.25 + Math.random() * 1.1; s.position.set(-0.62 + Math.cos(a) * rr, 0.9 + Math.random() * 1.6, 1.3 + Math.sin(a) * rr * 0.5); s.rotation.set(Math.random() * 3, Math.random() * 3, 0); scene.add(s); }
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.025, 12, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.95, 0.7).multiplyScalar(1.6), transparent: true, opacity: 0.7 })); ring.rotation.x = -Math.PI / 2; ring.position.set(-0.62, 0.72, 1.3); scene.add(ring);
+// 튀어나온 글자 (두께 있는 판 + 은은한 발광)
+const pop = new THREE.Mesh(new RoundedBoxGeometry(1.25, 1.25, 0.18, 6, 0.3), new THREE.MeshPhysicalMaterial({ color: 0xfff6ea, roughness: 0.3, clearcoat: 1 })); pop.position.set(-0.62, 3.25, 1.0); pop.rotation.set(-0.35, 0.12, 0.05); pop.castShadow = true; scene.add(pop);
+const popL = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.0), new THREE.MeshBasicMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const q = c.getContext('2d'); q.font = '800 200px "Noto Sans KR",sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillStyle = '#ff6b3d'; q.fillText('다', 128, 140); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), transparent: true })); popL.position.set(0, 0, 0.1); pop.add(popL);
+// 손그림 티노·코코 (세운 판 + 부드러운 그림자)
+const spr = async (u, h, x, z) => { const t = await tex(u); const w = h * t.image.width / t.image.height; const geo = new THREE.PlaneGeometry(w, h); geo.translate(0, h / 2, 0); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.5, roughness: 1 })); m.castShadow = true; m.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: t, alphaTest: 0.5 }); m.position.set(x, 0, z); scene.add(m); };
+await spr('shared/assets/tino_jump_v2.png', 2.7, -3.9, -1.5); await spr('shared/assets/coco_laugh_v2.png', 2.7, 3.9, -1.5);
+
+// ⑤ 후처리: 틈새 그늘(GTAO) → 빛 번짐(Bloom) → 미니어처 초점(Bokeh) → 색 처리 → 계단 현상 제거(SMAA)
+const comp = new EffectComposer(r);
+comp.addPass(new RenderPass(scene, cam));
+const ao = new GTAOPass(scene, cam, W, H); ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1.2, scale: 1.4 }); ao.blendIntensity = 1.0; comp.addPass(ao);
+comp.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.35, 0.3, 1.2));
+comp.addPass(new BokehPass(scene, cam, { focus: 9.2, aperture: 0.0016, maxblur: 0.008 }));
+comp.addPass(new OutputPass());
+comp.addPass(new SMAAPass(W, H));
+comp.render(); setTimeout(() => { comp.render(); window.__ready = true; }, 400);
+</script></body></html>
