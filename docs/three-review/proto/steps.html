@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#000}</style></head><body><script type="module">
+import { THREE, setup, sprite, label, round, done } from './common.js';
+const { r, scene, cam } = setup('#8fd4ff', '#eaf8ff');
+cam.position.set(-3.5, 6.2, 10.5); cam.lookAt(1.2, 0.6, -1.5);
+// 모래밭 (살짝 울퉁불퉁)
+const sg = new THREE.PlaneGeometry(40, 30, 120, 90), pa = sg.attributes.position;
+for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i); pa.setZ(i, Math.sin(x * 0.7) * 0.05 + Math.cos(y * 0.9 + x * 0.3) * 0.05); } sg.computeVertexNormals();
+const sand = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: 0xf2d9a0, roughness: 0.95 })); sand.rotation.x = -Math.PI / 2; sand.receiveShadow = true; scene.add(sand);
+// 바다 (오른쪽 뒤)
+const wg = new THREE.PlaneGeometry(30, 30, 100, 100), wa = wg.attributes.position;
+for (let i = 0; i < wa.count; i++) { const x = wa.getX(i), y = wa.getY(i); wa.setZ(i, Math.sin(x * 1.1 + y * 0.4) * 0.06); } wg.computeVertexNormals();
+const sea = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x3fb0e8, roughness: 0.2 })); sea.rotation.x = -Math.PI / 2; sea.rotation.z = 0.5; sea.position.set(17, 0.22, -12); scene.add(sea);
+const foam = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 64), new THREE.MeshStandardMaterial({ color: 0xffffff })); foam.scale.set(13, 6, 1); foam.rotation.x = -Math.PI / 2; foam.visible = false;
+// 공룡 발자국 (모래에 움푹) + 글자
+const fp = new THREE.Shape(); fp.absellipse(0, -0.15, 0.55, 0.42, 0, Math.PI * 2);
+const toe = (a) => { const t = new THREE.Shape(); t.absellipse(Math.sin(a) * 0.62, 0.38 + Math.cos(a) * 0.25, 0.17, 0.3, 0, Math.PI * 2, false, -a); return t; };
+const word = '스테고사우루스'.slice(0, 4), syl = [...'혹등고래'];
+const pts = [[-4.2, 2.4], [-2.3, 1.2], [-0.4, -0.2], [1.5, -1.6]];
+syl.forEach((ch, i) => {
+  const [x, z] = pts[i], g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: i < 2 ? 0xffe9a8 : 0xd7b674, roughness: 0.9, emissive: i < 2 ? 0x664400 : 0, emissiveIntensity: 0.25 });
+  for (const s of [fp, toe(-0.55), toe(0), toe(0.55)]) { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.04 }), mat); m.rotation.x = -Math.PI / 2; m.position.y = 0.02; m.receiveShadow = true; g.add(m); }
+  g.scale.setScalar(1.25); g.rotation.y = -0.65; g.position.set(x, 0, z); scene.add(g);
+  const l = label(ch, 0.95, { bg: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)', color: i < 2 ? '#ff6b3d' : '#6b4a22' }); l.rotation.x = -Math.PI / 2; l.rotation.z = 0.0; l.position.set(x - 0.05, 0.3, z - 0.15); scene.add(l);
+});
+// 다음 발자국 반짝 고리
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.05, 8, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); ring.rotation.x = -Math.PI / 2; ring.scale.set(1, 0.8, 1); ring.position.set(pts[2][0], 0.15, pts[2][1]); scene.add(ring);
+// 친구들: 코코는 '등'에, 티노는 다음 칸으로 뛰는 중
+const coco = await sprite('shared/assets/coco_laugh_v2.png', 2.1); coco.position.set(pts[1][0] - 0.2, 0.05, pts[1][1] - 0.5); coco.rotation.y = 0.3; scene.add(coco);
+const tino = await sprite('shared/assets/tino_jump_v2.png', 2.1); tino.position.set(-1.0, 1.1, 0.0); tino.rotation.y = 0.3; scene.add(tino);
+const sh = new THREE.Mesh(new THREE.CircleGeometry(0.6, 32), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12 })); sh.rotation.x = -Math.PI / 2; sh.position.set(-0.8, 0.05, 0.0); scene.add(sh);
+// 바다에서 솟는 고래 + 물보라
+const wh = await sprite('shared/pics/혹등고래.webp', 2.6); wh.position.set(6.2, -0.1, -6.5); wh.rotation.y = -0.2; scene.add(wh);
+for (let k = 0; k < 22; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 12, 8), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.9 })); d.position.set(6.6 + (Math.random() - 0.5) * 1.2, 2.4 + Math.random() * 1.4, -6.5 + (Math.random() - 0.5) * 0.6); scene.add(d); }
+// 위쪽 단어
+const top = label('혹등고래', 1.0, { hi: 1 }); top.position.set(1.2, 4.6, -3); top.lookAt(cam.position); scene.add(top);
+r.render(scene, cam); done();
+</script></body></html>
