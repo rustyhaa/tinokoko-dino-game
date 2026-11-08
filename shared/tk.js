@@ -197,6 +197,58 @@ function updateParts(dt) {
     if (p.t === 'ring') p.r += p.grow * TK.U * dt;
   }
 }
+// ---------- 계절·생일 장식 (모든 엔진 게임: drawParts 끝에 그려짐) ----------
+//  계절(부모 설정 tk-season, 기본 켬): 겨울 눈 / 봄 꽃잎 / 가을 낙엽, 여름 없음
+//  생일(부모 설정 cfg.bday 'MM-DD'): 화면 위 이름 글자 깃발 줄 + 케이크, 그날 처음 연 게임에서 "생일 축하해, ○○." 한 번
+//  확인용: 주소 뒤 ?date=2026-12-25
+const today0 = () => { const q = new URLSearchParams(location.search).get('date'); const d = q ? new Date(q + 'T12:00:00') : new Date(); return isNaN(d) ? new Date() : d; };
+const flakes = [];
+let decoCache = null, bdaySaid = false;
+function decoState() {
+  if (decoCache && decoCache.t > TK.T - 5) return decoCache;   // 5초마다 다시 확인
+  const d = today0(), m = d.getMonth() + 1, md = String(m).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  let on = true; try { on = localStorage.getItem('tk-season') !== '0'; } catch (e) {}
+  const cfg = window.H && H.cfg ? H.cfg() : {}, names = (cfg.names || []).map(x => (x || '').trim()).filter(Boolean);
+  const bday = !!cfg.bday && cfg.bday === md;
+  return (decoCache = { t: TK.T, season: !on ? null : m === 12 || m <= 2 ? 'snow' : m <= 5 ? 'petal' : m >= 9 && m <= 11 ? 'leaf' : null, bday, names: names.length ? names : ['티노', '코코'], day: d.toDateString() });
+}
+function drawDeco() {
+  const st = decoState(), W = TK.W, Hh = TK.H, U = TK.U, HG = window.H;   // H 는 한글 모듈이라 높이는 Hh
+  if (st.season) {
+    const want = st.season === 'snow' ? 70 : 22;
+    while (flakes.length < want) flakes.push({ x: Math.random() * W, y: Math.random() * Hh, r: TK.rand(2, st.season === 'snow' ? 5 : 7), v: TK.rand(18, 45), ph: Math.random() * 6, rot: Math.random() * 6 });
+    flakes.length = want;
+    flakes.forEach(f => {
+      f.y += f.v * U * (TK.dt || 0.016); f.x += Math.sin(TK.T * 0.8 + f.ph) * 12 * U * (TK.dt || 0.016); f.rot += (TK.dt || 0.016) * 1.5;
+      if (f.y > Hh + 10) { f.y = -10; f.x = Math.random() * W; }
+      const r = f.r * U * 1.4;
+      if (st.season === 'snow') { TK.ell(f.x, f.y, r, r); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill(); }
+      else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); TK.ell(0, 0, r * 1.2, r * 0.6); ctx.fillStyle = st.season === 'petal' ? 'rgba(255,183,205,.85)' : (f.ph > 3 ? 'rgba(232,140,52,.85)' : 'rgba(214,92,52,.85)'); ctx.fill(); ctx.restore(); }
+    });
+  }
+  if (st.bday) {
+    // 깃발 줄: 아이 이름 글자를 깃발마다 하나씩
+    const letters = [...st.names.join('·')].filter(c => c !== '·' && c !== ' '), n = Math.max(letters.length, 5), fw = Math.min(W / (n + 2), 70 * U), y0 = 8 * U;
+    ctx.beginPath(); ctx.moveTo(W / 2 - (n / 2 + 0.6) * fw, y0); ctx.quadraticCurveTo(W / 2, y0 + fw * 0.7, W / 2 + (n / 2 + 0.6) * fw, y0); ctx.strokeStyle = '#8a5a3a'; ctx.lineWidth = 2; ctx.stroke();
+    for (let i = 0; i < n; i++) {
+      const x = W / 2 + (i - (n - 1) / 2) * fw, t = (i + 0.5) / n, y = y0 + Math.sin(Math.PI * t) * fw * 0.35 + Math.sin(TK.T * 2 + i) * 1.5;
+      ctx.beginPath(); ctx.moveTo(x - fw * 0.42, y); ctx.lineTo(x + fw * 0.42, y); ctx.lineTo(x, y + fw * 0.95); ctx.closePath(); ctx.fillStyle = TK.rgba(TK.COLS[i % 7], 1); ctx.fill(); ctx.strokeStyle = 'rgba(59,42,32,.8)'; ctx.lineWidth = 1.5; ctx.stroke();
+      const ch = letters[i]; if (ch && HG) HG.drawWord(ctx, ch, x, y + fw * 0.34, fw * 0.42, { color: '#ffffff', outline: 'rgba(59,42,32,.6)' });
+    }
+    // 작은 케이크 (왼쪽 아래 구석)
+    const cs = Math.min(W, Hh) * 0.07, cx = W * 0.5, cy = Hh - cs * 0.15;
+    ctx.save(); ctx.translate(cx, cy); ctx.globalAlpha = 0.95;
+    TK.rr(-cs, -cs * 0.9, cs * 2, cs * 0.9, cs * 0.15); ctx.fillStyle = '#ffd9e4'; ctx.fill();
+    TK.rr(-cs * 1.05, -cs * 1.05, cs * 2.1, cs * 0.3, cs * 0.15); ctx.fillStyle = '#ffffff'; ctx.fill();
+    for (let k = -1; k <= 1; k++) { ctx.fillStyle = TK.rgba(TK.COLS[(k + 4) % 7], 1); ctx.fillRect(k * cs * 0.5 - cs * 0.06, -cs * 1.5, cs * 0.12, cs * 0.45); TK.ell(k * cs * 0.5, -cs * 1.58 - Math.abs(Math.sin(TK.T * 9 + k)) * cs * 0.05, cs * 0.07, cs * 0.12); ctx.fillStyle = '#ffcf3a'; ctx.fill(); }
+    ctx.restore();
+    if (!bdaySaid) {   // 하루 한 번 (어느 게임이든 처음 연 곳에서)
+      bdaySaid = true;
+      let said = ''; try { said = localStorage.getItem('tk-bday-said') || ''; } catch (e) {}
+      if (said !== st.day) { try { localStorage.setItem('tk-bday-said', st.day); } catch (e) {} setTimeout(() => { TK.sfx.fanfare(); if (HG) HG.speak('생일 축하해, ' + st.names.join(', ')); }, 1200); }
+    }
+  }
+}
 TK.drawParts = () => {
   parts.forEach(p => {
     if (p.delay > 0) return;
@@ -208,6 +260,7 @@ TK.drawParts = () => {
     else if (p.t === 'foam') { TK.ell(p.x, p.y, p.r, p.r); ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`; ctx.fill(); ctx.strokeStyle = `rgba(190,220,255,${0.8 * a})`; ctx.lineWidth = 1.5; ctx.stroke(); }
     else if (p.t === 'conf') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = TK.rgba(p.c, Math.min(1, a * 2)); ctx.fillRect(-p.w / 2, -p.w / 4, p.w, p.w / 2); ctx.restore(); }
   });
+  try { drawDeco(); } catch (e) { if (!TK._decoErr) { TK._decoErr = String(e); console.warn("deco", e); } }
 };
 
 // ---------- 입력: 여러 손가락 · 마우스 · 아무 키 ----------
