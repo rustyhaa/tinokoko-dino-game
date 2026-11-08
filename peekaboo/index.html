@@ -82,7 +82,7 @@ function resize() {
 // ---------- 스프라이트 (원본 PNG 수정 없이 화면에서만 크기 조절) ----------
 const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
-  const im = new Image(); im.src = '../shared/assets/' + n + '.png'; SPR[n] = im;
+  const im = new Image(); im.src = '../shared/assets/' + n + '.webp'; SPR[n] = im;
 });
 function drawSprite(name, x, yb, h, flip = 1, sx = 1, sy = 1, rot = 0) {
   const im = SPR[name];
