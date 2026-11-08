@@ -7,8 +7,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 # 배포할 경로: 공통 파일 + build_games.py 의 게임 목록(GAMES·STANDALONE·THREE_D)에서 자동으로 (새 게임 폴더를 빠뜨리지 않게)
-GAME_DIRS=$(python3 -c "import sys; sys.path.insert(0,'common'); import build_games as b; print(' '.join(list(b.GAMES) + b.STANDALONE + b.THREE_D))")
+GAME_DIRS=$(python3 -B -c "import sys; sys.path.insert(0,'common'); import build_games as b; print(' '.join(list(b.GAMES) + b.STANDALONE + b.THREE_D))")
 PATHS=(index.html sw.js shared games common docs $GAME_DIRS)
+RETIRED=(garden3d)   # 폐기한 게임 폴더: 사이트에서도 지움
 
 python3 common/build_games.py
 if [ -n "$(git status --porcelain -- "${PATHS[@]}")" ]; then
@@ -24,6 +25,7 @@ git fetch -q origin gh-pages
 git worktree add -q --detach "$WT" origin/gh-pages
 (
   cd "$WT"
+  git rm -rq --ignore-unmatch -- shared "${RETIRED[@]}" >/dev/null   # 원본에서 지운 파일이 사이트에 남지 않게 (shared 는 통째로 다시 받음)
   git checkout "$SRC_BRANCH" -- "${PATHS[@]}"
   git add -A
   if git diff --cached --quiet; then echo "바뀐 것 없음: 배포 생략"; exit 0; fi
