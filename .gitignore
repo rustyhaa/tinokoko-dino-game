@@ -4,3 +4,4 @@ preview_v4_running.png
 .claude/handoff.tok
 tests/shots/
 art/cut/
+__pycache__/
