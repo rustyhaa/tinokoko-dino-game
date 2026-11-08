@@ -166,6 +166,11 @@
     <div class="row"><button class="btn" id="ttsBtn" type="button">기기 음성 시험</button><span class="note" style="flex-basis:auto" id="ttsState"></span></div>
   </details>
 
+  <details id="weekBox">
+    <summary>이번 주 리포트</summary>
+    <div id="weekList" class="row"></div>
+  </details>
+
   <details id="todayBox">
     <summary>오늘 본 글자</summary>
     <div id="todayList" class="row"></div>
@@ -290,6 +295,25 @@ function renderToday() {
   add('단어', v.w); add('자음', v.j); add('글자 소리', v.s);
 }
 document.getElementById('todayBox').addEventListener('toggle', renderToday); renderToday();
+// ---------- 이번 주 리포트: 최근 7일 많이 본 것·안 본 자음, 다음 주 글자 추천 ----------
+function renderWeek() {
+  const v = H.weekLog(), box = document.getElementById('weekList'); box.innerHTML = '';
+  const p = (html) => { const d = document.createElement('div'); d.className = 'chips'; d.innerHTML = html; box.appendChild(d); };
+  const top = (obj, n) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+  const total = Object.values(v.w).reduce((a, b) => a + b, 0) + Object.values(v.j).reduce((a, b) => a + b, 0) + Object.values(v.s).reduce((a, b) => a + b, 0);
+  p(`<b style="flex-basis:100%">최근 7일 중 ${v.days}일 놀았어요 · 글자를 ${total}번 듣고 봤어요</b>`);
+  const tw = top(v.w, 10); p(`<b style="flex-basis:100%">많이 본 단어</b>` + (tw.length ? tw.map(([k, n]) => `<span>${k} ×${n}</span>`).join('') : '<span>아직 없어요</span>'));
+  // 자음별: 자음 놀이에서 본 횟수 + 그 자음으로 시작하는 단어를 본 횟수
+  const seen = {}; H.JAMO.forEach(j => seen[j] = v.j[j] || 0); Object.entries(v.w).forEach(([w, n]) => { const c = H.cho(w); if (c in seen) seen[c] += n; });
+  const set = H.jamoSet();
+  p(`<b style="flex-basis:100%">자음별 (지금 단계 자음)</b>` + set.map(j => `<span>${j} ×${seen[j]}</span>`).join(''));
+  const rec = set.slice().sort((a, b) => seen[a] - seen[b]).slice(0, 3);
+  const d = document.createElement('div'); d.className = 'row';
+  d.innerHTML = `<span class="note" style="flex-basis:100%">다음 주 추천 글자: 적게 본 자음 <b>${rec.join(' · ')}</b></span><button class="btn" type="button" id="weekApply">이번 주 글자로 정하기</button>`;
+  box.appendChild(d);
+  d.querySelector('#weekApply').addEventListener('click', () => { cfg.focus = rec; save(); renderFocus(); renderWeek(); H.readJamo(rec[0]); });
+}
+document.getElementById('weekBox').addEventListener('toggle', renderWeek); renderWeek();
 // ---------- 잘 시간 (frame.js 가 읽음) ----------
 const seg = document.getElementById('sleepSeg'), state = document.getElementById('sleepState');
 const read = () => { try { return JSON.parse(localStorage.getItem('tk-sleep') || 'null'); } catch (e) { return null; } };
