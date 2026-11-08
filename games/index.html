@@ -176,6 +176,19 @@
     <div id="todayList" class="row"></div>
   </details>
 
+  <div class="panel" role="group" aria-labelledby="bdayTitle">
+    <b id="bdayTitle">생일</b>
+    <input type="date" id="bday" style="min-height:44px;font:inherit;border:2px solid var(--line);border-radius:12px;padding:0 10px;background:var(--chip);color:var(--ink)">
+    <button class="btn" type="button" id="bdayClear">지우기</button>
+    <span class="note">생일 날엔 게임 화면 위에 이름 글자 깃발과 케이크가 나오고 "생일 축하해" 하고 말해줘요 (연도는 상관없어요).</span>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="seasonTitle">
+    <b id="seasonTitle">계절 장식</b>
+    <div class="seg" id="seasonSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
+    <span class="note">겨울엔 눈, 봄엔 꽃잎, 가을엔 낙엽이 천천히 내려요.</span>
+  </div>
+
   <div class="panel" role="group" aria-labelledby="musicTitle">
     <b id="musicTitle">배경음악</b>
     <div class="seg" id="musicSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
@@ -231,6 +244,16 @@ document.querySelectorAll('.help').forEach(b => b.addEventListener('click', () =
 // ---------- 한글 설정 (shared/hangul.js 와 같은 저장소: tk-hangul) ----------
 let cfg = H.cfg();
 const save = () => { H.saveCfg(cfg); renderRecKeys(); };
+// 생일 (cfg.bday = 'MM-DD', tk.js 가 읽음)
+const bday = document.getElementById('bday');
+if (cfg.bday) bday.value = '2024-' + cfg.bday;
+bday.addEventListener('change', () => { cfg.bday = bday.value ? bday.value.slice(5) : ''; save(); });
+document.getElementById('bdayClear').addEventListener('click', () => { bday.value = ''; cfg.bday = ''; save(); });
+// 계절 장식 켬/끔 (tk.js 가 tk-season 을 읽음)
+const seasonSeg = document.getElementById('seasonSeg');
+function renderSeason() { let v = '1'; try { v = localStorage.getItem('tk-season') === '0' ? '0' : '1'; } catch (e) {} seasonSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); }
+seasonSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; try { localStorage.setItem('tk-season', b.dataset.v); } catch (err) {} renderSeason(); });
+renderSeason();
 ['name0', 'name1'].forEach((id, i) => { const el = document.getElementById(id); el.value = cfg.names[i] || ''; el.addEventListener('input', () => { cfg.names[i] = el.value.trim(); save(); }); });
 const STAGE_NOTE = { 1: '그림·소리·글자를 보고 들어요. 자음 짝꿍은 그림 맞추기, 별자리는 ㄱ·ㄴ·ㅁ·ㅇ만.', 2: '①에 더해 자음 모양(ㄱ~ㅅ·ㅇ 8개)을 맞추고 이어요. 처음엔 이 단계를 추천해요.', 3: '②에 더해 자음 14개 전부와 가나다라마바사 소리가 나와요.' };
 const stageSeg = document.getElementById('stageSeg');

@@ -125,6 +125,7 @@ function draw() {
   ctx.fillStyle = TK.grad(0, gy, '#8fd4ff', '#e2f5ff'); ctx.fillRect(0, 0, W, gy);
   const sr = Math.min(W, H) * 0.06; ell(W * 0.12, H * 0.1, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
   ctx.fillStyle = TK.grad(gy, H, '#9fdc7c', '#6fbf5a'); ctx.fillRect(0, gy, W, H - gy);
+  TK.ink(Math.max(2, S * 0.045), () => {   // 그림책 테두리 (손그림 친구들과 화풍 맞춤)
   ctx.fillStyle = '#f6e3c0'; for (let x = 0; x < W; x += 34 * TK.U) { TK.rr(x + 6 * TK.U, gy - 46 * TK.U, 18 * TK.U, 52 * TK.U, 6 * TK.U); ctx.fill(); }   // 울타리
   ctx.fillRect(0, gy - 34 * TK.U, W, 8 * TK.U);
   plots.forEach(p => {
@@ -144,6 +145,7 @@ function draw() {
   b.items.forEach((k, i) => { const nm = NAME[k], fs = Math.min(S * 0.24, b.w * 0.36 / ([...nm].length * 1.05)); HG.drawWord(ctx, nm, b.x - b.w * 0.3 + i * b.w * 0.2, b.y - b.w * 0.02 + (i % 2) * fs * 1.15, fs); });   // 바구니 단어 카드 (길이에 맞춰 크기, 두 줄 엇갈림)
   ctx.strokeStyle = '#a86e35'; ctx.lineWidth = 3; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5 + k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.lineTo(b.x + b.w * 0.5 - k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.stroke(); }
   flying.forEach(f => { const e = TK.ease(f.t); icon(f.kind, TK.lerp(f.x0, b.x, e), TK.lerp(f.y0, b.y - b.w * 0.2, e) - Math.sin(Math.PI * f.t) * S * 2, S * 0.7); });
+  });
   twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   TK.drawParts();
 }

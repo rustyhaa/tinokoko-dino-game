@@ -178,7 +178,7 @@ function drawTubFront() {
 }
 function draw() {
   drawBg();
-  tiles.forEach(drawTile);
+  TK.ink(Math.max(2, TK.U * 3), () => tiles.forEach(drawTile));   // 그림책 테두리
   spots.forEach(drawSpot);
   drawTubBack();
   twins.forEach(tw => {
@@ -186,7 +186,7 @@ function draw() {
     TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h);
     ctx.restore();
   });
-  drawTubFront();
+  TK.ink(Math.max(2, TK.U * 3.2), drawTubFront);
   TK.drawParts();
 }
 
