@@ -111,12 +111,44 @@ function update(dt) {
   if (phase === 'fade') { whale.up = Math.max(0, 1 - phaseT / 0.8); if (phaseT > 0.9) { rounds++; phase = 'play'; phaseT = 0; newRound(); sfx.sparkle(); } }
 }
 
-function footprint(x, y, s, col, rot) {   // 세 발가락 공룡 발자국 (오른쪽을 향함)
+// 공룡 발자국: 둥근 뒤꿈치 + 끝이 뾰족한 세 발가락(작은 발톱). 오른쪽을 향함, 크기 s
+const footCache = new Map();
+function footPath(s) {
+  const k = Math.round(s); if (footCache.has(k)) return footCache.get(k);
+  const p = new Path2D();
+  p.ellipse(-s * 0.14, 0, s * 0.56, s * 0.48, 0, 0, Math.PI * 2);   // 뒤꿈치
+  [-0.6, 0, 0.6].forEach(a => {   // 발가락: 통통한 달걀 모양 + 끝에 작은 발톱
+    const c = Math.cos(a), sn = Math.sin(a), cx = c * s * 0.66, cy = sn * s * 0.6;
+    p.moveTo(cx + c * s * 0.3, cy + sn * s * 0.3); p.ellipse(cx, cy, s * 0.3, s * 0.19, a, 0, Math.PI * 2);
+    const tx = c * s * 1.06, ty = sn * s * 0.98, nx = -sn * s * 0.07, ny = c * s * 0.07;
+    p.moveTo(c * s * 0.9 + nx, sn * s * 0.84 + ny); p.lineTo(tx, ty); p.lineTo(c * s * 0.9 - nx, sn * s * 0.84 - ny); p.closePath();
+  });
+  footCache.set(k, p); return p;
+}
+// state: 'idle' 모래에 찍힌 자국 / 'next' 다음 차례(숨 쉬는 빛) / 'lit' 밟아서 금빛
+function footprint(x, y, s, rot, state, glow = 0) {
+  const p = footPath(s);
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
-  ctx.fillStyle = col;
-  ell(-s * 0.12, 0, s * 0.62, s * 0.5); ctx.fill();
-  [-0.55, 0, 0.55].forEach(a => { ell(Math.cos(a) * s * 0.78, Math.sin(a) * s * 0.62, s * 0.3, s * 0.17, a); ctx.fill(); });
+  if (state === 'lit') {
+    ctx.shadowColor = `rgba(255,214,90,${0.6 + glow * 0.4})`; ctx.shadowBlur = s * (0.35 + glow * 0.5);
+    const g = ctx.createRadialGradient(-s * 0.1, -s * 0.1, s * 0.1, 0, 0, s * 1.1); g.addColorStop(0, '#fff6cf'); g.addColorStop(0.6, '#ffd96b'); g.addColorStop(1, '#f0b23a');
+    ctx.fillStyle = g; ctx.fill(p); ctx.shadowBlur = 0;
+    ctx.save(); ctx.clip(p); ctx.translate(-s * 0.04, -s * 0.06); ctx.lineWidth = s * 0.12; ctx.strokeStyle = 'rgba(190,120,30,.35)'; ctx.stroke(p); ctx.restore();   // 안쪽 그늘만 (겹친 선 없이)
+  } else {
+    if (state === 'next') { const b = 0.5 + 0.5 * Math.sin(TK.T * 4); ctx.shadowColor = `rgba(255,250,225,${0.55 + 0.4 * b})`; ctx.shadowBlur = s * (0.3 + 0.45 * b); }
+    // 밝은 아래 테두리(모래가 밀려 올라온 자리) → 움푹한 안쪽 → 위쪽 그늘
+    ctx.save(); ctx.translate(s * 0.03, s * 0.05); ctx.lineWidth = s * 0.09; ctx.strokeStyle = 'rgba(255,248,228,.75)'; ctx.stroke(p); ctx.restore();
+    const g = ctx.createLinearGradient(0, -s, 0, s); g.addColorStop(0, state === 'next' ? '#c99d5f' : '#b98d55'); g.addColorStop(1, state === 'next' ? '#dcb57a' : '#cfa76c');
+    ctx.fillStyle = g; ctx.fill(p); ctx.shadowBlur = 0;
+    ctx.save(); ctx.clip(p); ctx.translate(-s * 0.04, -s * 0.07); ctx.lineWidth = s * 0.16; ctx.strokeStyle = 'rgba(110,72,30,.35)'; ctx.stroke(p); ctx.restore();
+  }
   ctx.restore();
+}
+// 사이 발자국: 큰 발자국 사이에 작은 자국을 좌우로 (걸어간 길)
+function trail(ax, ay, bx, by, s) {
+  const d = Math.hypot(bx - ax, by - ay), rot = Math.atan2(by - ay, bx - ax); if (d < s * 2.9) return;   // 촘촘하면 생략
+  const n = Math.max(1, Math.round((d - s * 1.8) / (s * 1.4)));
+  for (let k = 1; k <= n; k++) { const t = (s * 0.95 + (d - s * 1.9) * k / (n + 1)) / d, side = k % 2 ? 1 : -1; const x = TK.lerp(ax, bx, t) - Math.sin(rot) * side * s * 0.45, y = TK.lerp(ay, by, t) + Math.cos(rot) * side * s * 0.45; ctx.globalAlpha = 0.55; footprint(x, y, s * 0.38, rot, 'idle'); ctx.globalAlpha = 1; }
 }
 function draw() {
   const W = TK.W, H2 = TK.H, alive = phase === 'party' || phase === 'shore';
@@ -154,10 +186,9 @@ function draw() {
   prints.forEach((p, i) => {
     const isNext = i === next && phase === 'play', wig = p.wig >= 0 ? Math.sin(p.wig * Math.PI * 4) * 0.15 * (1 - p.wig) : 0;
     const a = port ? 0 : i > 0 ? Math.atan2(p.y - prints[i - 1].y, p.x - prints[i - 1].x) : Math.atan2(p.y - start.y, p.x - start.x);
-    if (isNext) { const pr = (TK.T * 1.2) % 1; ell(p.x, p.y, ps * (0.9 + pr * 0.6), ps * (0.6 + pr * 0.4)); ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - pr)})`; ctx.lineWidth = 4; ctx.stroke(); }
-    const sc = (isNext ? 1.08 + 0.05 * Math.sin(TK.T * 6) : 1) + p.glow * 0.15;
-    footprint(p.x + 2, p.y + 3, ps * sc, 'rgba(150,110,60,.35)', a + wig);
-    footprint(p.x, p.y, ps * sc, p.lit ? '#ffe9a8' : '#d9b574', a + wig);
+    const prev = i > 0 ? prints[i - 1] : start; trail(prev.x, prev.y, p.x, p.y, ps);
+    const sc = (isNext ? 1.06 + 0.04 * Math.sin(TK.T * 4) : 1) + p.glow * 0.15;
+    footprint(p.x, p.y, ps * sc, a + wig, p.lit ? 'lit' : isNext ? 'next' : 'idle', p.glow);
   });
   // 친구들
   twins.forEach((t, i) => {
@@ -167,16 +198,19 @@ function draw() {
   const hiP = H.hi(word.w);   // 발자국 글자는 친구들 위에
   prints.forEach((p, i) => {
     if (p.lit) { ctx.shadowColor = 'rgba(255,230,120,.9)'; ctx.shadowBlur = 10 + p.glow * 20; }
-    H.drawWord(ctx, p.s, p.x - ps * 0.08, p.y + ps * 0.05, ps * 0.62, { color: p.lit ? '#ff6b3d' : '#6b4a22', outline: 'rgba(255,248,225,.95)', hi: hiP === 'all' || hiP === i ? 'all' : -1 });
+    H.drawWord(ctx, p.s, p.x - ps * 0.12, p.y + ps * 0.04, ps * 0.6, { color: p.lit ? '#ffffff' : '#5a3a1a', outline: p.lit ? '#e8762b' : 'rgba(255,246,222,.9)', hiColor: '#ff6b3d', hi: hiP === 'all' || hiP === i ? 'all' : -1 });   // 뒤꿈치 위 글자
     ctx.shadowBlur = 0;
   });
   // 위쪽: 지금 만드는 단어 (찍은 글자만 진하게)
   const ty = H2 * (port ? 0.15 : 0.17), fs = Math.min(W, H2) * (alive ? 0.12 : 0.09) * Math.min(1, 4 / word.syl.length), hi = H.hi(word.w);
   const lit = prints.filter(p => p.lit).length;
+  { const cw = word.syl.length * fs * 1.02 + fs * 0.9, chh = fs * 1.45;   // 단어 카드
+    ctx.save(); ctx.shadowColor = 'rgba(80,60,30,.25)'; ctx.shadowBlur = fs * 0.3; ctx.shadowOffsetY = fs * 0.08; TK.rr(W / 2 - cw / 2, ty - chh / 2, cw, chh, chh / 2); ctx.fillStyle = 'rgba(255,253,245,.88)'; ctx.fill(); ctx.restore();
+    TK.rr(W / 2 - cw / 2, ty - chh / 2, cw, chh, chh / 2); ctx.lineWidth = Math.max(2, fs * 0.05); ctx.strokeStyle = '#e9c88a'; ctx.stroke(); }
   [...word.w].forEach((ch, i) => {
     const gap = fs * 1.02, x = W / 2 - (word.syl.length - 1) * gap / 2 + i * gap;
     if (i < lit) H.drawWord(ctx, ch, x, ty, fs, { color: '#2b3550', hi: hi === 'all' || hi === i ? 'all' : -1 });
-    else H.drawWord(ctx, ch, x, ty, fs, { color: 'rgba(43,53,80,.13)', outline: 'rgba(255,255,255,.35)' });
+    else H.drawWord(ctx, ch, x, ty, fs, { color: 'rgba(43,53,80,.16)', outline: 'rgba(0,0,0,0)' });
   });
   if (alive || phase === 'fade') {   // 완성: 단어 그림
     const k = clamp(phaseT / 0.5, 0, 1) * (phase === 'fade' ? 1 - phaseT / 0.9 : 1), x = W / 2 + (word.syl.length / 2 + 0.6) * fs * 1.02 + fs * 0.6;
