@@ -51,6 +51,25 @@ TK.start = g => {
 };
 
 // ---------- 그리기 도우미 ----------
+// 그림책 테두리 모드: TK.ink(굵기, () => { ...그리기... }) 안에서 칠한 모양마다 진한 갈색 테두리가 자동으로 붙음
+//  (손그림 티노·코코와 화풍 맞추기). 반투명 칠(물·거품)은 테두리 없음. 선(stroke)은 아래에 굵은 갈색 선을 먼저 깔아 테를 두름
+TK.INK = '#3b2a20';
+let inkLW = 0;
+const _fill = ctx.fill.bind(ctx), _stroke = ctx.stroke.bind(ctx);
+const seeThrough = st => typeof st === 'string' && /rgba\([^)]*,\s*(0?\.\d+|0)\s*\)/.test(st) && !/,\s*(0?\.9\d*|1)\s*\)$/.test(st);
+ctx.fill = function (...a) {
+  _fill(...a);
+  if (!inkLW || seeThrough(ctx.fillStyle)) return;
+  const ss = ctx.strokeStyle, lw = ctx.lineWidth, lj = ctx.lineJoin;
+  ctx.strokeStyle = TK.INK; ctx.lineWidth = inkLW; ctx.lineJoin = 'round';
+  a.length && typeof a[0] === 'object' ? _stroke(a[0]) : _stroke();
+  ctx.strokeStyle = ss; ctx.lineWidth = lw; ctx.lineJoin = lj;
+};
+ctx.stroke = function (...a) {
+  if (inkLW && !seeThrough(ctx.strokeStyle)) { const ss = ctx.strokeStyle, lw = ctx.lineWidth; ctx.strokeStyle = TK.INK; ctx.lineWidth = lw + inkLW * 1.6; a.length ? _stroke(a[0]) : _stroke(); ctx.strokeStyle = ss; ctx.lineWidth = lw; }
+  a.length ? _stroke(a[0]) : _stroke();
+};
+TK.ink = (lw, fn) => { const prev = inkLW; inkLW = Math.max(1.2, lw); try { fn(); } finally { inkLW = prev; } };
 TK.ell = (x, y, rx, ry, rot = 0) => { ctx.beginPath(); ctx.ellipse(x, y, Math.max(rx, 0.01), Math.max(ry, 0.01), rot, 0, TAU); };
 TK.star = (x, y, r, col, rot = 0) => {
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
