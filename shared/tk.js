@@ -132,7 +132,7 @@ TK.say = text => {
 // ---------- 스프라이트 (원본 PNG 수정 없이 화면에서만 크기·반전) ----------
 const SPR = {};
 ['tino_run_v2', 'tino_jump_v2', 'coco_run_v2', 'coco_jump_v2', 'coco_laugh_v2'].forEach(n => {
-  const im = new Image(); im.src = '../shared/assets/' + n + '.png'; SPR[n] = im;
+  const im = new Image(); im.src = '../shared/assets/' + n + '.webp'; SPR[n] = im;
 });
 TK.sprite = (name, x, yb, h, o = {}) => {
   const im = SPR[name]; if (!im || !im.complete || !im.naturalWidth) return 0;

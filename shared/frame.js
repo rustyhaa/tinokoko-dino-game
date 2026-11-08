@@ -145,7 +145,7 @@ let leaving = false;
 function goodbye() {
   if (leaving) return; leaving = true; window.__paused = true;
   const bye = document.createElement('div'); bye.id = 'tkbye';
-  bye.innerHTML = `<img class="t" src="${ASSET}tino_jump_v2.png" alt=""><img class="c" src="${ASSET}coco_laugh_v2.png" alt="">`;
+  bye.innerHTML = `<img class="t" src="${ASSET}tino_jump_v2.webp" alt=""><img class="c" src="${ASSET}coco_laugh_v2.webp" alt="">`;
   document.body.appendChild(bye);
   requestAnimationFrame(() => bye.classList.add('show'));
   setTimeout(() => bye.querySelectorAll('img').forEach(i => i.classList.add('wave')), 450);
@@ -163,7 +163,7 @@ function startSleep() {
   if (!sleepEl) {
     sleepEl = document.createElement('div'); sleepEl.id = 'tksleep';
     let sky = ''; for (let i = 0; i < 40; i++) sky += `<i class="sky" style="left:${(i * 37) % 100}%;top:${(i * 53) % 62}%;animation-delay:${(i % 7) * 0.35}s"></i>`;
-    sleepEl.innerHTML = sky + `<div class="moon"></div><img class="tw t" src="${ASSET}tino_run_v2.png" alt=""><img class="tw c" src="${ASSET}coco_run_v2.png" alt="">`;
+    sleepEl.innerHTML = sky + `<div class="moon"></div><img class="tw t" src="${ASSET}tino_run_v2.webp" alt=""><img class="tw c" src="${ASSET}coco_run_v2.webp" alt="">`;
     const sun = ringButton('tksun', '<circle cx="26" cy="26" r="7" fill="#ffb347"/><g stroke="#ffb347" stroke-width="3" stroke-linecap="round"><path d="M26 11v4M26 37v4M11 26h4M37 26h4M15.4 15.4l2.8 2.8M33.8 33.8l2.8 2.8M15.4 36.6l2.8-2.8M33.8 18.2l2.8-2.8"/></g>', '#ffb347');
     sun.setAttribute('aria-label', '깨우기 (1초 꾹 누르기, 부모용)');
     sleepEl.appendChild(sun);

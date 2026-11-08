@@ -115,7 +115,7 @@ H.FRIEND_NAME = { crab: '게', fish: '물고기', starfish: '불가사리', jell
 
 // ---------- 그림 (밑변 가운데가 원점, 키 h) ----------
 const IMG = {};
-['tino_jump_v2', 'coco_laugh_v2'].forEach(n => { const im = new Image(); im.src = SHARED + 'assets/' + n + '.png'; IMG[n] = im; });
+['tino_jump_v2', 'coco_laugh_v2'].forEach(n => { const im = new Image(); im.src = SHARED + 'assets/' + n + '.webp'; IMG[n] = im; });
 function sprite(ctx, n, h) { const im = IMG[n]; if (!im.complete || !im.naturalWidth) return; const w = h * im.naturalWidth / im.naturalHeight; ctx.drawImage(im, -w / 2, -h, w, h); }
 const PICS = {};
 const P = (names, fn) => names.split(' ').forEach(n => PICS[n] = fn);

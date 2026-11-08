@@ -218,8 +218,11 @@ def build_pics():
 def build():
     pics = build_pics()
     os.makedirs(os.path.join(ROOT, 'shared', 'assets'), exist_ok=True)
-    for s in SPRITES:
-        shutil.copy2(os.path.join(ROOT, 'assets', s + '.png'), os.path.join(ROOT, 'shared', 'assets', s + '.png'))
+    for s in SPRITES:   # 원본 PNG(assets/)는 그대로, 게임용은 같은 크기 WebP 사본 (5장 1.1MB → 약 0.19MB)
+        src, out = os.path.join(ROOT, 'assets', s + '.png'), os.path.join(ROOT, 'shared', 'assets', s + '.webp')
+        if not fresh(src, out): Image.open(src).save(out, 'WEBP', quality=88, method=6)
+        old = os.path.join(ROOT, 'shared', 'assets', s + '.png')
+        if os.path.exists(old): os.remove(old)
     for n in (180, 192, 512):
         os.makedirs(os.path.join(ROOT, 'shared', 'icons'), exist_ok=True)
         playground_icon(n).save(os.path.join(ROOT, 'shared', 'icons', 'icon-%d.png' % n))
@@ -246,7 +249,7 @@ def build():
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
     files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
-    files += pics + ['shared/assets/%s.png' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
+    files += pics + ['shared/assets/%s.webp' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in THREE_D:
         files += [name + '/', name + '/index.html', name + '/game.js']
     vend = os.path.join(ROOT, 'shared', 'vendor', 'three')
