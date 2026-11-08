@@ -30,7 +30,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
-THREE_D = ['garden3d']   # three.js 로 만든 3D 판 (index.html·game.js 직접 작성, shared/vendor/three 사용)
+THREE_D = []   # three.js 3D 판 — 2026-11-08 느려서 폐기 (기록: docs/three-review/)
 
 HTML = """<!doctype html>
 <html lang="ko">
