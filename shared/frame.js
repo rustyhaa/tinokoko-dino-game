@@ -221,10 +221,60 @@ function star(x, y, r, col, rot) {
   for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * 0.45 : r; g.lineTo(Math.cos(a) * q, Math.sin(a) * q); }
   g.closePath(); g.fillStyle = col; g.fill(); g.restore();
 }
+// ---------- 계절·생일 장식 (모든 게임 위, 덧그림 화면) ----------
+//  계절(부모 설정 tk-season, 기본 켬): 겨울 눈 / 봄 꽃잎 / 가을 낙엽, 여름 없음
+//  생일(부모 설정 cfg.bday 'MM-DD'): 화면 위 이름 글자 깃발 줄 + 케이크, 그날 처음 연 게임에서 "생일 축하해, ○○." 한 번
+//  확인용: 주소 뒤 ?date=2026-12-25.  주의: 이 파일의 H 는 화면 높이, 한글 모듈은 window.H (HG)
+const DCOLS = ['#ff5a5f', '#ff9f43', '#ffd632', '#4cd264', '#3aa7ff', '#6464e1', '#b05cf0'];
+const decoDate = () => { const q = new URLSearchParams(location.search).get('date'); const d = q ? new Date(q + 'T12:00:00') : new Date(); return isNaN(d) ? new Date() : d; };
+const flakes = []; let decoSt = null, decoT = -99, bdaySaid = false;
+function decoState(t) {
+  if (decoSt && t - decoT < 5) return decoSt;
+  decoT = t; const d = decoDate(), m = d.getMonth() + 1, md = String(m).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  let on = true; try { on = localStorage.getItem('tk-season') !== '0'; } catch (e) {}
+  const HG = window.H, cfg = HG && HG.cfg ? HG.cfg() : {}, names = (cfg.names || []).map(x => (x || '').trim()).filter(Boolean);
+  return (decoSt = { season: !on ? null : m === 12 || m <= 2 ? 'snow' : m <= 5 ? 'petal' : m >= 9 && m <= 11 ? 'leaf' : null, bday: !!cfg.bday && cfg.bday === md, names: names.length ? names : ['티노', '코코'], day: d.toDateString() });
+}
+function drawDeco(t, dt) {
+  const st = decoState(t), HG = window.H;
+  if (st.season) {
+    const want = st.season === 'snow' ? 70 : 22;
+    while (flakes.length < want) flakes.push({ x: Math.random() * W, y: Math.random() * H, r: 2 + Math.random() * (st.season === 'snow' ? 3 : 5), v: 18 + Math.random() * 27, ph: Math.random() * 6, rot: Math.random() * 6 });
+    flakes.length = want;
+    flakes.forEach(f => {
+      f.y += f.v * U * dt; f.x += Math.sin(t * 0.8 + f.ph) * 12 * U * dt; f.rot += dt * 1.5;
+      if (f.y > H + 10) { f.y = -10; f.x = Math.random() * W; }
+      const r = f.r * U * 1.4; g.beginPath();
+      if (st.season === 'snow') { g.arc(f.x, f.y, r, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,.85)'; }
+      else { g.ellipse(f.x, f.y, r * 1.2, r * 0.6, f.rot, 0, Math.PI * 2); g.fillStyle = st.season === 'petal' ? 'rgba(255,183,205,.85)' : (f.ph > 3 ? 'rgba(232,140,52,.85)' : 'rgba(214,92,52,.85)'); }
+      g.fill();
+    });
+  }
+  if (st.bday) {
+    const letters = [...st.names.join('')].filter(c => c.trim()), n = Math.max(letters.length, 5), fw = Math.min(W / (n + 2), 70 * U), y0 = 8 * U;
+    g.beginPath(); g.moveTo(W / 2 - (n / 2 + 0.6) * fw, y0); g.quadraticCurveTo(W / 2, y0 + fw * 0.7, W / 2 + (n / 2 + 0.6) * fw, y0); g.strokeStyle = '#8a5a3a'; g.lineWidth = 2; g.stroke();
+    for (let i = 0; i < n; i++) {
+      const x = W / 2 + (i - (n - 1) / 2) * fw, y = y0 + Math.sin(Math.PI * (i + 0.5) / n) * fw * 0.35 + Math.sin(t * 2 + i) * 1.5;
+      g.beginPath(); g.moveTo(x - fw * 0.42, y); g.lineTo(x + fw * 0.42, y); g.lineTo(x, y + fw * 0.95); g.closePath(); g.fillStyle = DCOLS[i % 7]; g.fill(); g.strokeStyle = 'rgba(59,42,32,.8)'; g.lineWidth = 1.5; g.stroke();
+      const ch = letters[i]; if (ch && HG && HG.drawWord) HG.drawWord(g, ch, x, y + fw * 0.34, fw * 0.42, { color: '#ffffff', outline: 'rgba(59,42,32,.6)' });
+    }
+    const cs = Math.min(W, H) * 0.07, cx = W * 0.5, cy = H - cs * 0.15;
+    g.save(); g.translate(cx, cy);
+    g.beginPath(); g.roundRect(-cs, -cs * 0.9, cs * 2, cs * 0.9, cs * 0.15); g.fillStyle = '#ffd9e4'; g.fill();
+    g.beginPath(); g.roundRect(-cs * 1.05, -cs * 1.05, cs * 2.1, cs * 0.3, cs * 0.15); g.fillStyle = '#ffffff'; g.fill();
+    for (let k = -1; k <= 1; k++) { g.fillStyle = DCOLS[(k + 4) % 7]; g.fillRect(k * cs * 0.5 - cs * 0.06, -cs * 1.5, cs * 0.12, cs * 0.45); g.beginPath(); g.ellipse(k * cs * 0.5, -cs * 1.58 - Math.abs(Math.sin(t * 9 + k)) * cs * 0.05, cs * 0.07, cs * 0.12, 0, 0, Math.PI * 2); g.fillStyle = '#ffcf3a'; g.fill(); }
+    g.restore();
+    if (!bdaySaid) {
+      bdaySaid = true; let said = ''; try { said = localStorage.getItem('tk-bday-said') || ''; } catch (e) {}
+      if (said !== st.day) { try { localStorage.setItem('tk-bday-said', st.day); } catch (e) {} setTimeout(() => { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => ftone(f, i * 0.14, 0.4, 0.12, 'triangle')); if (HG && HG.speak && !isMuted()) HG.speak('생일 축하해, ' + st.names.join(', ')); }, 1200); }
+    }
+  }
+}
 let last = now();
 function loop() {
   const t = now(), dt = Math.min(0.05, t - last); last = t;
   g.clearRect(0, 0, W, H);
+  if (CFG.deco !== false && !sleeping && !leaving) { try { drawDeco(t, dt); } catch (e) { if (!window.__decoErr) { window.__decoErr = String(e); console.warn('deco', e); } } }
   if (CFG.demo && !demo && !sleeping && !leaving) {
     const idleLimit = idleRuns < 3 ? 10 : 25;
     if ((!firstDone && t - start > 1.6) || (firstDone && t - lastInput > idleLimit)) {
