@@ -363,7 +363,18 @@ H.recLoad();
 // ---------- 오늘 본 글자 (부모 화면에서만 보여줌) ----------
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 H.todayLog = () => { try { const v = JSON.parse(localStorage.getItem('tk-hangul-log') || 'null'); return v && v.day === today() ? v : { day: today(), w: {}, j: {}, s: {} }; } catch (e) { return { day: today(), w: {}, j: {}, s: {} }; } };
-H.log = (kind, key) => { try { const v = H.todayLog(); v[kind][key] = (v[kind][key] || 0) + 1; localStorage.setItem('tk-hangul-log', JSON.stringify(v)); } catch (e) {} };
+H.log = (kind, key) => {
+  try { const v = H.todayLog(); v[kind][key] = (v[kind][key] || 0) + 1; localStorage.setItem('tk-hangul-log', JSON.stringify(v)); } catch (e) {}
+  try {   // 7일 기록 (이번 주 리포트용): { '2026-11-8': {w,j,s}, ... } 오래된 날은 지움
+    const wk = JSON.parse(localStorage.getItem('tk-hangul-week') || '{}'), d = today();
+    wk[d] = wk[d] || { w: {}, j: {}, s: {} }; wk[d][kind][key] = (wk[d][kind][key] || 0) + 1;
+    const keep = new Set(Array.from({ length: 7 }, (_, i) => { const t = new Date(Date.now() - i * 864e5); return t.getFullYear() + '-' + (t.getMonth() + 1) + '-' + t.getDate(); }));
+    Object.keys(wk).forEach(k => { if (!keep.has(k)) delete wk[k]; });
+    localStorage.setItem('tk-hangul-week', JSON.stringify(wk));
+  } catch (e) {}
+};
+// 이번 주(최근 7일) 합계: { days: 논 날 수, w, j, s }
+H.weekLog = () => { try { const wk = JSON.parse(localStorage.getItem('tk-hangul-week') || '{}'), out = { days: 0, w: {}, j: {}, s: {} }; Object.values(wk).forEach(v => { out.days++; ['w', 'j', 's'].forEach(k => Object.entries(v[k] || {}).forEach(([a, n]) => { out[k][a] = (out[k][a] || 0) + n; })); }); return out; } catch (e) { return { days: 0, w: {}, j: {}, s: {} }; } };
 
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 H.shuffle = shuffle;
