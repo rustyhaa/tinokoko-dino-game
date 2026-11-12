@@ -55,7 +55,8 @@ function checkTile(ti) {
   }
 }
 const overTile = (x, y) => tiles.some(t => Math.abs(x - t.x) < t.s * 0.55 && Math.abs(y - t.y) < t.s * 0.55);
-const duckPos = () => ({ x: tub.x + tub.w * (H.lazyImg('o_tub') ? 0.33 : 0.4), y: tub.rim - tub.h * 0.02 - TK.hopY(duck.hop, tub.h * 0.5) });
+const duckPos = () => { const ti = tubImg(); if (ti) return { x: tub.x + ti.w * 0.42 * 0.78, y: ti.y + ti.h * 0.194 - TK.hopY(duck.hop, ti.h * 0.25) + tub.h * 0.12 }; return duckPos0(); };
+const duckPos0 = () => ({ x: tub.x + tub.w * 0.4, y: tub.rim - tub.h * 0.02 - TK.hopY(duck.hop, tub.h * 0.5) });
 
 TK.input({
   down(p) {
@@ -194,10 +195,27 @@ function drawTubFront() {
   ctx.beginPath(); ctx.moveTo(d.x - s * 0.95, d.y - s * 1.15); ctx.lineTo(d.x - s * 1.3, d.y - s * 1.05); ctx.lineTo(d.x - s * 0.95, d.y - s * 0.98); ctx.fillStyle = '#ff9a3c'; ctx.fill();
   ell(d.x - s * 0.6, d.y - s * 1.25, s * 0.08, s * 0.08); ctx.fillStyle = '#222'; ctx.fill();
 }
+// 손그림 욕조: 욕조 → 물 타원 안쪽으로만 보이는 티노·코코 → 물빛 덧칠 → 거품·오리 (아이들이 물에 앉은 모습)
+//  o_tub 그림에서 물 타원: 세로 8%~23%, 가운데 15.5%, 가로 반지름 폭의 42%
+function drawTubArt() {
+  const ti = tubImg(), cx = tub.x, wy = ti.y + ti.h * 0.155, rx = ti.w * 0.42, ry = ti.h * 0.078;
+  ctx.drawImage(ti.im, ti.x, ti.y, ti.w, ti.h);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, TK.W, wy); ctx.ellipse(cx, wy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
+  twins.forEach(tw => TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h));
+  ctx.beginPath(); ctx.rect(0, wy - ry * 0.15, TK.W, TK.H); ctx.clip();   // 물 아래로 잠긴 부분은 물빛으로
+  ell(cx, wy, rx, ry); ctx.fillStyle = 'rgba(160,212,248,.72)'; ctx.fill();
+  for (let k = 0; k < 7; k++) { const fx = cx - rx * 0.8 + k * rx * 0.27; ell(fx, wy - ry * 0.05 + Math.sin(TK.T * 2.2 + k) * ry * 0.06, rx * 0.12, ry * 0.18); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill(); }
+  ctx.restore();
+  for (const [fx, k] of [[-0.62, 1], [0.66, 0.8]]) H.drawObj(ctx, 'o_foam', cx + rx * fx, wy + ry * 0.9 + Math.sin(TK.T * 2 + fx * 9) * 2, ti.h * 0.32 * k, ti.w * 0.22);
+  const d = { x: cx + rx * 0.78, y: wy + ry * 0.5 - TK.hopY(duck.hop, ti.h * 0.25) }, s2 = ti.h * 0.3;
+  if (H.likes('고래')) { ctx.save(); ctx.translate(d.x, d.y); ctx.scale(-1, 1); H.drawPic(ctx, '고래', s2); ctx.restore(); }
+  else H.drawObj(ctx, 'o_duck', d.x, d.y, s2, s2 * 1.4);
+}
 function draw() {
   drawBg();
   TK.ink(Math.max(2, TK.U * 3), () => tiles.forEach(drawTile));   // 그림책 테두리
   spots.forEach(drawSpot);
+  if (tubImg()) { drawTubArt(); TK.drawParts(); return; }
   drawTubBack();
   twins.forEach(tw => {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, TK.W, tub.rim + tub.h * 0.05); ctx.clip();
