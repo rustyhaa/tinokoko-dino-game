@@ -24,6 +24,10 @@ SHEETS = {   # 파일 → (행, 열, 칸 이름들 / None 은 버림)
     'sheet4.png': (4, 4, ['o_rock', 'o_castle', 'o_bucket', 'o_shell', 'o_weed', 'o_log', 'o_bush', 'o_stump',
                           'o_mushroom', 'o_flowers', 'o_mossrock', 'o_tent', 'o_hay', 'o_cloud', None, None]),
     'sheet5.png': (2, 2, ['o_boat_hull', 'o_boat_sail', 'o_lifebuoy', 'o_gull']),   # 첫소리 배 부품
+    'sheet6.png': (4, 4, ['d_파키케팔로사우루스', 'd_파라사우롤로푸스', 'd_벨로키랍토르', 'd_디플로도쿠스', 'd_이구아노돈', 'd_알로사우루스', 'd_모사사우루스', 'd_플레시오사우루스',
+                          'h_밍크고래', 'h_귀신고래', 'h_북극고래', 'h_참고래', 'h_상괭이', 'h_들쇠고래', 'h_분홍돌고래', 'h_남방큰돌고래']),
+    'sheet7.png': (4, 4, ['d_카르노타우루스', 'd_딜로포사우루스', 'd_갈리미무스', 'd_마이아사우라', 'd_프시타코사우루스', 'd_케찰코아틀루스', 'd_아마르가사우루스', 'd_테리지노사우루스',
+                          'h_참돌고래', 'h_낫돌고래', 'h_고추돌고래', 'h_쇠돌고래', 'h_바키타', 'h_꼬마향유고래', 'h_민부리고래', 'h_북방긴수염고래']),
     'bgsheet1.png': (2, 2, ['bg_stars', 'bg_steps', 'bg_band', 'bg_shapes']),
     'bgsheet2.png': (2, 2, ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night', None]),
 }
@@ -58,8 +62,9 @@ def cells(im, rows, cols, name):
     out = []
     for (y0, y1) in rb:
         cb = bands(ink[y0:y1], cols, 1)
-        if not cb: print(f'  ! {name}: 열 틈을 못 찾아 똑같이 나눔 (행 {y0})'); cb = equal(a.shape[1], cols)
-        out += [(x0, y0, x1, y1) for (x0, x1) in cb]
+        fb = not cb
+        if fb: print(f'  ! {name}: 열 틈을 못 찾아 똑같이 나눔 → 덩어리별로 칸 배정 (행 {y0})'); cb = equal(a.shape[1], cols)
+        out += [(x0, y0, x1, y1, fb) for (x0, x1) in cb]
     return out
 
 
@@ -93,6 +98,26 @@ def clear_holes(im, seeds):
     return Image.fromarray(a, 'RGBA')
 
 
+def own_blobs(im, x0, y0, x1, y1):
+    """칸을 좌우로 25% 넓혀 자른 뒤, 잉크 덩어리 중 무게중심이 원래 칸 안에 있는 것만 남기고 나머지는 흰색으로."""
+    m = round((x1 - x0) * 0.25); X0, X1 = max(0, x0 - m), min(im.width, x1 + m)
+    c = im.crop((X0, y0, X1, y1)).convert('RGB'); a = np.asarray(c).copy()
+    k = 4   # 1/4 크기에서 덩어리 찾기 (크레용 점 같은 작은 조각이 많아도 빠르게)
+    ink = Image.fromarray(((a < WHITE).any(axis=2) * 255).astype(np.uint8), 'L').filter(ImageFilter.MaxFilter(5))
+    sm = ink.resize((max(1, ink.width // k), max(1, ink.height // k)), Image.BOX).point(lambda v: 255 if v > 20 else 0)
+    lab = np.asarray(sm).copy(); keep = np.zeros(lab.shape, bool)
+    while True:
+        ys, xs = np.where(lab == 255)
+        if not len(xs): break
+        t = Image.fromarray(lab, 'L').copy(); ImageDraw.floodfill(t, (int(xs[0]), int(ys[0])), 100)
+        lab = np.asarray(t).copy(); comp = lab == 100; lab[comp] = 0
+        cy, cx = np.where(comp)
+        if x0 - X0 <= cx.mean() * k + k / 2 < x1 - X0: keep |= comp
+    keep = np.asarray(Image.fromarray(keep.astype(np.uint8) * 255, 'L').resize(ink.size, Image.NEAREST)) > 0
+    a[~keep] = 255
+    return Image.fromarray(a, 'RGB')
+
+
 def fit(im, size, pad=0.06):
     s = size * (1 - 2 * pad) / max(im.size)
     im = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
@@ -116,9 +141,11 @@ def main():
         p = os.path.join(SRC, fn)
         if not os.path.exists(p): print('없음:', fn); continue
         im = Image.open(p); print(f'{fn} {im.size[0]}x{im.size[1]} → {rows}x{cols}')
-        for (x0, y0, x1, y1), nm in zip(cells(im, rows, cols, fn), names):
+        for (x0, y0, x1, y1, fb), nm in zip(cells(im, rows, cols, fn), names):
             if not nm: continue
-            c = im.crop((x0, y0, x1, y1))
+            if fb and not fn.startswith('bg'):   # 이웃 그림과 세로로 겹침: 넓게 잘라 몸통이 이 칸에 있는 덩어리만 남김
+                c = own_blobs(im, x0, y0, x1, y1)
+            else: c = im.crop((x0, y0, x1, y1))
             if fn.startswith('bg'):
                 c = trim_white(c).convert('RGB')   # 원래 크기 그대로 (게임이 화면에 꽉 차게 잘라 그림)
                 c.save(os.path.join(OUT, nm + '.png')); made.append((nm, c))
