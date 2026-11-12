@@ -26,7 +26,7 @@ function newSet() {
   const pool = HG.words().filter(o => o.cat !== 'name' && HG.hasPic(o.w) && [...o.w].length <= 5);
   const by = j => pool.filter(o => o.cho === j);
   let kinds;
-  if (HG.cfg().stage <= 1) { jamo = null; kinds = HG.pick(4, { cat: 'animal', pic: true }).map(o => o.w); }
+  if (true) { jamo = null; kinds = HG.pick(4, { cat: 'animal', pic: true }).map(o => o.w); }   /* 2026-11-12 사용자 요청: 같은 자음만 태우는 제한 삭제 — 누구나 탐 (아래 자음 배 코드는 되살릴 때를 위해 남김) */
   else {
     const set = HG.jamoSet().filter(j => by(j).length >= 2);
     const wj = waiting.map(w => HG.cho(w)).find(j => set.includes(j));
@@ -55,7 +55,7 @@ function seat(f) {
   f.seat = free[0]; f.st = 'fly'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; lastSeat = TK.T;
   sfx.boing(); TK.tone(TK.pick([784, 880, 988]), 0.15, 0.15, 'triangle', 0.12, 1200);
   // 탈 때 읽어줌: 자음 배면 "기역." "고래." (1단계는 이름만)
-  HG.read(f.kind, jamo ? HG.JAMO_NAME[jamo] : '');
+  HG.read(f.kind, jamo ? HG.JAMO_NAME[jamo] : HG.cfg().stage >= 2 && HG.JAMO_NAME[HG.cho(f.kind)] ? HG.JAMO_NAME[HG.cho(f.kind)] : '');   // 각자 첫소리 + 이름
   const tw = seatPos(f.seat).x < boatX ? twins[0] : twins[1]; tw.hop = 0;
 }
 function sendHome(f) { f.st = 'back'; f.t = 0; f.fx = f.x; f.fy = f.y; f.ptr = null; sfx.soft(); }
