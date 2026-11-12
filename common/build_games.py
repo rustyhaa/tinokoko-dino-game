@@ -28,6 +28,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'band':   ('티노코코 가나다 실로폰', '#5a2a6e'),
     'blow':   ('티노코코 내 이름 방울', '#a8e0ff'),
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
+    'run':    ('티노코코 글자 달리기', '#bfe6fb'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
 THREE_D = []   # three.js 3D 판 — 2026-11-08 느려서 폐기 (기록: docs/three-review/)
@@ -139,6 +140,12 @@ def game_icon(name, color, n):
     elif name == 'blow':
         c(W * .58, W * .42, W * .25, (190, 230, 255), (255, 255, 255), int(W * .02)); c(W * .5, W * .34, W * .06, (255, 255, 255))
         d.line([(W * .2, W * .85), (W * .38, W * .62)], fill=(255, 160, 80), width=int(W * .04)); c(W * .4, W * .6, W * .07, None, (255, 160, 80), int(W * .025))
+    elif name == 'run':
+        d.rectangle([0, W * .72, W, W], fill=(236, 206, 150))
+        for k, (x, col) in enumerate([(.3, (255, 90, 95)), (.55, (58, 167, 255)), (.78, (76, 210, 100))]):
+            d.line([(x * W, W * (.42 + k * .03)), (x * W, W * (.62 + k * .03))], fill=(90, 70, 60), width=int(W * .01))
+            c(x * W, W * (.32 + k * .03), W * .1, col)
+        c(W * .18, W * .66, W * .08, (250, 214, 90))
     elif name == 'steps':
         d.rectangle([0, 0, W, W * .38], fill=(143, 212, 255))
         d.polygon([(W * .72, W), (W * .8, W * .55), (W, W * .55), (W, W)], fill=(70, 160, 225))
