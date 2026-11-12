@@ -191,3 +191,36 @@ Every animal is a cute chubby BABY version, full body, side view facing right un
 ```
 
 칸 순서 → 파일: d_파키케팔로사우루스 · d_파라사우롤로푸스 · d_벨로키랍토르 · d_디플로도쿠스 · d_이구아노돈 · d_알로사우루스 · d_모사사우루스 · d_플레시오사우루스 · h_밍크고래 · h_귀신고래 · h_북극고래 · h_참고래 · h_상괭이 · h_들쇠고래 · h_분홍돌고래 · h_남방큰돌고래
+
+### 시트 6·7 화풍 맞추기 (첫 시도는 크레용 질감이 너무 거칠고 점선 테두리라 탈락)
+
+`sheet3.png` 를 참고 그림으로 꼭 붙이고, 시트 공통 문장 대신 아래 문장을 앞에 붙인다.
+
+```
+Draw a 4x4 grid sprite sheet of 16 separate cute illustrations, square image, plain pure white background, equal-size cells with clear white space between cells, one subject per cell, centered, nothing touching the cell edges, no grid lines, no text, no letters, no numbers, no labels.
+Match the attached reference sheet's style exactly: clean cute sticker-like children's book illustration, smooth solid continuous dark brown outline of even thickness (NOT dashed, NOT dotted, NOT stitched), smooth soft pastel color fills with only light gentle colored-pencil shading, almost no grain or crayon texture, simple shapes, big shiny black eyes with a white highlight, pink rosy cheeks, small happy smile, chubby rounded baby proportions, friendly for a 3-year-old, no sharp teeth, no claws, no splash or water unless written.
+Cells in reading order (left to right, top to bottom):
+```
+
+## 시트 7 — 공룡 8 + 고래 8 더 (`sheet7.png`)
+
+```
+1 baby Carnotaurus on two legs, two short rounded horns above the eyes, tiny arms, red-brown with light belly
+2 baby Dilophosaurus on two legs, two thin rounded crests on top of its head, yellow-green with dark stripes
+3 baby Gallimimus running on two long legs, small head, long neck, slim like an ostrich, sandy beige
+4 baby Maiasaura on four legs, small bump crest above the eyes, duck-like snout, soft green, motherly gentle face
+5 baby Psittacosaurus on two legs, parrot-like round beak, a few soft quills on its tail, light orange
+6 baby Quetzalcoatlus flying, very big wings spread, long beak, tall head crest, light blue and white
+7 baby Amargasaurus on four legs, two rows of soft rounded spines along its neck, long neck and tail, light purple
+8 baby Therizinosaurus sitting, fluffy soft feathers, round tummy, long but blunt rounded claws, cream and light brown
+9 short-beaked common dolphin, side view, yellow and gray hourglass pattern on its side, dark back
+10 Pacific white-sided dolphin, side view, black back, white belly, light gray stripes on its sides, curved dark fin
+11 Risso's dolphin, side view, light gray with soft white scratch lines, round blunt head, no beak, tall fin
+12 harbour porpoise, small round dark gray porpoise, small triangle fin, short snout
+13 vaquita, tiny round gray porpoise with dark rings around the eyes like a panda and dark lips
+14 pygmy sperm whale, small round gray whale with a short square head and a small mouth underneath
+15 Cuvier's beaked whale, side view, long smooth tan-gray body, short beak, small fin far back
+16 North Pacific right whale, side view, round black body, big curved mouth, white rough bumps on its head, no dorsal fin
+```
+
+칸 순서 → 파일: d_카르노타우루스 · d_딜로포사우루스 · d_갈리미무스 · d_마이아사우라 · d_프시타코사우루스 · d_케찰코아틀루스 · d_아마르가사우루스 · d_테리지노사우루스 · h_참돌고래 · h_낫돌고래 · h_고추돌고래 · h_쇠돌고래 · h_바키타 · h_꼬마향유고래 · h_민부리고래 · h_북방긴수염고래
