@@ -195,6 +195,34 @@ def fresh(src, out):
     return os.path.exists(out) and os.path.getmtime(out) >= os.path.getmtime(src)
 
 
+def fill_sprite_holes(im):
+    """원본 PNG 는 그대로 두고 사본에서만: 테두리로 둘러싸인 투명 구멍(티노 점프 꼬리 안쪽 등)을 몸 색으로 채움.
+    바깥과 이어진 투명 부분은 그대로. 50px 보다 작은 틈은 무시."""
+    import numpy as np
+    from collections import deque
+    a = np.asarray(im.convert('RGBA')).copy(); h, w = a.shape[:2]; tr = a[..., 3] < 40
+    seen = np.zeros((h, w), bool); q = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if tr[y, x] and not seen[y, x]: seen[y, x] = True; q.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if tr[y, x] and not seen[y, x]: seen[y, x] = True; q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            yy, xx = y + dy, x + dx
+            if 0 <= yy < h and 0 <= xx < w and tr[yy, xx] and not seen[yy, xx]: seen[yy, xx] = True; q.append((yy, xx))
+    hole = tr & ~seen
+    if hole.sum() < 50: return im
+    body = (a[..., 3] > 200) & (a[..., 0] > 215) & (a[..., 1] > 175) & (a[..., 2] < 150)   # 노란 몸 색
+    col = np.median(a[body][:, :3], axis=0) if body.any() else np.array([243, 210, 110])
+    rng = np.random.default_rng(1); noise = rng.normal(0, 6, (h, w, 1))   # 크레용 결처럼 살짝 얼룩
+    fill = np.clip(col[None, None, :] + noise, 0, 255)
+    a[hole, :3] = fill[hole]; a[hole, 3] = 255
+    return Image.fromarray(a, 'RGBA')
+
+
 def build_pics():
     """art/cut/{w,d,h,f}_이름.png (cut_sheets.py 결과) → shared/pics/이름.webp, 목록을 hangul.js 에 써 넣음."""
     src, dst = os.path.join(ROOT, 'art', 'cut'), os.path.join(ROOT, 'shared', 'pics')
@@ -227,7 +255,7 @@ def build():
     os.makedirs(os.path.join(ROOT, 'shared', 'assets'), exist_ok=True)
     for s in SPRITES:   # 원본 PNG(assets/)는 그대로, 게임용은 같은 크기 WebP 사본 (5장 1.1MB → 약 0.19MB)
         src, out = os.path.join(ROOT, 'assets', s + '.png'), os.path.join(ROOT, 'shared', 'assets', s + '.webp')
-        if not fresh(src, out): Image.open(src).save(out, 'WEBP', quality=88, method=6)
+        if not fresh(src, out) or os.path.getmtime(__file__) > os.path.getmtime(out): fill_sprite_holes(Image.open(src)).save(out, 'WEBP', quality=88, method=6)
         old = os.path.join(ROOT, 'shared', 'assets', s + '.png')
         if os.path.exists(old): os.remove(old)
     for n in (180, 192, 512):

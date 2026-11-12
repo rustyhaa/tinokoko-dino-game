@@ -244,8 +244,8 @@ addEventListener('keydown', e => {
 
 // ---------- 부모용 최소 UI: 소리 켜고 끄기 ----------
 const st = document.createElement('style');
-st.textContent = `#snd{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:44px;height:44px;
-border-radius:50%;border:0;background:rgba(255,255,255,.8);padding:8px;opacity:.6;cursor:pointer;z-index:2}
+st.textContent = `#snd{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:64px;height:64px;
+border-radius:50%;border:0;background:rgba(255,255,255,.85);padding:12px;opacity:.75;cursor:pointer;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 #snd svg{width:100%;height:100%;display:block}#snd .x{display:none}#snd.off .x{display:inline}#snd.off .w{display:none}`;
 document.head.appendChild(st);
 const snd = document.createElement('button');

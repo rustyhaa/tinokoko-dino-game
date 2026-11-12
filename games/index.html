@@ -23,7 +23,11 @@
     -webkit-tap-highlight-color:transparent}
   .wrap{max-width:1000px;margin:0 auto;display:grid;gap:16px}
   header{display:flex;align-items:center;gap:14px}
-  header img{width:56px;height:56px;border-radius:14px;flex:none}
+  header{justify-content:center;text-align:center}
+  header img.tw{height:110px;width:auto;flex:none;animation:twhop 2.4s ease-in-out infinite}
+  header img.c{animation-delay:1.2s}
+  @keyframes twhop{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px) rotate(-3deg)}}
+  @media (max-width:420px){header img.tw{height:84px}}
   h1{font-size:1.55rem;margin:0;text-wrap:balance}
   header p{margin:2px 0 0;color:var(--sub);font-size:.92rem}
   .panel{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
@@ -77,11 +81,9 @@
 <body>
 <div class="wrap">
   <header>
-    <img src="../shared/icons/icon-192.png" alt="">
-    <div>
-      <h1>티노코코 한글 놀이터</h1>
-      <p>3살 쌍둥이가 놀면서 한글을 보고 듣는 게임 모음. 읽으라고 시키지 않고, 틀려도 괜찮아요. 손가락 하나로 놉니다.</p>
-    </div>
+    <img class="tw t" src="../shared/assets/tino_jump_v2.webp" alt="티노">
+    <h1>티노코코<br>한글 놀이터</h1>
+    <img class="tw c" src="../shared/assets/coco_laugh_v2.webp" alt="코코">
   </header>
 
   <ul class="games">
