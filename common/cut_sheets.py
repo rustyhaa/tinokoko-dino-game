@@ -76,6 +76,23 @@ def cutout(cell):
     return out.crop(box) if box else out
 
 
+# 테두리로 둘러싸인 흰 구멍을 지울 그림: 이름 → 씨앗 점(비율). 그 점에서 이어진 흰 부분만 투명
+HOLES = {
+    'o_boat_hull': [(x / 40, 0.2) for x in range(2, 39)],   # 난간 기둥 사이
+    'o_lifebuoy': [(0.5, 0.5)],                              # 가운데 구멍
+}
+def clear_holes(im, seeds):
+    a = np.asarray(im).copy(); h, w = a.shape[:2]
+    white = ((a[..., :3] >= WHITE).all(axis=2)) & (a[..., 3] > 0)
+    m = Image.fromarray((white * 255).astype(np.uint8), 'L').copy()
+    for fx, fy in seeds:
+        x, y = int(fx * (w - 1)), int(fy * (h - 1))
+        if m.getpixel((x, y)) == 255: ImageDraw.floodfill(m, (x, y), 128)
+    hole = np.asarray(m) == 128
+    a[hole, 3] = 0
+    return Image.fromarray(a, 'RGBA')
+
+
 def fit(im, size, pad=0.06):
     s = size * (1 - 2 * pad) / max(im.size)
     im = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
@@ -107,7 +124,9 @@ def main():
                 c.save(os.path.join(OUT, nm + '.png')); made.append((nm, c))
                 if c.width < 1000: print(f'  ! {nm}: 칸 {c.width}x{c.height}px — 큰 화면에선 흐릴 수 있음')
             else:
-                o = cutout(c); k = 320 / max(o.size)   # 여백 없이 그림에 딱 맞게 (게임이 밑변에 세움)
+                o = cutout(c)
+                if nm in HOLES: o = clear_holes(o, HOLES[nm])
+                k = 320 / max(o.size)   # 여백 없이 그림에 딱 맞게 (게임이 밑변에 세움)
                 if k < 1: o = o.resize((round(o.width * k), round(o.height * k)), Image.LANCZOS)
                 o.save(os.path.join(OUT, nm + '.png')); made.append((nm, o))
     for fn in sorted(os.listdir(SRC)) if os.path.isdir(SRC) else []:   # 낱장 배경 (bg_sea.png 처럼 이름이 bg_ 로 시작): 흰 테두리만 잘라 그대로
