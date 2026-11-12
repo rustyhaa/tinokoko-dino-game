@@ -49,7 +49,7 @@ function rubAt(x, y, amount) {
 function checkTile(ti) {
   const t = tiles[ti];
   if (!t.clean && spots.every(s => s.ti !== ti || s.d <= 0)) {
-    t.clean = true; t.done = TK.T; H.read(t.w);
+    t.clean = true; t.done = TK.T; H.read(t.w); TK.wordPop(t.w, t.x, t.y - t.s * 0.75);
     const tw = t.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.1); TK.spark(t.x, t.y, TK.pick(TK.COLS), 12, 0.9);
     if (tiles.every(q => q.clean)) { phase = 'wait'; phaseT = 0; }
   }
@@ -107,7 +107,7 @@ function update(dt) {
   }
   if (phase === 'party') {
     TK.confetti(dt);
-    if (phaseT > 3.2) { phase = 'appear'; phaseT = 0; dirtIdx = (dirtIdx + 1) % DIRT.length; newRound(); sfx.splash(); twins.forEach(t => t.hop = 0); }
+    if (phaseT > 3.2) { phase = 'appear'; phaseT = 0; dirtIdx = (dirtIdx + 1) % DIRT.length; newRound(); TK.flash(); sfx.splash(); twins.forEach(t => t.hop = 0); }
   }
 }
 
@@ -201,7 +201,7 @@ function drawTubArt() {
   const ti = tubImg(), cx = tub.x, wy = ti.y + ti.h * 0.155, rx = ti.w * 0.42, ry = ti.h * 0.078;
   ctx.drawImage(ti.im, ti.x, ti.y, ti.w, ti.h);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, TK.W, wy); ctx.ellipse(cx, wy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
-  twins.forEach(tw => TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h));
+  twins.forEach(tw => TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h, { hop: tw.hop }));
   ctx.beginPath(); ctx.rect(0, wy - ry * 0.15, TK.W, TK.H); ctx.clip();   // 물 아래로 잠긴 부분은 물빛으로
   ell(cx, wy, rx, ry); ctx.fillStyle = 'rgba(160,212,248,.72)'; ctx.fill();
   for (let k = 0; k < 7; k++) { const fx = cx - rx * 0.8 + k * rx * 0.27; ell(fx, wy - ry * 0.05 + Math.sin(TK.T * 2.2 + k) * ry * 0.06, rx * 0.12, ry * 0.18); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill(); }

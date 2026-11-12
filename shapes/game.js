@@ -71,11 +71,11 @@ function update(dt) {
       p.t += dt / (p.st === 'fly' ? 0.25 : 0.4);
       const to = p.st === 'fly' ? slots[p.slot] : { x: p.hx, y: p.hy }, e = TK.ease(p.t);
       p.x = TK.lerp(p.fx, to.x, e); p.y = TK.lerp(p.fy, to.y, e);
-      if (p.t >= 1) { if (p.st === 'fly') { p.st = 'placed'; p.pulse = 1; p.shown = TK.T; TK.spark(p.x, p.y, TK.pick(TK.COLS), 10, 0.8); } else p.st = 'home'; }
+      if (p.t >= 1) { if (p.st === 'fly') { p.st = 'placed'; p.pulse = 1; p.shown = TK.T + (mode === 'jamo' ? 1.7 : 0); p.rev = mode === 'jamo' ? TK.T : -9; TK.spark(p.x, p.y, TK.pick(TK.COLS), 10, 0.8); } else p.st = 'home'; }
     }
   });
   if (phase === 'play' && pieces.length && pieces.every(p => p.st === 'placed')) { phase = 'party'; phaseT = 0; sfx.fanfare(); twins.forEach(t => t.hop = 0); }
-  if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.6) { phase = 'play'; phaseT = 0; rounds++; newSet(); sfx.sparkle(); } }
+  if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.6) { phase = 'play'; phaseT = 0; rounds++; newSet(); TK.flash(); sfx.sparkle(); } }
 }
 
 // 조각 하나 그리기 (가운데 x,y). sil: 그림자
@@ -122,7 +122,19 @@ function draw() {
       ctx.save(); ctx.translate(p.x + S * 0.62, p.y + S * 0.98); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, p.ex, S * 0.8); ctx.restore();
     }
   });
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
+  // 방금 맞춘 자음: 그 자음으로 시작하는 그림이 판 가운데로 크게 튀어나와 이름표와 함께 춤추고 → 블록 옆 제자리로
+  pieces.filter(p => p.st === 'placed' && mode === 'jamo' && p.ex && TK.T - p.rev < 1.7).forEach(p => {
+    const t = (TK.T - p.rev) / 1.7, port = TK.W < TK.H, cx = TK.W / 2, cy = TK.H * (port ? 0.33 : 0.36), big = S * (port ? 3.0 : 2.8);
+    const ex = p.x + S * 0.62, ey = p.y + S * 0.98;
+    let x, y, sc;
+    if (t < 0.22) { const e = TK.back(t / 0.22); x = TK.lerp(p.x, cx, e); y = TK.lerp(p.y, cy, e); sc = TK.lerp(0.3, 1, e); }
+    else if (t < 0.78) { x = cx; y = cy - Math.abs(Math.sin((t - 0.22) * 14)) * S * 0.25; sc = 1; }
+    else { const e = TK.ease((t - 0.78) / 0.22); x = TK.lerp(cx, ex, e); y = TK.lerp(cy, ey, e); sc = TK.lerp(1, 0.8 / 3, e); }
+    ctx.save(); ctx.globalAlpha = 0.9; ell(cx, cy + big * 0.05, big * 0.75 * (t < 0.78 ? 1 : 1 - (t - 0.78) / 0.22), big * 0.75 * (t < 0.78 ? 1 : 1 - (t - 0.78) / 0.22)); ctx.fillStyle = 'rgba(255,250,235,.85)'; ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(x, y + big * 0.5 * sc); ctx.rotate(Math.sin(TK.T * 7) * 0.08 * (t < 0.78 ? 1 : 0)); H.drawPic(ctx, p.ex, big * sc); ctx.restore();
+    if (t > 0.2 && t < 0.8) H.drawTag(ctx, p.ex, cx, cy + big * 0.66, S * 0.42, { hi: H.hi(p.ex) });
+  });
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   pieces.filter(p => p.st !== 'placed').forEach(p => {
     const sc = p.st === 'appear' ? TK.back(p.t) : p.st === 'drag' ? 1.15 : 1, wg = p.wig > 0 ? Math.sin(p.wig * 40) * 0.15 : 0;
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(wg);

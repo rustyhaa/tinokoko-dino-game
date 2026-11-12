@@ -87,7 +87,7 @@ function update(dt) {
   flags.forEach(f => f.x -= run * dt); flags = flags.filter(f => f.x > -200 * U);
   // 단어 완성
   if (phase === 'play' && word && got.length && got.every(Boolean)) {
-    phase = 'party'; phaseT = 0; wordsDone++; sfx.fanfare(); setTimeout(() => HG.read(word.w), 350);
+    phase = 'party'; phaseT = 0; wordsDone++; sfx.fanfare(); setTimeout(() => { HG.read(word.w); TK.wordPop(word.w, TK.W / 2, TK.H * 0.34); }, 350);
     twins.forEach(t => t.happy = 2); flags.push({ x: TK.W + 80 * U, w: word.w });
   }
   if (phase === 'party') {
@@ -103,7 +103,7 @@ function update(dt) {
     if (finish && finish.done) TK.confetti(dt);
     if (phaseT > 6.5) { phase = 'scene'; phaseT = 0; }
   }
-  if (phase === 'scene' && phaseT > 0.8) { scene = (scene + 1) % SCENES.length; rounds++; finish = null; rocks = []; flags = []; phase = 'play'; phaseT = 0; newWord(); sfx.sparkle(); }
+  if (phase === 'scene' && phaseT > 0.8) { scene = (scene + 1) % SCENES.length; rounds++; finish = null; rocks = []; flags = []; phase = 'play'; phaseT = 0; newWord(); TK.flash(); sfx.sparkle(); }
 }
 
 // 배경: 손그림 배경을 옆으로 흐르게 (번갈아 좌우 뒤집어 이어 붙여 이음매를 감춤)

@@ -101,14 +101,14 @@ function update(dt) {
   prints.forEach(p => { if (p.wig >= 0) { p.wig += dt / 0.4; if (p.wig > 1) p.wig = -1; } p.glow = Math.max(0, p.glow - dt * 1.5); });
   if (phase === 'shore') {
     whale.up = Math.min(1, whale.up + dt / 0.8);
-    if (phaseT > 0.9) { phase = 'party'; phaseT = 0; spout(); sfx.fanfare(); setTimeout(() => H.read(word.w), 500); twins.forEach(t => t.happy = 1.2); }
+    if (phaseT > 0.9) { phase = 'party'; phaseT = 0; spout(); sfx.fanfare(); setTimeout(() => { H.read(word.w); TK.wordPop(word.w, TK.W / 2, TK.H * 0.42); }, 500); twins.forEach(t => t.happy = 1.2); }
   }
   if (phase === 'party') {
     TK.confetti(dt * 0.6);
     if (Math.random() < dt * 3) { const top = whaleTop(); TK.drops(top.x, top.y, [150, 210, 255], 4, 1.2); }
     if (phaseT > 5) { phase = 'fade'; phaseT = 0; }
   }
-  if (phase === 'fade') { whale.up = Math.max(0, 1 - phaseT / 0.8); if (phaseT > 0.9) { rounds++; phase = 'play'; phaseT = 0; newRound(); sfx.sparkle(); } }
+  if (phase === 'fade') { whale.up = Math.max(0, 1 - phaseT / 0.8); if (phaseT > 0.9) { rounds++; phase = 'play'; phaseT = 0; newRound(); TK.flash(); sfx.sparkle(); } }
 }
 
 // 공룡 발자국: 둥근 뒤꿈치 + 콩 모양 발가락 셋. 오른쪽을 향함, 크기 s

@@ -108,12 +108,12 @@ function update(dt) {
   twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.5; if (t.hop > 1) t.hop = -1; } });
   lines.forEach(l => l.t = Math.min(1, l.t + dt / 0.3));
   while (trail.length && (TK.T - trail[0].t > 0.6 || trail.length > 80)) trail.shift();
-  if (phase === 'complete' && phaseT > 0.5) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => fig ? H.read(fig) : H.readJamo(jamo), 600); twins.forEach(t => t.hop = 0); }
+  if (phase === 'complete' && phaseT > 0.5) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => { if (fig) { H.read(fig); TK.wordPop(fig, TK.W / 2, TK.H * 0.2); } else H.readJamo(jamo); }, 600); twins.forEach(t => t.hop = 0); }
   if (phase === 'party') {
     if (Math.random() < dt * 25) { const p = trace ? TP(TK.pick(TK.pick(tr).pts)) : P((Math.random() * N()) | 0); TK.spark(p.x, p.y, COL, 2, 0.5); }
     if (phaseT > 4.2) { phase = 'fade'; phaseT = 0; }
   }
-  if (phase === 'fade' && phaseT > 0.8) { phase = 'play'; phaseT = 0; rounds++; newJamo(); lastTap = TK.T; sfx.sparkle(); }
+  if (phase === 'fade' && phaseT > 0.8) { phase = 'play'; phaseT = 0; rounds++; newJamo(); TK.flash(); lastTap = TK.T; sfx.sparkle(); }
 }
 
 function draw() {

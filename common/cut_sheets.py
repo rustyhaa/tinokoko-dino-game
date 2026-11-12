@@ -32,6 +32,10 @@ SHEETS = {   # 파일 → (행, 열, 칸 이름들 / None 은 버림)
                           'w_호박', 'o_dinoegg', 'o_basket', 'o_raincloud', 'o_can', 'w_벌', None, None]),   # 글자 정원
     'sheet9.png': (4, 4, ['o_tub', 'o_duck', 'o_shower', 'o_soap', 'o_sponge', 'o_foam', 'o_mud', 'o_paint',
                           'o_leafpile', 'o_sand', 'o_toyboat', 'o_towel', None, None, None, None]),   # 글자 목욕
+    'sheet10.png': (4, 4, ['o_tino_clap', 'o_tino_cheer', 'o_tino_point', 'o_tino_wow', 'o_tino_splash', 'o_tino_sniff', 'o_tino_thumb', 'o_tino_sleep',
+                           'o_coco_clap', 'o_coco_cheer', 'o_coco_point', 'o_coco_wow', 'o_coco_splash', 'o_coco_sniff', 'o_coco_thumb', 'o_coco_sleep']),   # 티노·코코 동작
+    'sheet11.png': (4, 4, ['o_balloon_r', 'o_balloon_y', 'o_balloon_b', 'o_balloon_g', 'o_tile', 'o_tag', 'o_foot', 'o_xylo',
+                           'o_drum', 'o_horn', 'o_tamb', 'o_star', 'o_flag', 'o_finish', 'o_note', 'o_heart']),   # 놀이 부품
     'bgsheet1.png': (2, 2, ['bg_stars', 'bg_steps', 'bg_band', 'bg_shapes']),
     'bgsheet2.png': (2, 2, ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night', None]),
     'bgsheet3.png': (2, 2, ['bg_bath', 'bg_garden', 'bg_sky', None]),

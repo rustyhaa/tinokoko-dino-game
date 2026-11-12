@@ -31,6 +31,10 @@ function layout() {
   band.forEach((f, i) => { f.hx = W * [0.18, 0.82, 0.5][i]; f.y = port ? H * 0.3 : H * 0.42; });
 }
 const xyloNotes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+// 따라 치기: 반짝이는 바를 치면 노래가 한 음씩 나아감 (학교종이 땡땡땡). 다른 바를 쳐도 그냥 소리만 — 틀림 없음
+//  솔솔라라솔솔미 솔솔미미레 솔솔라라솔솔미 솔미레미도 (바 번호: 도0 레1 미2 솔3 라4 높은도5)
+const SONG = [3, 3, 4, 4, 3, 3, 2, 3, 3, 2, 2, 1, 3, 3, 4, 4, 3, 3, 2, 3, 2, 1, 2, 0];
+let songI = 0, songGlow = 0;
 function playInst(k, barI) {
   if (k === 'drum') { tone(150, 0, 0.35, 'sine', 0.5, 50); noise(0.12, 300, 0.25); }
   else if (k === 'xylo') { const f = xyloNotes[barI]; tone(f, 0, 0.6, 'triangle', 0.25); tone(f * 4, 0, 0.08, 'sine', 0.05); HG.saySyl(syls[barI]); }
@@ -42,6 +46,10 @@ function hit(k, barI = 0) {
   playInst(k, barI);
   const it = inst.find(i => i.kind === k); it.hit = 1;
   if (k === 'xylo') bars[barI].bump = 1;
+  if (k === 'xylo' && phase === 'play' && barI === SONG[songI]) {   // 노래 한 음 앞으로
+    songI++; songGlow = 1; TK.spark(bars[barI].x, bars[barI].y - bars[barI].h * 0.6, [255, 224, 102], 5, 0.5);
+    if (songI >= SONG.length) { songI = 0; hits = 12; sfx.sparkle(); }   // 한 곡 끝 → 친구가 바로 합류
+  }
   notes.push({ x: it.x + rand(-it.s * 0.3, it.s * 0.3), y: it.y - it.s, vx: rand(-30, 30) * TK.U, t: 0, c: TK.pick(TK.COLS) });
   hits++; beat++; lastHit = TK.T;
   twins.forEach((t, i) => { if (beat % 2 === i || k === 'drum') t.hop = 0; t.move = (t.move + 1) % 4; });
@@ -70,7 +78,7 @@ TK.input({
 function update(dt) {
   phaseT += dt;
   inst.forEach(i => i.hit = Math.max(0, i.hit - dt * 4));
-  bars.forEach(b => b.bump = Math.max(0, b.bump - dt * 5));
+  bars.forEach(b => b.bump = Math.max(0, b.bump - dt * 5)); songGlow = Math.max(0, songGlow - dt * 3);
   twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.4; if (t.hop > 1) t.hop = -1; } });
   band.forEach(f => { f.t = Math.min(1, f.t + dt / 0.8); f.x = TK.lerp(f.side < 0 ? -80 : TK.W + 80, f.hx, TK.ease(f.t)); if (f.hop >= 0) { f.hop += dt / 0.4; if (f.hop > 1) f.hop = -1; } });
   notes.forEach(n => { n.t += dt; n.x += n.vx * dt + Math.sin(n.t * 5) * 0.6; n.y -= 70 * TK.U * dt; });
@@ -174,9 +182,16 @@ function draw() {
   twins.forEach((t, i) => {
     const pose = phase === 'party' ? 'happy' : (t.move % 2 ? 'jump' : (t.kind === 'coco' ? 'happy' : 'idle'));
     const lean = Math.sin(TK.T * 3 + i * 1.6) * 0.06 + (t.move === 3 ? (i ? -0.12 : 0.12) : 0);
-    TK.twin(t.kind, pose, t.x, t.yb - TK.hopY(t.hop, t.h * 0.18) - TK.bob(i * 1.5, t.h * 0.02), t.h, { rot: lean, face: i ? 'left' : 'right' });
+    TK.twin(t.kind, pose, t.x, t.yb - TK.hopY(t.hop, t.h * 0.18) - TK.bob(i * 1.5, t.h * 0.02), t.h, { rot: lean, face: i ? 'left' : 'right', hop: t.hop });
   });
   inst.forEach(drawInst);
+  if (phase === 'play' && bars.length) {   // 다음에 칠 바: 빛 + 통통 뛰는 별 + 노래 진행 점
+    const b = bars[SONG[songI]], pul = 0.5 + 0.5 * Math.sin(TK.T * 6);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ell(b.x, b.y, b.w * 0.9, b.h * 0.62); ctx.fillStyle = `rgba(255,236,150,${0.18 + pul * 0.2})`; ctx.fill(); ctx.restore();
+    TK.star(b.x, b.y - b.h * 0.72 - Math.abs(Math.sin(TK.T * 5)) * b.w * 0.5, b.w * 0.42, '#ffe066', TK.T);
+    const n = SONG.length, gw = Math.min(W * 0.6, n * 12 * TK.U), y = Math.min(b.y + inst[1].s * (port ? 0.95 : 0.85), H - 7 * TK.U);
+    for (let i = 0; i < n; i++) { ell(W / 2 - gw / 2 + i * gw / (n - 1), y, 3.2 * TK.U, 3.2 * TK.U); ctx.fillStyle = i < songI ? '#ffe066' : 'rgba(255,255,255,.35)'; ctx.fill(); }
+  }
   notes.forEach(n => drawNote(n.x, n.y, 12 * TK.U, TK.rgba(n.c, Math.max(0, 1 - n.t / 1.6))));
   // 친구가 몇 명 왔는지: 무대 위 작은 별 3개 (글자 대신)
   for (let k = 0; k < 3; k++) TK.star(W / 2 + (k - 1) * 36 * TK.U, H * 0.06, 13 * TK.U, k < band.length ? '#ffe066' : 'rgba(255,255,255,.25)', 0);

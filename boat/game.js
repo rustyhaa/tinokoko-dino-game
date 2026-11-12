@@ -104,7 +104,7 @@ function update(dt) {
     TK.confetti(dt);
     if (phaseT > 1.0) boatX += boat.w * 0.9 * dt * Math.min(1, (phaseT - 1) * 1.5);
     if (Math.random() < dt * 10) TK.ring(boatX - boat.w * 0.5, boat.deck + boat.h * 0.9, 6 * TK.U, [255, 255, 255], 60);
-    if (boatX - boat.w * 0.6 > TK.W) { phase = 'return'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; friends = friends.filter(f => !fits(f)); boatX = -boat.w * 0.6; }
+    if (boatX - boat.w * 0.6 > TK.W) { phase = 'return'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; friends = friends.filter(f => !fits(f)); boatX = -boat.w * 0.6; TK.flash(); }
   }
   if (phase === 'return') {
     boatX = Math.min(boat.x0, boatX + boat.w * 1.0 * dt);
