@@ -84,7 +84,7 @@ function piece(p, x, y, sc, sil, alive) {
   if (alive) { ctx.rotate(Math.sin(TK.T * 6 + x) * 0.1); const b = 1 + 0.08 * Math.sin(TK.T * 8 + y); ctx.scale(b, b); }
   ctx.scale(sc, sc);
   if (mode === 'jamo') {
-    if (!sil) { TK.rr(-S, -S, S * 2, S * 2, S * 0.35); ctx.fillStyle = '#fffaf0'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = p.col; ctx.stroke(); }
+    if (!sil && !H.drawObj(ctx, 'o_tile', 0, S * 1.05, S * 2.1, S * 2.1)) { TK.rr(-S, -S, S * 2, S * 2, S * 0.35); ctx.fillStyle = '#fffaf0'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = p.col; ctx.stroke(); }   // 손그림 나무 글자판
     H.drawJamo(ctx, p.key, 0, 0, S * 1.6, sil ? '#c9c1cf' : p.col, sil ? 0.2 : 0.17);   // 그림자는 불투명 연한 색 (획 겹침이 진해지지 않게)
   } else {
     if (sil) H.drawSil(ctx, p.key, 0, S * 0.95, S * 1.9, 'rgba(70,55,85,.4)');
@@ -134,7 +134,7 @@ function draw() {
     ctx.save(); ctx.translate(x, y + big * 0.5 * sc); ctx.rotate(Math.sin(TK.T * 7) * 0.08 * (t < 0.78 ? 1 : 0)); H.drawPic(ctx, p.ex, big * sc); ctx.restore();
     if (t > 0.2 && t < 0.8) H.drawTag(ctx, p.ex, cx, cy + big * 0.66, S * 0.42, { hi: H.hi(p.ex) });
   });
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' ? TK.partyPose(i) : t.hop >= 0 ? 'point' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   pieces.filter(p => p.st !== 'placed').forEach(p => {
     const sc = p.st === 'appear' ? TK.back(p.t) : p.st === 'drag' ? 1.15 : 1, wg = p.wig > 0 ? Math.sin(p.wig * 40) * 0.15 : 0;
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(wg);

@@ -122,10 +122,13 @@ function drawBg() {
   const dash = th * 0.5; for (let x = -((scroll) % (dash * 2)); x < W; x += dash * 2) TK.rr(x, gy + th * 0.22, dash, Math.max(4, th * 0.05), th * 0.03), ctx.fill();
   if (phase === 'scene') { ctx.fillStyle = `rgba(255,255,255,${Math.sin(Math.PI * clamp(phaseT / 0.8, 0, 1))})`; ctx.fillRect(0, 0, W, Hh); }
 }
+const balloonCol = c => c[0] > 200 && c[1] > 190 ? 'y' : c[2] > 200 ? 'b' : c[1] > 190 ? 'g' : 'r';   // 색 → 손그림 풍선 4색
 function drawBalloon(b) {
   const s = b.pop >= 0 ? 1 + b.pop * 0.6 : 1, a = b.pop >= 0 ? 1 - b.pop : 1, r = th * 0.36;
   ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
-  ctx.beginPath(); ctx.moveTo(b.x, b.y + r); ctx.quadraticCurveTo(b.x + Math.sin(TK.T * 3 + b.ph) * r * 0.3, b.y + r * 1.8, b.x, b.y + r * 2.5); ctx.strokeStyle = 'rgba(80,60,50,.6)'; ctx.lineWidth = 2; ctx.stroke();   // 줄
+  if (!HG.lazyImg('o_balloon_' + balloonCol(b.c))) { ctx.beginPath(); ctx.moveTo(b.x, b.y + r); ctx.quadraticCurveTo(b.x + Math.sin(TK.T * 3 + b.ph) * r * 0.3, b.y + r * 1.8, b.x, b.y + r * 2.5); ctx.strokeStyle = 'rgba(80,60,50,.6)'; ctx.lineWidth = 2; ctx.stroke(); }   // 줄
+  const bim = HG.lazyImg('o_balloon_' + balloonCol(b.c));
+  if (bim) { ctx.restore(); ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(b.x, b.y); ctx.rotate(Math.sin(TK.T * 2 + b.ph) * 0.06); ctx.scale(s, s); const hh = r * 3.15, ww = hh * bim.naturalWidth / bim.naturalHeight; ctx.drawImage(bim, -ww / 2, -r * 1.02, ww, hh); if (b.pop < 0 && word) HG.drawWord(ctx, word.syl[b.si], 0, r * 0.02, r * 0.95, { color: '#ffffff', outline: 'rgba(59,42,32,.55)' }); ctx.restore(); return; }   // 손그림 풍선 (줄 포함)
   ctx.translate(b.x, b.y); ctx.scale(s, s);
   TK.ink(Math.max(2, r * 0.06), () => { ell(0, 0, r * 0.9, r); ctx.fillStyle = TK.rgba(b.c, 1); ctx.fill(); });
   ctx.beginPath(); ctx.moveTo(-r * 0.12, r * 0.98); ctx.lineTo(r * 0.12, r * 0.98); ctx.lineTo(0, r * 1.15); ctx.closePath(); ctx.fillStyle = TK.rgba(b.c, 1); ctx.fill();
@@ -139,13 +142,14 @@ function drawRock(r) {
 }
 function drawFlag(f) {
   const h = th * 1.4, x = f.x, y = gy - th * 0.02;
-  TK.ink(2, () => { ctx.fillStyle = '#8a5a3a'; TK.rr(x - 3 * U, y - h, 6 * U, h, 3 * U); ctx.fill(); });
+  { const fim = HG.lazyImg('o_flag'); if (fim) { const fh = h * 1.05, fw = fh * fim.naturalWidth / fim.naturalHeight; ctx.drawImage(fim, x - fw * 0.12, y - fh, fw, fh); } else TK.ink(2, () => { ctx.fillStyle = '#8a5a3a'; TK.rr(x - 3 * U, y - h, 6 * U, h, 3 * U); ctx.fill(); }); }
   ctx.save(); ctx.translate(x + th * 0.45, y - h * 0.55); HG.drawPic(ctx, f.w, th * 0.7); ctx.restore();
   HG.drawTag(ctx, f.w, x + th * 0.45, y - h * 0.4, th * 0.16);
 }
 function drawFinish() {
   if (!finish) return;
   const x = finish.x, h = th * 2.2;
+  if (HG.drawObj(ctx, 'o_finish', x, gy + th * 0.05, h * 1.1, th * 2.8)) return;   // 손그림 결승선
   TK.ink(2, () => { for (const dx of [-th * 1.2, th * 1.2]) { ctx.fillStyle = '#ffffff'; TK.rr(x + dx - 5 * U, gy - h, 10 * U, h, 4 * U); ctx.fill(); } });
   for (let i = 0; i < 8; i++) { const cx = x - th * 1.2 + i * th * 0.3; ctx.fillStyle = i % 2 ? '#ffffff' : '#ff5a5f'; ctx.fillRect(cx, gy - h, th * 0.3, th * 0.3); }
   ctx.strokeStyle = TK.INK; ctx.lineWidth = 2; ctx.strokeRect(x - th * 1.2, gy - h, th * 2.4, th * 0.3);

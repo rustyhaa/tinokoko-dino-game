@@ -95,6 +95,7 @@ function update(dt) {
 }
 
 function drawNote(x, y, s, c) {
+  const im = HG.lazyImg('o_note'); if (im) { const m = /,([\d.]+)\)$/.exec(c); ctx.save(); ctx.globalAlpha = m ? +m[1] : 1; ctx.drawImage(im, x - s, y - s * 2.2, s * 2, s * 2.2); ctx.restore(); return; }
   ctx.fillStyle = c; ell(x, y, s * 0.55, s * 0.4, -0.4); ctx.fill();
   ctx.fillRect(x + s * 0.42, y - s * 1.6, s * 0.14, s * 1.6);
   ctx.beginPath(); ctx.moveTo(x + s * 0.56, y - s * 1.6); ctx.quadraticCurveTo(x + s * 1.1, y - s * 1.3, x + s * 0.9, y - s * 0.8); ctx.lineWidth = s * 0.14; ctx.strokeStyle = c; ctx.stroke();
@@ -132,6 +133,13 @@ function drawInst(it) {
     return;
   }
   ctx.save(); ctx.translate(it.x, it.y);
+  { const art = { drum: 'o_drum', horn: 'o_horn', tamb: 'o_tamb' }[it.kind], im = art && HG.lazyImg(art);   // 손그림 악기 (치면 찌그러지고 흔들림)
+    if (im) {
+      floorShadow(0, s * (it.kind === 'tamb' ? 0.85 : 0.62), s * 0.95, s * 0.15);
+      if (it.kind === 'drum') ctx.scale(1 + sh * 0.06, 1 - sh * 0.06); else if (it.kind === 'horn') ctx.rotate(-0.12 - sh * 0.15); else ctx.rotate(Math.sin(TK.T * 30) * 0.25 * sh);
+      const hh = s * { drum: 1.75, horn: 1.2, tamb: 1.55 }[it.kind], ww = hh * im.naturalWidth / im.naturalHeight;
+      ctx.drawImage(im, -ww / 2, s * 0.65 - hh, ww, hh); ctx.restore(); return;
+    } }
   if (it.kind === 'drum') {
     floorShadow(0, s * 0.62, s * 1.05, s * 0.18);
     ctx.scale(1 + sh * 0.05, 1 - sh * 0.05);
@@ -180,7 +188,7 @@ function draw() {
   ctx.fillStyle = '#a93226'; if (!art) for (let x = 0; x < W; x += 40 * TK.U) { ell(x + 20 * TK.U, 0, 24 * TK.U, 26 * TK.U); ctx.fill(); }
   band.forEach((f, i) => { ctx.save(); ctx.translate(f.x, f.y - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); HG.drawPic(ctx, f.kind, port ? H * 0.08 : H * 0.14); ctx.restore(); const nm = f.kind; HG.drawTag(ctx, nm, f.x, f.y + (port ? H * 0.025 : H * 0.04), port ? H * 0.018 : H * 0.03, { hi: HG.hi(nm) }); });
   twins.forEach((t, i) => {
-    const pose = phase === 'party' ? 'happy' : (t.move % 2 ? 'jump' : (t.kind === 'coco' ? 'happy' : 'idle'));
+    const pose = phase === 'party' ? TK.partyPose(i) : (t.move % 2 ? 'jump' : (t.kind === 'coco' ? 'happy' : 'idle'));
     const lean = Math.sin(TK.T * 3 + i * 1.6) * 0.06 + (t.move === 3 ? (i ? -0.12 : 0.12) : 0);
     TK.twin(t.kind, pose, t.x, t.yb - TK.hopY(t.hop, t.h * 0.18) - TK.bob(i * 1.5, t.h * 0.02), t.h, { rot: lean, face: i ? 'left' : 'right', hop: t.hop });
   });

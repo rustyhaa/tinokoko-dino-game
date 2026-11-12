@@ -179,7 +179,7 @@ function draw() {
   flying.forEach(f => { const e = TK.ease(f.t); icon(f.kind, TK.lerp(f.x0, b.x, e), TK.lerp(f.y0, b.y - b.w * 0.2, e) - Math.sin(Math.PI * f.t) * S * 2, S * 0.7); });
   });
   if (art) { const bx = W * (0.5 + 0.38 * Math.sin(TK.T * 0.35)), by = H * (W < H ? 0.2 : 0.18) + Math.sin(TK.T * 2.3) * S * 0.4; ctx.save(); ctx.translate(bx, by + S * 0.4); if (Math.cos(TK.T * 0.35) < 0) ctx.scale(-1, 1); HG.drawPic(ctx, '벌', S * 0.8); ctx.restore(); }
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' ? TK.partyPose(i) : t.hop >= 0 ? 'sniff' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   TK.drawParts();
 }
 

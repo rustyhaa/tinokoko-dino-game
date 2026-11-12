@@ -267,6 +267,12 @@ H.drawWord = (ctx, w, x, y, size, o = {}) => {
 H.drawTag = (ctx, w, x, y, size, o = {}) => {
   const n = [...w].length; if (n > 4) size *= Math.max(0.5, 4.5 / n);   // 긴 이름표(공룡 이름 등)는 글자를 줄여 옆과 안 겹치게
   const wd = n * size * 1.02 + size * .7, ht = size * 1.45;
+  const tim = !o.bg && H.lazyImg('o_tag');   // 손그림 이름표: 양 끝은 그대로, 가운데만 늘림 (테두리 굵기 유지)
+  if (tim) {
+    const iw = tim.naturalWidth, ih = tim.naturalHeight, th = ht * 1.22, k = th / ih, cap = Math.min(ih * 0.5, iw * 0.3), cw = cap * k, tw = Math.max(wd * 1.08, cw * 2.2), x0 = x - tw / 2, y0 = y - th / 2;
+    ctx.drawImage(tim, 0, 0, cap, ih, x0, y0, cw, th); ctx.drawImage(tim, cap, 0, iw - cap * 2, ih, x0 + cw - 0.5, y0, tw - cw * 2 + 1, th); ctx.drawImage(tim, iw - cap, 0, cap, ih, x0 + tw - cw, y0, cw, th);
+    H.drawWord(ctx, w, x, y + size * .03, size, Object.assign({ outline: 'rgba(0,0,0,0)' }, o)); return;
+  }
   ctx.save(); ctx.beginPath(); const r = ht / 2; ctx.moveTo(x - wd / 2 + r, y - ht / 2); ctx.arcTo(x + wd / 2, y - ht / 2, x + wd / 2, y + ht / 2, r); ctx.arcTo(x + wd / 2, y + ht / 2, x - wd / 2, y + ht / 2, r); ctx.arcTo(x - wd / 2, y + ht / 2, x - wd / 2, y - ht / 2, r); ctx.arcTo(x - wd / 2, y - ht / 2, x + wd / 2, y - ht / 2, r); ctx.closePath();
   ctx.fillStyle = o.bg || 'rgba(255,255,255,.92)'; ctx.fill(); ctx.lineWidth = Math.max(2, size * .08); ctx.strokeStyle = o.border || '#f0c879'; ctx.stroke(); ctx.restore();
   H.drawWord(ctx, w, x, y + size * .03, size, Object.assign({ outline: 'rgba(0,0,0,0)' }, o));

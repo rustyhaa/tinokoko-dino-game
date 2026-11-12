@@ -141,6 +141,7 @@ function draw() {
     const p = P(i), lit = i < done, next = i === done && phase === 'play';
     if (next) { const pr = (TK.T * 1.2) % 1; ell(p.x, p.y, R * (1.5 + pr * 2.5), R * (1.5 + pr * 2.5)); ctx.strokeStyle = `rgba(255,240,170,${0.8 * (1 - pr)})`; ctx.lineWidth = 3; ctx.stroke(); }
     const r = R * (next ? 1.5 + 0.25 * Math.sin(TK.T * 6) : lit ? 1.15 : 0.8);
+    if ((lit || next) && H.drawObj(ctx, 'o_star', p.x, p.y + r * 1.25, r * 2.5)) continue;   // 켜진 별은 손그림 별
     ctx.shadowColor = 'rgba(255,245,180,.95)'; ctx.shadowBlur = next || lit ? 16 : 4;
     TK.star(p.x, p.y, r, lit || next ? '#fff6c8' : 'rgba(220,225,255,.6)', TK.T * (next ? 1.5 : 0.3));
     ctx.shadowBlur = 0;
@@ -153,7 +154,7 @@ function draw() {
     if (ex) { ctx.save(); ctx.translate(port ? W / 2 : box.x + box.w + W * 0.1, port ? ly + H2 * 0.16 : box.y + box.h * 0.7); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, ex, Math.min(W, H2) * 0.16); ctx.restore(); }
   }
   ctx.restore();
-  twins.forEach((t, i) => TK.twin(t.kind, alive || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (alive ? TK.bob(i * 1.5, t.h * 0.1, 6) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
+  twins.forEach((t, i) => TK.twin(t.kind, alive ? TK.partyPose(i) : t.hop >= 0 ? 'wow' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (alive ? TK.bob(i * 1.5, t.h * 0.1, 6) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
   TK.drawParts();
 }
 
