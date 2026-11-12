@@ -201,7 +201,7 @@ function drawTubArt() {
   const ti = tubImg(), cx = tub.x, wy = ti.y + ti.h * 0.155, rx = ti.w * 0.42, ry = ti.h * 0.078;
   ctx.drawImage(ti.im, ti.x, ti.y, ti.w, ti.h);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, TK.W, wy); ctx.ellipse(cx, wy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
-  twins.forEach(tw => TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h, { hop: tw.hop }));
+  twins.forEach(tw => TK.twin(tw.kind, phase === 'party' || phase === 'shower' || tw.hop >= 0 ? 'splash' : 'jump', tw.x, tw.yb - lift(tw), tw.h, { hop: tw.hop }));
   ctx.beginPath(); ctx.rect(0, wy - ry * 0.15, TK.W, TK.H); ctx.clip();   // 물 아래로 잠긴 부분은 물빛으로
   ell(cx, wy, rx, ry); ctx.fillStyle = 'rgba(160,212,248,.72)'; ctx.fill();
   for (let k = 0; k < 7; k++) { const fx = cx - rx * 0.8 + k * rx * 0.27; ell(fx, wy - ry * 0.05 + Math.sin(TK.T * 2.2 + k) * ry * 0.06, rx * 0.12, ry * 0.18); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill(); }

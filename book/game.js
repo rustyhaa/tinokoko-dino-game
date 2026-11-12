@@ -79,7 +79,7 @@ function draw() {
   drawArrow(g.arr * 1.15, H * 0.5, g.arr, -1); drawArrow(W - g.arr * 1.15, H * 0.5, g.arr, 1);
   // 티노·코코: 아래 양옆에서 구경
   const th = H * (g.port ? 0.16 : 0.26);
-  [['tino', W * 0.13], ['coco', W * 0.87]].forEach(([k, x], i) => TK.twin(k, twinHop[i] >= 0 || (hop >= 0 && hop < 0.6) ? 'happy' : 'idle', x, H * 0.985 - TK.hopY(twinHop[i], th * 0.25) - TK.bob(i * 1.7, th * 0.02), th, { face: i ? 'left' : 'right' }));
+  [['tino', W * 0.13], ['coco', W * 0.87]].forEach(([k, x], i) => TK.twin(k, twinHop[i] >= 0 ? 'clap' : (hop >= 0 && hop < 0.6) ? 'wow' : 'idle', x, H * 0.985 - TK.hopY(twinHop[i], th * 0.25) - TK.bob(i * 1.7, th * 0.02), th, { face: i ? 'left' : 'right' }));
   // 몇 번째 장인지 작은 점 (글자 없이)
   const dots = Math.min(list.length, 12), dr = Math.min(W, H) * 0.008, k = Math.floor(idx * dots / list.length);
   for (let i = 0; i < dots; i++) { TK.ell(W / 2 + (i - (dots - 1) / 2) * dr * 3.4, H * 0.955, dr, dr); ctx.fillStyle = i === k ? '#ff9a2e' : 'rgba(255,255,255,.75)'; ctx.fill(); }

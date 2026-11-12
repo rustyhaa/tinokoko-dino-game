@@ -191,7 +191,7 @@ function draw() {
   // 친구들
   twins.forEach((t, i) => {
     const jumping = t.jump >= 0, y = t.y - (jumping ? Math.sin(Math.PI * t.jump) * ps * 1.4 : TK.bob(i * 1.5, ps * (alive ? 0.25 : 0.04), alive ? 6 : 3.2));
-    TK.twin(t.kind, jumping ? 'jump' : alive || t.happy > 0 ? 'happy' : 'idle', t.x - ps * 0.15, y - ps * 0.3, th(), { face: 'right' });   // 발자국 뒤쪽에 서서 글자를 가리지 않음
+    TK.twin(t.kind, jumping ? 'jump' : alive ? TK.partyPose(t.kind === 'coco' ? 1 : 0) : t.happy > 0 ? 'thumb' : 'idle', t.x - ps * 0.15, y - ps * 0.3, th(), { face: 'right' });   // 발자국 뒤쪽에 서서 글자를 가리지 않음
   });
   const hiP = H.hi(word.w);   // 발자국 글자는 친구들 위에
   prints.forEach((p, i) => {

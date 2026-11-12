@@ -120,7 +120,7 @@ function draw() {
   for (let k = 0; k < 3; k++) { const x = ((TK.T * 10 * (k + 1) + k * 300) % (W + 300)) - 150, y = H * (0.12 + k * 0.08), s = Math.min(W, H) * 0.05; ctx.fillStyle = 'rgba(255,255,255,.9)'; ell(x, y, s * 1.4, s * 0.7); ctx.fill(); ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill(); }
   ctx.fillStyle = TK.grad(gy, H, '#9fdc7c', '#6fbf5a'); ctx.beginPath(); ctx.moveTo(0, gy); ctx.quadraticCurveTo(W * 0.5, gy - H * 0.05, W, gy); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   }
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' ? TK.partyPose(i) : t.hop >= 0 ? 'wow' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   // 이름 칸: 모인 글자는 진하게, 아직이면 연한 빈 칸
   const s = slotSize(), hi = HG.hi(target);
   syl.forEach((ch, i) => {

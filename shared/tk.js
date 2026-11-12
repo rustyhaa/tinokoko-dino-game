@@ -163,9 +163,26 @@ TK.sprite = (name, x, yb, h, o = {}) => {
   ctx.drawImage(im, -w / 2, -h, w, h); ctx.restore();
   return w;
 };
+// 손그림 동작 16개 (art/sheets/sheet10 → shared/pics/o_tino_clap.webp …). 처음 쓸 때 읽고, 아직이면 happy 로 대신
+const POSES = ['clap', 'cheer', 'point', 'wow', 'splash', 'sniff', 'thumb', 'sleep'], PIM = {};
+const poseImg = (kind, pose) => { const k = kind + '_' + pose; let im = PIM[k]; if (!im) { im = PIM[k] = new Image(); im.src = '../shared/pics/o_' + k + '.webp'; } return im.complete && im.naturalWidth ? im : null; };
+TK.POSES = POSES;
+TK.partyPose = i => ((TK.T * 0.8 | 0) + i) % 2 ? 'clap' : 'cheer';   // 축하 중: 손뼉·만세를 번갈아 (둘이 엇갈리게)
 // 자세: idle(달리기 그림, face 로 방향) / jump(점프) / happy(티노 점프, 코코 웃음)
+// 그 밖에 clap·cheer·point·wow·splash·sniff·thumb·sleep (손그림 동작). 코코 point 는 원래 왼쪽을 가리킴 → o.mirror 로 뒤집기
 // run 그림은 원본이 왼쪽을 봄 → face:'right' 면 화면에서만 뒤집음
 TK.twin = (kind, pose, x, yb, h, o = {}) => {
+  if (POSES.includes(pose)) {
+    const im = poseImg(kind, pose);
+    if (im) {
+      let sx = o.mirror ? -1 : 1, sy = 1;
+      if (o.hop != null && o.hop >= 0) { const q = o.hop < 0.12 ? 1 - o.hop / 0.12 : o.hop > 0.85 ? (o.hop - 0.85) / 0.15 : 0, b = Math.sin(q * Math.PI / 2) * 0.1; sx *= 1 + b; sy *= 1 - b; }
+      const hh = h * (pose === 'splash' || pose === 'sleep' ? 0.78 : 0.94), w = hh * im.naturalWidth / im.naturalHeight;
+      ctx.save(); ctx.translate(x, yb); if (o.rot) ctx.rotate(o.rot); ctx.scale(sx, sy); if (o.alpha != null) ctx.globalAlpha = o.alpha;
+      ctx.drawImage(im, -w / 2, -hh, w, hh); ctx.restore(); return w;
+    }
+    pose = 'happy';
+  }
   let name;
   if (pose === 'idle') name = kind + '_run_v2';
   else if (pose === 'jump') name = kind + '_jump_v2';
@@ -206,12 +223,13 @@ function updateParts(dt) {
   }
 }
 // 계절·생일 장식은 frame.js 가 모든 게임 위 덧그림 화면에 그림 (엔진 없는 단독 게임도 같이)
+let HIM = null; const heartImg = () => { if (!HIM) { HIM = new Image(); HIM.src = '../shared/pics/o_heart.webp'; } return HIM.complete && HIM.naturalWidth ? HIM : null; };   // 손그림 하트
 TK.drawParts = () => {
   parts.forEach(p => {
     if (p.delay > 0) return;
     const a = TK.clamp(p.life / p.max, 0, 1);
     if (p.t === 'spark') TK.star(p.x, p.y, p.r * (0.6 + a * 0.4), TK.rgba(p.c, Math.min(1, a * 1.5)), p.rot);
-    else if (p.t === 'heart') TK.heart(p.x, p.y, p.r, TK.rgba(p.c, Math.min(1, a * 1.6)));
+    else if (p.t === 'heart') { const im = heartImg(); if (im) { ctx.save(); ctx.globalAlpha = Math.min(1, a * 1.6); ctx.drawImage(im, p.x - p.r * 1.2, p.y - p.r * 1.1, p.r * 2.4, p.r * 2.2); ctx.restore(); } else TK.heart(p.x, p.y, p.r, TK.rgba(p.c, Math.min(1, a * 1.6))); }
     else if (p.t === 'ring') { TK.ell(p.x, p.y, p.r, p.r); ctx.strokeStyle = TK.rgba(p.c, a); ctx.lineWidth = 4 * a + 1; ctx.stroke(); }
     else if (p.t === 'drop') { TK.ell(p.x, p.y, p.r, p.r); ctx.fillStyle = TK.rgba(p.c, a); ctx.fill(); }
     else if (p.t === 'foam') { TK.ell(p.x, p.y, p.r, p.r); ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`; ctx.fill(); ctx.strokeStyle = `rgba(190,220,255,${0.8 * a})`; ctx.lineWidth = 1.5; ctx.stroke(); }

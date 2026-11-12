@@ -52,4 +52,4 @@
 - 그림은 처음 쓰일 때 받음(H.preload, pick 이 미리 부름). 단어 전체 강조는 1.06배(겹침 방지). 목욕 이름표 폭 맞춤.
 - 정원·목욕·이름 방울 손그림 연결 (sheet8·9, bgsheet3). H.drawObj(o_ 물건). 새 단어 딸기·당근·호박·튤립·해바라기·벌.
 - 고도화 1차: TK.flash(판 전환)·TK.wordPop(단어 완성)·TK.twin hop 찌그러짐. 실로폰 따라 치기(학교종), 자음 짝꿍 그림 크게 튀어나오기. 예전 게임 2개는 놀이터 '예전 게임' 카드로.
-- 대기: sheet10(티노·코코 동작 16)·sheet11(놀이 부품 16) 그림 → 받으면 게임별 반응·부품 교체.
+- 동작 16(TK.twin 새 자세 clap·cheer·point·wow·splash·sniff·thumb·sleep, TK.partyPose)·부품(풍선·깃발·결승선·악기·음표·별·글자판·이름표 3분할·하트) 적용. 발자국(o_foot)·실로폰(o_xylo)·잠(sleep)은 아직 안 씀.
