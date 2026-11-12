@@ -28,8 +28,8 @@ const style = document.createElement('style');
 style.textContent = `
 html,body{overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}
 #tkfx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
-.tkbtn{position:fixed;width:52px;height:52px;border:0;border-radius:50%;padding:0;background:rgba(255,255,255,.82);
-  opacity:.62;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.tkbtn{position:fixed;width:68px;height:68px;border:0;border-radius:50%;padding:0;background:rgba(255,255,255,.82);
+  opacity:.78;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .tkbtn svg{width:100%;height:100%;display:block;pointer-events:none}
 .tkbtn.on{opacity:1}
 #tkhome{top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));z-index:8;opacity:.8}
