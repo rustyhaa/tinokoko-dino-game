@@ -45,3 +45,9 @@
 - **규칙(같은 실수 2회)**: 한 줄짜리 코드 중간에 `//` 주석을 넣지 말 것 — 뒤가 통째로 주석이 되어 문법 오류. 줄 중간 설명은 `/* */`. (steps, garden3d 에서 깨짐) 수정 뒤엔 `node --check`(모듈은 .mjs 로 복사) 로 확인.
 - 헛다리: frame.js 경로를 `../` 고정으로 했다가 루트 러너에서 깨짐 → `document.currentScript.src` 기준으로 바꿈. 무지개 줄 끝 글자는 너무 작아 무지개 위 일곱 칸 줄로 옮김. `pkill -f http.server` 는 실행 중인 셸까지 죽이니 `pgrep -f "^python3 -m http.server"` 로 골라 kill.
 - 이 세션 GitHub Pages 설정 API는 막혀 있음(사용자가 직접 설정 완료함).
+
+## 2026-11-12 추가
+- 공룡·고래 각 23종 (sheet6·7). cut_sheets: 칸이 겹친 줄은 덩어리별 배정(own_blobs).
+- 새 게임 `book/` 공룡·고래 그림책 (메인 카드). 놀이터 카드 그림은 build_games.ICON_ART (손그림 배경+그림).
+- 그림은 처음 쓰일 때 받음(H.preload, pick 이 미리 부름). 단어 전체 강조는 1.06배(겹침 방지). 목욕 이름표 폭 맞춤.
+- 대기: sheet8(정원)·sheet9(목욕)·bgsheet3 그림 → 받으면 garden/bath/blow 에 연결 (docs/art-sheets.md 맨 아래).

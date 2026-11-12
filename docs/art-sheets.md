@@ -224,3 +224,57 @@ Cells in reading order (left to right, top to bottom):
 ```
 
 칸 순서 → 파일: d_카르노타우루스 · d_딜로포사우루스 · d_갈리미무스 · d_마이아사우라 · d_프시타코사우루스 · d_케찰코아틀루스 · d_아마르가사우루스 · d_테리지노사우루스 · h_참돌고래 · h_낫돌고래 · h_고추돌고래 · h_쇠돌고래 · h_바키타 · h_꼬마향유고래 · h_민부리고래 · h_북방긴수염고래
+
+## 글자 정원·글자 목욕 그림 (2026-11-12) — 시트 2장 + 배경 시트 1장
+
+캐릭터 시트는 위 '시트 6·7 화풍 맞추기' 문장을 앞에 붙이고 `sheet3.png` 를 참고 그림으로 붙인다. 배경은 '배경 공통 문장'을 앞에 붙이고 `bg_sea.png` 를 참고로 붙인다.
+
+### 시트 8 — 글자 정원 (`sheet8.png`)
+```
+1 a small round mound of soft brown garden soil, front view
+2 a tiny green sprout with two round leaves coming out of a little soil mound
+3 a small green plant with four leaves on a soil mound
+4 a closed pink flower bud on a green stem with two leaves
+5 a red tulip with green leaves
+6 an orange carrot with green leafy top, just pulled out
+7 a big yellow sunflower with green leaves and a smiling brown center
+8 a red strawberry with green leaves and tiny seeds
+9 a round orange pumpkin with a curly green stem
+10 a cream dinosaur egg with green spots, cracked on top, a tiny green baby dinosaur head peeking out, smiling
+11 an empty woven wicker harvest basket with a handle
+12 a small fluffy gray-blue rain cloud with a few blue raindrops below
+13 a small green watering can, side view
+14 a cute round bumblebee flying, yellow and black stripes, small wings
+15 leave this cell completely empty pure white
+16 leave this cell completely empty pure white
+```
+
+### 시트 9 — 글자 목욕 (`sheet9.png`)
+```
+1 a cute white bathtub with short golden feet, front view, empty, rounded rim
+2 a yellow rubber duck with orange beak, side view facing left
+3 a silver shower head on a curved pipe, side view, a few water drops
+4 a pink bar of soap with a few bubbles
+5 a yellow bath sponge
+6 a fluffy cluster of white soap foam bubbles
+7 a flat round splat of brown mud
+8 a flat colorful splat of paint, blue and pink
+9 a small flat pile of green and orange autumn leaves
+10 a flat patch of beach sand with a tiny shell
+11 a small toy sailboat for the bath, blue and red
+12 a folded soft striped towel, blue and white
+13 leave this cell completely empty pure white
+14 leave this cell completely empty pure white
+15 leave this cell completely empty pure white
+16 leave this cell completely empty pure white
+```
+
+### 배경 시트 C (`bgsheet3.png`)
+```
+1 cozy bright bathroom, light blue square tiles on the wall, a small round window with sky, white tiled floor along the bottom, empty
+2 sunny backyard garden, white wooden fence in the back, blue sky with soft clouds, a wide flat strip of brown soil garden bed across the lower third, empty
+3 wide open sky with soft white clouds above a gentle green meadow along the very bottom, lots of empty sky space
+4 leave this panel completely empty pure white
+```
+
+칸 → 파일: 시트 8 `o_soil o_sprout o_leaves o_bud w_튤립 w_당근 w_해바라기 w_딸기 w_호박 o_dinoegg o_basket o_raincloud o_can w_벌` · 시트 9 `o_tub o_duck o_shower o_soap o_sponge o_foam o_mud o_paint o_leafpile o_sand o_toyboat o_towel` · 배경 C `bg_bath bg_garden bg_sky(내 이름 방울)`
