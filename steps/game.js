@@ -111,17 +111,15 @@ function update(dt) {
   if (phase === 'fade') { whale.up = Math.max(0, 1 - phaseT / 0.8); if (phaseT > 0.9) { rounds++; phase = 'play'; phaseT = 0; newRound(); sfx.sparkle(); } }
 }
 
-// 공룡 발자국: 둥근 뒤꿈치 + 끝이 뾰족한 세 발가락(작은 발톱). 오른쪽을 향함, 크기 s
+// 공룡 발자국: 둥근 뒤꿈치 + 콩 모양 발가락 셋. 오른쪽을 향함, 크기 s
 const footCache = new Map();
 function footPath(s) {
   const k = Math.round(s); if (footCache.has(k)) return footCache.get(k);
   const p = new Path2D();
-  p.ellipse(-s * 0.14, 0, s * 0.56, s * 0.48, 0, 0, Math.PI * 2);   // 뒤꿈치
-  [-0.6, 0, 0.6].forEach(a => {   // 발가락: 통통한 달걀 모양 + 끝에 작은 발톱
-    const c = Math.cos(a), sn = Math.sin(a), cx = c * s * 0.66, cy = sn * s * 0.6;
-    p.moveTo(cx + c * s * 0.3, cy + sn * s * 0.3); p.ellipse(cx, cy, s * 0.3, s * 0.19, a, 0, Math.PI * 2);
-    const tx = c * s * 1.06, ty = sn * s * 0.98, nx = -sn * s * 0.07, ny = c * s * 0.07;
-    p.moveTo(c * s * 0.9 + nx, sn * s * 0.84 + ny); p.lineTo(tx, ty); p.lineTo(c * s * 0.9 - nx, sn * s * 0.84 - ny); p.closePath();
+  p.ellipse(-s * 0.16, 0, s * 0.5, s * 0.44, 0, 0, Math.PI * 2);   // 뒤꿈치
+  [-0.62, 0, 0.62].forEach(a => {   // 둥근 콩 발가락 셋 (발톱 없음)
+    const cx = Math.cos(a) * s * 0.78, cy = Math.sin(a) * s * 0.66;
+    p.moveTo(cx + Math.cos(a) * s * 0.26, cy + Math.sin(a) * s * 0.26); p.ellipse(cx, cy, s * 0.26, s * 0.18, a, 0, Math.PI * 2);
   });
   footCache.set(k, p); return p;
 }
