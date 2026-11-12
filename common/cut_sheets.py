@@ -28,8 +28,13 @@ SHEETS = {   # 파일 → (행, 열, 칸 이름들 / None 은 버림)
                           'h_밍크고래', 'h_귀신고래', 'h_북극고래', 'h_참고래', 'h_상괭이', 'h_들쇠고래', 'h_분홍돌고래', 'h_남방큰돌고래']),
     'sheet7.png': (4, 4, ['d_카르노타우루스', 'd_딜로포사우루스', 'd_갈리미무스', 'd_마이아사우라', 'd_프시타코사우루스', 'd_케찰코아틀루스', 'd_아마르가사우루스', 'd_테리지노사우루스',
                           'h_참돌고래', 'h_낫돌고래', 'h_고추돌고래', 'h_쇠돌고래', 'h_바키타', 'h_꼬마향유고래', 'h_민부리고래', 'h_북방긴수염고래']),
+    'sheet8.png': (4, 4, ['o_soil', 'o_sprout', 'o_leaves', 'o_bud', 'w_튤립', 'w_당근', 'w_해바라기', 'w_딸기',
+                          'w_호박', 'o_dinoegg', 'o_basket', 'o_raincloud', 'o_can', 'w_벌', None, None]),   # 글자 정원
+    'sheet9.png': (4, 4, ['o_tub', 'o_duck', 'o_shower', 'o_soap', 'o_sponge', 'o_foam', 'o_mud', 'o_paint',
+                          'o_leafpile', 'o_sand', 'o_toyboat', 'o_towel', None, None, None, None]),   # 글자 목욕
     'bgsheet1.png': (2, 2, ['bg_stars', 'bg_steps', 'bg_band', 'bg_shapes']),
     'bgsheet2.png': (2, 2, ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night', None]),
+    'bgsheet3.png': (2, 2, ['bg_bath', 'bg_garden', 'bg_sky', None]),
 }
 WHITE = 236   # 이보다 밝으면(세 채널 모두) 흰색으로 봄
 

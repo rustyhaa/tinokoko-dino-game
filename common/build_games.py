@@ -29,6 +29,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'blow':   ('티노코코 내 이름 방울', '#a8e0ff'),
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
     'run':    ('티노코코 글자 달리기', '#bfe6fb'),
+    'book':   ('티노코코 공룡·고래 그림책', '#cdeccf'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
 THREE_D = []   # three.js 3D 판 — 2026-11-08 느려서 폐기 (기록: docs/three-review/)
@@ -106,7 +107,40 @@ def hexrgb(h):
     h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
+# 놀이터 카드 그림: 손그림 배경을 정사각형으로 자르고 그림을 얹음 (그림 파일이 없으면 아래 코드 그림)
+#  이름 → (배경, 가로 기준 0~1, [(그림 파일, 가운데 x, 밑변 y, 키) …])  좌표는 카드 폭에 대한 비율
+ICON_ART = {
+    'book':  ('bg_sea', .5, [('pics/혹등고래', .66, .55, .3), ('pics/티라노사우루스', .34, .94, .52)]),
+    'boat':  ('bg_sea', .55, [('pics/o_boat_sail', .5, .58, .42), ('pics/o_boat_hull', .5, .8, .26), ('pics/돌고래', .82, .97, .2)]),
+    'steps': ('bg_steps', .3, [('pics/브라키오사우루스', .5, .95, .7)]),
+    'run':   ('bg_pk_beach', .5, [('assets/tino_jump_v2', .33, .95, .5), ('assets/coco_laugh_v2', .7, .95, .48)]),
+    'band':  ('bg_band', .5, [('assets/coco_laugh_v2', .5, .95, .6)]),
+    'stars': ('bg_stars', .7, [('pics/별', .5, .62, .42)]),
+    'shapes': ('bg_shapes', .5, [('pics/사과', .32, .72, .36), ('pics/바나나', .7, .74, .34)]),
+    'garden': ('bg_pk_forest', .5, [('pics/o_flowers', .5, .95, .5), ('pics/나비', .72, .42, .22)]),
+    'bath':   ('bg_shapes', .5, [('pics/오리', .3, .78, .34), ('pics/고래', .68, .8, .3), ('pics/o_cloud', .5, .36, .22)]),
+    'blow':   ('bg_pk_beach', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
+}
+
+
+def art_icon(name, n):
+    bg, ax, items = ICON_ART[name]; S = 2; W = n * S
+    bp = os.path.join(ROOT, 'shared', 'pics', bg + '.webp')
+    if not os.path.exists(bp) or not all(os.path.exists(os.path.join(ROOT, 'shared', f + '.webp')) for f, *_ in items): return None
+    b = Image.open(bp).convert('RGB'); k = W / b.height; b = b.resize((max(W, round(b.width * k)), W), Image.LANCZOS)
+    x0 = round((b.width - W) * ax); im = b.crop((x0, 0, x0 + W, W)).convert('RGBA')
+    for f, cx, by, h in items:
+        o = Image.open(os.path.join(ROOT, 'shared', f + '.webp')).convert('RGBA')
+        hh = round(h * W); ww = round(o.width * hh / o.height)
+        if ww > W * .9: ww = round(W * .9); hh = round(o.height * ww / o.width)
+        o = o.resize((ww, hh), Image.LANCZOS); im.alpha_composite(o, (round(cx * W - ww / 2), round(by * W - hh)))
+    return im.convert('RGB').resize((n, n), Image.LANCZOS)
+
+
 def game_icon(name, color, n):
+    if name in ICON_ART:
+        a = art_icon(name, n)
+        if a: return a
     S = 4; W = n * S
     im = Image.new('RGB', (W, W), hexrgb(color)); d = ImageDraw.Draw(im)
     c = lambda x, y, r, f, o=None, w=0: d.ellipse([x - r, y - r, x + r, y + r], fill=f, outline=o, width=w)

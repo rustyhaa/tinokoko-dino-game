@@ -137,7 +137,7 @@ function drawTile(t) {
   const s = t.s, x0 = t.x - s / 2, y0 = t.y - s / 2;
   TK.rr(x0, y0, s, s, s * 0.12); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = Math.max(3, s * 0.03); ctx.strokeStyle = t.clean ? '#ffc93c' : '#bcd9ec'; ctx.stroke();
   ctx.save(); ctx.translate(t.x, y0 + s * 0.66); const k = t.clean ? 1 + 0.06 * Math.sin(TK.T * 5) : 1; ctx.scale(k, k); H.drawPic(ctx, t.w, s * 0.55); ctx.restore();
-  H.drawWord(ctx, t.w, t.x, y0 + s * 0.84, s * 0.15, { hi: t.clean ? H.hi(t.w) : -1, color: '#2b3550' });
+  H.drawWord(ctx, t.w, t.x, y0 + s * 0.84, Math.min(s * 0.15, s * 0.86 / ([...t.w].length * 1.02)),   /* 긴 이름도 타일 폭 안에 */ { hi: t.clean ? H.hi(t.w) : -1, color: '#2b3550' });
 }
 function drawBg() {
   const W = TK.W, H2 = TK.H;

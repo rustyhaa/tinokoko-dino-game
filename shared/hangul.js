@@ -112,7 +112,7 @@ H.pick = (n, o = {}) => {
     while (r > wts[i]) r -= wts[i++];
     out.push(pool[i]); pool = pool.filter((_, k) => k !== i);
   }
-  return out;
+  H.preload(out); return out;
 };
 H.example = j => { const fav = H.favWords(), c = H.WORDS.filter(x => x.cho === j && x.cat !== 'name').sort((a, b) => fav.includes(b.w) - fav.includes(a.w)); return (c.length ? c : H.WORDS.filter(x => x.cho === j))[0] || { w: '', syl: [] }; };   // 좋아하는 것(공룡·고래)을 먼저
 // 친구 그림 종류 → 이름
@@ -127,12 +127,14 @@ const P = (names, fn) => names.split(' ').forEach(n => PICS[n] = fn);
 // 손그림 일러스트 (art/ 시트에서 잘라 build_games.py 가 shared/pics/ 에 넣음). 있으면 코드 그림 대신 이것
 const PIC_FILES = /*PICS*/["갈리미무스", "디플로도쿠스", "딜로포사우루스", "마이아사우라", "모사사우루스", "벨로키랍토르", "브라키오사우루스", "스테고사우루스", "스피노사우루스", "아마르가사우루스", "안킬로사우루스", "알로사우루스", "이구아노돈", "카르노타우루스", "케찰코아틀루스", "테리지노사우루스", "트리케라톱스", "티라노사우루스", "파라사우롤로푸스", "파키케팔로사우루스", "프시타코사우루스", "프테라노돈", "플레시오사우루스", "물고기", "별", "병아리", "부엉이", "불가사리", "고추돌고래", "귀신고래", "꼬마향유고래", "남방큰돌고래", "낫돌고래", "대왕고래", "돌고래", "들쇠고래", "민부리고래", "밍크고래", "바키타", "범고래", "벨루가", "북극고래", "북방긴수염고래", "분홍돌고래", "상괭이", "쇠돌고래", "일각고래", "참고래", "참돌고래", "향유고래", "혹등고래", "개구리", "거미", "게", "고래", "공룡", "기차", "나무", "나비", "도토리", "라디오", "모자", "바나나", "바지", "사과", "사자", "아빠", "엄마", "오리", "오이", "우유", "지구", "치즈", "토끼", "토마토", "포도", "피자", "하마", "해", "해파리"]/*END*/;
 const PIMG = {};
-PIC_FILES.forEach(n => { const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; PIMG[n] = im; });
+const PSET = new Set(PIC_FILES);   // 그림은 처음 쓰일 때 받음 (게임 하나 열 때 98장을 한꺼번에 받지 않게). 단어를 고를 때 미리 부름
+const pload = n => { if (!PSET.has(n) || PIMG[n]) return PIMG[n]; const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; return PIMG[n] = im; };
+H.preload = ws => [].concat(ws).forEach(w => pload(w && w.w || w));
 [[MORE_DINOS, H.DINOS, '공룡'], [MORE_WHALES, H.WHALES, '고래']].forEach(([more, list, k]) => more.filter(n => PIC_FILES.includes(n) && !list.includes(n)).forEach(w => {
   list.push(w); H.FAV[k].push(w); H.WORDS.push({ w, cat: 'animal', syl: [...w], cho: H.cho(w) });
 }));
-H.picImg = w => { const im = PIMG[w]; return im && im.complete && im.naturalWidth ? im : null; };
-H.hasPic = w => !!PICS[w] || !!PIMG[w];
+H.picImg = w => { const im = pload(w); return im && im.complete && im.naturalWidth ? im : null; };
+H.hasPic = w => !!PICS[w] || PSET.has(w);
 // 배경 그림 (shared/pics/bg_*.webp): 처음 부를 때 읽음. 사각형 (x,y,w,h)를 빈틈없이 채우게 잘라 그림
 //  ax, ay: 잘릴 때 어느 쪽을 남길지 (0 왼쪽/위 … 1 오른쪽/아래). 그렸으면 그림 좌표→화면 좌표 함수 반환, 아직 없으면 null
 const BG = {};
@@ -152,6 +154,7 @@ H.drawBg = (ctx, name, x, y, w, h, ax, ay) => {
 };
 H.drawPic = (ctx, w, h) => {
   const im = H.picImg(w);
+  if (!im && PSET.has(w)) return;   // 손그림을 받는 중: 코드 그림이 잠깐 비쳤다 바뀌지 않게 비워 둠
   if (im) {   // 키 h 상자 안에 맞춤 (가로로 긴 고래는 폭 1.5h 까지), 밑변 가운데가 원점
     const k = Math.min(h / im.naturalHeight, h * 1.5 / im.naturalWidth), dw = im.naturalWidth * k, dh = im.naturalHeight * k;
     ctx.drawImage(im, -dw / 2, -dh, dw, dh); return;
@@ -243,7 +246,7 @@ H.drawWord = (ctx, w, x, y, size, o = {}) => {
   const gap = size * 1.02, x0 = x - (syl.length - 1) * gap / 2;
   ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   syl.forEach((ch, i) => {
-    const on = o.hi === 'all' || o.hi === i, sc = on ? 1.25 : 1;
+    const on = o.hi === 'all' || o.hi === i, sc = o.hi === i ? 1.25 : on ? 1.06 : 1;   /* 단어 전체 강조는 살짝만 (글자끼리 겹치지 않게) */
     ctx.font = `800 ${Math.round(size * sc)}px ${H.FONT}`;
     ctx.lineWidth = Math.max(3, size * .16); ctx.lineJoin = 'round'; ctx.strokeStyle = o.outline || 'rgba(255,255,255,.95)';
     ctx.strokeText(ch, x0 + i * gap, y);
