@@ -112,42 +112,115 @@ function update(dt) {
   }
 }
 
+// ---------- 바다·하늘 (그림책 화풍: 진한 테두리 구름, 겹겹 물결 + 거품, 반짝임, 젖은 모래, 조개) ----------
+let sandPat = null;
+function sandPattern() {
+  if (sandPat) return sandPat;
+  const c = document.createElement('canvas'); c.width = c.height = 120; const g = c.getContext('2d');
+  for (let i = 0; i < 260; i++) { g.fillStyle = Math.random() < 0.5 ? 'rgba(150,105,50,.16)' : 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(Math.random() * 120, Math.random() * 120, 0.6 + Math.random() * 1.4, 0, 7); g.fill(); }
+  return (sandPat = ctx.createPattern(c, 'repeat'));
+}
+const waveRow = (y, amp, len, ph, W) => { const p = new Path2D(); p.moveTo(-20, y); for (let x = -20; x <= W + 20; x += len / 2) { const k = Math.floor((x + 20) / (len / 2)); p.quadraticCurveTo(x + len / 4, y + (k % 2 ? amp : -amp) + Math.sin(TK.T * 1.2 + ph + x * 0.01) * amp * 0.4, x + len / 2, y); } return p; };
 function drawBg() {
-  const W = TK.W, H = TK.H, sea = boat.deck - boat.h * 0.6, sand = H * 0.64;
-  ctx.fillStyle = TK.grad(0, sea, '#8fd4ff', '#e2f5ff'); ctx.fillRect(0, 0, W, sea);
-  const sr = Math.min(W, H) * 0.06; ell(W * 0.12, H * 0.1, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
-  for (let k = 0; k < 3; k++) { const x = ((TK.T * 8 * (k + 1) + k * 400) % (W + 300)) - 150, y = H * (0.08 + k * 0.07), s = Math.min(W, H) * 0.05; ctx.fillStyle = 'rgba(255,255,255,.92)'; ell(x, y, s * 1.4, s * 0.7); ctx.fill(); ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill(); ell(x + s * 0.9, y + s * 0.1, s * 0.9, s * 0.6); ctx.fill(); }
-  ctx.fillStyle = TK.grad(sea, sand, '#3fb0e8', '#86d6f3'); ctx.fillRect(0, sea, W, sand - sea + 2);
-  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3;
-  for (let k = 0; k < 3; k++) { ctx.beginPath(); for (let x = 0; x <= W + 10; x += 10) { const y = sea + (sand - sea) * (0.2 + k * 0.28) + Math.sin(x * 0.03 + TK.T * 1.3 + k) * 3; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
-  ctx.fillStyle = TK.grad(sand, H, '#fbe7b4', '#efcf8c');
-  ctx.beginPath(); ctx.moveTo(0, sand); for (let x = 0; x <= W + 12; x += 12) ctx.lineTo(x, sand + Math.sin(x * 0.02 + TK.T) * 4); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+  const W = TK.W, H = TK.H, sea = boat.deck - boat.h * 0.9, sand = H * 0.66, U = TK.U;
+  // 하늘
+  ctx.fillStyle = TK.grad(0, sea, '#8ccff5', '#e8f7ff'); ctx.fillRect(0, 0, W, sea + 2);
+  const sr = Math.min(W, H) * 0.065, sx = W * 0.12, sy = H * 0.12;
+  const glow = ctx.createRadialGradient(sx, sy, sr * 0.5, sx, sy, sr * 2.6); glow.addColorStop(0, 'rgba(255,240,170,.7)'); glow.addColorStop(1, 'rgba(255,240,170,0)'); ctx.fillStyle = glow; ctx.fillRect(sx - sr * 3, sy - sr * 3, sr * 6, sr * 6);
+  TK.ink(Math.max(2, 3 * U), () => {
+    ell(sx, sy, sr, sr); ctx.fillStyle = '#ffd84a'; ctx.fill();
+    for (let k = 0; k < 3; k++) {   // 구름
+      const x = ((TK.T * 7 * (k + 1) + k * 420) % (W + 360)) - 180, y = H * (0.08 + k * 0.07), c = Math.min(W, H) * (0.045 + k * 0.006);
+      const blobs = [[-1.0, 0.2, 0.62], [-0.25, -0.22, 0.82], [0.6, 0.0, 0.66], [0.1, 0.32, 0.6], [-0.6, 0.38, 0.5]];
+      const pth = new Path2D(); blobs.forEach(([bx, by, br]) => { pth.moveTo(x + bx * c + br * c, y + by * c); pth.arc(x + bx * c, y + by * c, br * c, 0, 7); });
+      ctx.save(); ctx.lineWidth = Math.max(4, 6 * U); ctx.strokeStyle = TK.INK; ctx.lineJoin = 'round'; blobs.forEach(([bx, by, br]) => { ctx.beginPath(); ctx.arc(x + bx * c, y + by * c, br * c, 0, 7); ctx.stroke(); }); ctx.restore();   // 바깥 테두리만 남게: 굵은 선 먼저
+      ctx.save(); ctx.fillStyle = '#ffffff'; blobs.forEach(([bx, by, br]) => { ctx.beginPath(); ctx.arc(x + bx * c, y + by * c, br * c, 0, 7); ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#ffffff'; CanvasRenderingContext2D.prototype.fill.call(ctx); }); ctx.restore();
+    }
+  });
+  // 먼 섬과 야자수 (연하게)
+  const ix = W * 0.82, iy = sea + 2;
+  ctx.fillStyle = '#b9dca6'; ctx.beginPath(); ctx.ellipse(ix, iy, W * 0.09, H * 0.035, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = '#9a7a55'; ctx.lineWidth = Math.max(2, 3 * U); ctx.beginPath(); ctx.moveTo(ix + W * 0.01, iy - H * 0.02); ctx.quadraticCurveTo(ix + W * 0.02, iy - H * 0.06, ix + W * 0.005, iy - H * 0.1); ctx.stroke();
+  ctx.fillStyle = '#8fc48a'; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(ix + W * 0.005 + Math.cos(k * 1.26) * W * 0.018, iy - H * 0.1 + Math.sin(k * 1.26) * H * 0.008, W * 0.022, H * 0.008, k * 1.26, 0, 7); ctx.fill(); }
+  // 바다: 수평선 → 앞으로 갈수록 밝게, 겹겹 물결 + 거품
+  ctx.fillStyle = TK.grad(sea, sand, '#3a9fe0', '#7fd2f2'); ctx.fillRect(0, sea, W, sand - sea + 2);
+  const rows = 6;
+  for (let k = 0; k < rows; k++) {
+    const t = k / (rows - 1), y = TK.lerp(sea + (sand - sea) * 0.12, sand - (sand - sea) * 0.08, t), amp = (3 + t * 5) * U, len = (60 + t * 70) * U;
+    const p = waveRow(y, amp, len, k * 1.7 + TK.T * (0.2 + t * 0.3), W);
+    const fillP = new Path2D(p); fillP.lineTo(W + 20, sand + 4); fillP.lineTo(-20, sand + 4); fillP.closePath();
+    ctx.fillStyle = `hsl(${200 - t * 6}, ${70 + t * 6}%, ${52 + t * 12}%)`; ctx.fill(fillP);
+    ctx.lineWidth = (1.5 + t * 2) * U; ctx.lineCap = 'round'; ctx.strokeStyle = `rgba(255,255,255,${0.45 + t * 0.35})`; ctx.stroke(p);
+  }
+  for (let k = 0; k < 14; k++) {   // 반짝임
+    const x = (k * 197 + 40) % W, y = sea + ((k * 71) % 100) / 100 * (sand - sea) * 0.85 + 6, a = Math.max(0, Math.sin(TK.T * 2.2 + k * 1.9)), r = (3 + (k % 3)) * U * a;
+    if (r > 0.5) { ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`; ctx.beginPath(); ctx.moveTo(x, y - r * 2); ctx.lineTo(x + r * 0.5, y); ctx.lineTo(x, y + r * 2); ctx.lineTo(x - r * 0.5, y); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - r * 2, y); ctx.lineTo(x, y + r * 0.5); ctx.lineTo(x + r * 2, y); ctx.lineTo(x, y - r * 0.5); ctx.closePath(); ctx.fill(); }
+  }
+  // 모래사장: 젖은 모래 띠 → 마른 모래, 들락날락 거품 줄
+  const surf = sand + Math.sin(TK.T * 0.9) * 5 * U;
+  ctx.fillStyle = TK.grad(surf, H, '#f7dfa6', '#efcd8a'); ctx.fillRect(0, surf, W, H - surf);
+  ctx.fillStyle = sandPattern(); ctx.fillRect(0, surf, W, H - surf);
+  ctx.fillStyle = 'rgba(190,150,90,.35)'; ctx.fillRect(0, surf, W, 14 * U);
+  const foam = waveRow(surf, 4 * U, 46 * U, TK.T * 0.8, W); ctx.lineWidth = 7 * U; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(foam);
+  TK.ink(Math.max(1.5, 2.2 * U), () => {   // 조개·불가사리
+    [[0.08, 0.9, '#ff9fb4'], [0.93, 0.8, '#ffd27a'], [0.55, 0.96, '#ffb08a']].forEach(([fx, fy, c], i) => {
+      const x = W * fx, y = H * fy, r = 11 * U;
+      if (i === 1) { TK.star(x, y, r * 1.3, c, 0.3); ctx.beginPath(); for (let q = 0; q < 10; q++) { const a = -Math.PI / 2 + 0.3 + q * Math.PI / 5, rr = q % 2 ? r * 0.58 : r * 1.3; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fillStyle = c; ctx.fill(); }
+      else { ctx.beginPath(); ctx.moveTo(x, y + r * 0.6); ctx.arc(x, y, r, Math.PI * 1.1, Math.PI * 1.9); ctx.closePath(); ctx.fillStyle = c; ctx.fill(); }
+    });
+  });
+}
+// ---------- 배: 줄무늬 돛 + 나무 돛대 + 나무 판자 배 몸통 + 둥근 창, 앞 물결이 배 아래를 덮어 떠 있게 ----------
+function sailPath(x, d, w, flap, back) {
+  const p = new Path2D();
+  if (back) { p.moveTo(x - w * 0.018, d - w * 0.56); p.quadraticCurveTo(x - w * 0.17 - flap, d - w * 0.34, x - w * 0.02, d - w * 0.13); p.closePath(); }
+  else { p.moveTo(x + w * 0.018, d - w * 0.6); p.quadraticCurveTo(x + w * 0.24 + flap, d - w * 0.36, x + w * 0.018, d - w * 0.11); p.closePath(); }
+  return p;
 }
 function drawBoatBack() {
-  const x = boatX, d = boat.deck + bobY(), w0 = boat.w;
-  const w = Math.min(w0, (d - 14 * TK.U) / 0.64);   // 돛대가 화면 위로 잘리지 않게
-  ctx.fillStyle = '#8a5a3a'; ctx.fillRect(x - w0 * 0.012, d - w * 0.62, w0 * 0.024, w * 0.62);   // 돛대
-  const flap = Math.sin(TK.T * 3) * w * 0.01;
-  ctx.beginPath(); ctx.moveTo(x + w * 0.016, d - w * 0.6); ctx.quadraticCurveTo(x + w * 0.2 + flap, d - w * 0.35, x + w * 0.016, d - w * 0.12); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x - w * 0.016, d - w * 0.55); ctx.quadraticCurveTo(x - w * 0.15 - flap, d - w * 0.33, x - w * 0.016, d - w * 0.14); ctx.closePath(); ctx.fillStyle = '#ffe9a8'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x, d - w * 0.62); ctx.lineTo(x + w * 0.09, d - w * 0.6 + flap); ctx.lineTo(x, d - w * 0.57); ctx.fillStyle = '#ff6b6b'; ctx.fill();
-  if (jamo) HG.drawJamo(ctx, jamo, x + w * 0.075 + flap * 0.5, d - w * 0.37, w * 0.11, '#e9644f', 0.18);   // 돛의 자음
+  const x = boatX, d = boat.deck + bobY(), w0 = boat.w, w = Math.min(w0, (d - 14 * TK.U) / 0.64), flap = Math.sin(TK.T * 3) * w * 0.012, lw = Math.max(2, w0 * 0.006);
+  TK.ink(lw, () => {
+    const mast = new Path2D(); mast.roundRect(x - w0 * 0.011, d - w * 0.63, w0 * 0.022, w * 0.63, w0 * 0.008); ctx.fillStyle = '#9a6538'; ctx.fill(mast);
+    const back = sailPath(x, d, w, flap, true); ctx.fillStyle = '#fff3d0'; ctx.fill(back);
+    const main = sailPath(x, d, w, flap, false); ctx.fillStyle = '#ffffff'; ctx.fill(main);
+    ctx.save(); ctx.clip(main); for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0)' : '#ff7a6b'; ctx.fillRect(x, d - w * (0.6 - k * 0.125), w * 0.3, w * 0.0625); } ctx.restore();   // 빨간 줄무늬
+    ctx.lineWidth = lw; ctx.strokeStyle = TK.INK; ctx.stroke(main);
+    const flag = new Path2D(); flag.moveTo(x, d - w * 0.63); flag.quadraticCurveTo(x + w * 0.05, d - w * 0.62 + flap * 2, x + w * 0.1, d - w * 0.6 + flap); flag.lineTo(x, d - w * 0.565); flag.closePath(); ctx.fillStyle = '#ffd84a'; ctx.fill(flag);
+    const top = new Path2D(); top.arc(x, d - w * 0.635, w0 * 0.016, 0, 7); ctx.fillStyle = '#ffd84a'; ctx.fill(top);
+  });
+  if (jamo) HG.drawJamo(ctx, jamo, x + w * 0.09 + flap * 0.5, d - w * 0.37, w * 0.11, '#e9644f', 0.18);   // 돛의 자음 (자음 배일 때)
+}
+function hullPath(x, d, w, h) {
+  const p = new Path2D(); p.moveTo(x - w * 0.53, d - h * 0.12); p.lineTo(x + w * 0.55, d - h * 0.18);
+  p.quadraticCurveTo(x + w * 0.47, d + h * 1.0, x + w * 0.3, d + h * 1.02); p.lineTo(x - w * 0.32, d + h * 1.02); p.quadraticCurveTo(x - w * 0.46, d + h * 0.95, x - w * 0.53, d - h * 0.12); p.closePath();
+  return p;
 }
 function drawHull() {
-  const x = boatX, d = boat.deck + bobY(), w = boat.w, h = boat.h;
-  ctx.beginPath(); ctx.moveTo(x - w * 0.5, d); ctx.lineTo(x + w * 0.5, d);
-  ctx.quadraticCurveTo(x + w * 0.44, d + h, x + w * 0.32, d + h); ctx.lineTo(x - w * 0.32, d + h);
-  ctx.quadraticCurveTo(x - w * 0.44, d + h, x - w * 0.5, d); ctx.closePath();
-  ctx.fillStyle = '#e9644f'; ctx.fill();
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(x - w * 0.47, d + h * 0.18, w * 0.94, h * 0.14);
-  for (let k = 0; k < 5; k++) { if (jamo && k === 2) continue; ell(x - w * 0.28 + k * w * 0.14, d + h * 0.58, h * 0.13, h * 0.13); ctx.fillStyle = '#ffe9a8'; ctx.fill(); ctx.strokeStyle = '#b8412f'; ctx.lineWidth = 2; ctx.stroke(); }
-  if (jamo) {   // 뱃머리 자음 표지 (크게)
+  const x = boatX, d = boat.deck + bobY(), w = boat.w, h = boat.h, lw = Math.max(2.2, w * 0.007);
+  const hull = hullPath(x, d, w, h);
+  TK.ink(lw, () => {
+    ctx.fillStyle = TK.grad(d - h * 0.2, d + h, '#f2735c', '#c9483a'); ctx.fill(hull);
+    ctx.save(); ctx.clip(hull);
+    ctx.strokeStyle = 'rgba(120,30,20,.28)'; ctx.lineWidth = Math.max(1.5, h * 0.03); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x - w * 0.6, d + h * k * 0.25); ctx.lineTo(x + w * 0.6, d + h * k * 0.25 - h * 0.05); ctx.stroke(); }   // 판자 줄
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - w * 0.6, d + h * 0.08, w * 1.2, h * 0.13);   // 흰 띠
+    ctx.fillStyle = '#2f6fb3'; ctx.fillRect(x - w * 0.6, d + h * 0.78, w * 1.2, h * 0.3);   // 아래 파란 칠
+    ctx.restore();
+    const rim = new Path2D(); rim.roundRect(x - w * 0.55, d - h * 0.2, w * 1.12, h * 0.16, h * 0.08); ctx.fillStyle = '#b77a45'; ctx.fill(rim);   // 나무 난간
+    for (let k = 0; k < 5; k++) { if (jamo && k === 2) continue; const px = x - w * 0.3 + k * w * 0.15, py = d + h * 0.48; const o = new Path2D(); o.arc(px, py, h * 0.15, 0, 7); ctx.fillStyle = '#ffd36b'; ctx.fill(o); const i2 = new Path2D(); i2.arc(px, py, h * 0.09, 0, 7); ctx.fillStyle = '#bfe8ff'; ctx.fill(i2); }   // 둥근 창
+  });
+  for (let k = 0; k < 5; k++) { if (jamo && k === 2) continue; ell(x - w * 0.3 + k * w * 0.15 - h * 0.03, d + h * 0.44, h * 0.03, h * 0.02); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill(); }
+  if (jamo) {   // 뱃머리 자음 표지
     const r = h * 0.48, pulse = 1 + 0.05 * Math.sin(TK.T * 4);
     ell(x, d + h * 0.5, r * pulse, r * pulse); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = '#f0c879'; ctx.lineWidth = Math.max(3, h * 0.06); ctx.stroke();
     HG.drawJamo(ctx, jamo, x, d + h * 0.5, r * 1.3, '#e9644f', 0.17);
   }
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
-  for (let k = 0; k < 3; k++) { ell(x - w * 0.4 + k * w * 0.4 + Math.sin(TK.T * 2 + k) * 4, d + h * 1.02, w * 0.12, h * 0.1); ctx.fill(); }
+  // 앞 물결: 배 아래쪽을 덮어 물에 떠 있는 것처럼
+  const wy = d + h * 0.86, front = waveRow(wy, 4 * TK.U, 40 * TK.U, TK.T * 1.5, TK.W);
+  const fp = new Path2D(front); fp.lineTo(x + w * 0.75, wy + h * 0.5); fp.lineTo(x - w * 0.75, wy + h * 0.5); fp.closePath();
+  ctx.save(); ctx.clip(hull);   // 배 몸통 안쪽만 물에 잠김
+  ctx.fillStyle = 'rgba(70,170,228,.9)'; ctx.fill(fp); ctx.lineWidth = 4 * TK.U; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke(front); ctx.restore();
+  for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) { ell(x + sd * w * (0.5 + k * 0.05), wy + h * (0.02 + k * 0.05), w * (0.05 - k * 0.012), h * 0.06, 0); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill(); }   // 양 끝 물거품
+  for (let k = 0; k < 3; k++) { const rx = x - w * (0.6 + k * 0.12) - (TK.T * 30 % 30) * TK.U; ell(rx, wy + h * 0.15, w * 0.05 * (1 + k * 0.3), h * 0.06); ctx.fillStyle = `rgba(255,255,255,${0.55 - k * 0.15})`; ctx.fill(); }   // 뒤 물결 자국
 }
 function draw() {
   drawBg(); drawBoatBack();
