@@ -285,7 +285,7 @@ Cells in reading order (left to right, top to bottom):
 
 ```
 Draw a 4x4 grid character pose sheet of 16 separate full-body illustrations, square image, plain pure white background, equal-size cells with clear white space between cells, one character per cell, centered, nothing touching the cell edges, no grid lines, no text, no letters, no numbers.
-The two characters must look EXACTLY like the attached reference characters (same face, colors, proportions, clothes, line style): the yellow baby dinosaur "Tino" with white t-shirt with a small green dinosaur print and blue shorts, and the black-and-white baby orca "Coco" with a blue t-shirt and dark blue shorts. Same clean cute sticker-like children's book style, smooth solid dark brown outline, soft colors, big shiny eyes, rosy cheeks.
+The two characters must look EXACTLY like the attached reference characters (same face, colors, proportions, clothes, line style): the yellow baby dinosaur "Tino" with white t-shirt with a small green dinosaur print and blue shorts, and the black-and-white baby orca "Coco" with a light blue t-shirt with a white wave print and blue shorts. Tino has orange back spikes and a yellow tail (the tail is yellow, not white). Same clean cute sticker-like children's book style, smooth solid dark brown outline, soft colors, big shiny eyes, rosy cheeks.
 Cells in reading order (left to right, top to bottom):
 1 Tino clapping hands happily, eyes closed smiling
 2 Tino cheering with both arms up high, mouth open
