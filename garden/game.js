@@ -32,7 +32,7 @@ function grow(p, amt) {
     p.stage = st; p.pop = 1;
     TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1], 0, 0.4, 'sine', 0.22); TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1] * 2, 0.03, 0.2, 'sine', 0.05);
     if (st === 4 && p.kind === 'dino') { TK.tone(200, 0.1, 0.5, 'sawtooth', 0.07, 130); TK.noise(0.3, 900, 0.1, 0.05); }   // 알이 톡 깨지며 아기 공룡 크앙
-    if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
+    if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.wordPop(NAME[p.kind], p.x, p.y - S * 2.9, S * 0.9); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
   }
 }
 const plotAt = (x, y) => plots.find(p => Math.abs(x - p.x) < S * 1.1 && y > p.y - S * 3.2 && y < p.y + S * 0.6);
@@ -69,7 +69,7 @@ function update(dt) {
   }
   flying.forEach(f => { f.t += dt / 0.6; if (f.t >= 1 && !f.done) { f.done = true; basket.items.push(f.kind); TK.spark(basket.x, basket.y - S, [255, 220, 120], 5, 0.5); } });
   flying = flying.filter(f => !f.done);
-  if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.2) { phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; basket.items = []; newSet(); lastGrow = TK.T; sfx.sparkle(); } }
+  if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.2) { phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; basket.items = []; newSet(); TK.flash(); lastGrow = TK.T; sfx.sparkle(); } }
 }
 
 // 식물 그리기: 흙 위 (x,y), 단계 st(0~4), 크기 s
@@ -179,7 +179,7 @@ function draw() {
   flying.forEach(f => { const e = TK.ease(f.t); icon(f.kind, TK.lerp(f.x0, b.x, e), TK.lerp(f.y0, b.y - b.w * 0.2, e) - Math.sin(Math.PI * f.t) * S * 2, S * 0.7); });
   });
   if (art) { const bx = W * (0.5 + 0.38 * Math.sin(TK.T * 0.35)), by = H * (W < H ? 0.2 : 0.18) + Math.sin(TK.T * 2.3) * S * 0.4; ctx.save(); ctx.translate(bx, by + S * 0.4); if (Math.cos(TK.T * 0.35) < 0) ctx.scale(-1, 1); HG.drawPic(ctx, '벌', S * 0.8); ctx.restore(); }
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   TK.drawParts();
 }
 

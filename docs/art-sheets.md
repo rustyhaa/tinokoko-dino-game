@@ -278,3 +278,54 @@ Cells in reading order (left to right, top to bottom):
 ```
 
 칸 → 파일: 시트 8 `o_soil o_sprout o_leaves o_bud w_튤립 w_당근 w_해바라기 w_딸기 w_호박 o_dinoegg o_basket o_raincloud o_can w_벌` · 시트 9 `o_tub o_duck o_shower o_soap o_sponge o_foam o_mud o_paint o_leafpile o_sand o_toyboat o_towel` · 배경 C `bg_bath bg_garden bg_sky(내 이름 방울)`
+
+## 시트 10 — 티노·코코 동작 (`sheet10.png`, 2026-11-12)
+
+`assets/tino_jump_v2.png`·`assets/coco_laugh_v2.png` 를 **꼭** 참고 그림으로 붙인다 (캐릭터가 똑같아야 함).
+
+```
+Draw a 4x4 grid character pose sheet of 16 separate full-body illustrations, square image, plain pure white background, equal-size cells with clear white space between cells, one character per cell, centered, nothing touching the cell edges, no grid lines, no text, no letters, no numbers.
+The two characters must look EXACTLY like the attached reference characters (same face, colors, proportions, clothes, line style): the yellow baby dinosaur "Tino" with white t-shirt with a small green dinosaur print and blue shorts, and the black-and-white baby orca "Coco" with a blue t-shirt and dark blue shorts. Same clean cute sticker-like children's book style, smooth solid dark brown outline, soft colors, big shiny eyes, rosy cheeks.
+Cells in reading order (left to right, top to bottom):
+1 Tino clapping hands happily, eyes closed smiling
+2 Tino cheering with both arms up high, mouth open
+3 Tino pointing to the right with one arm, excited face
+4 Tino surprised, round mouth, hands on cheeks
+5 Tino sitting and splashing water with both hands, small water drops around
+6 Tino sniffing a small pink flower held in one hand, eyes closed
+7 Tino giving a thumbs up and winking
+8 Tino sleeping curled up sitting, eyes closed, peaceful
+9 Coco clapping hands happily, eyes closed smiling
+10 Coco cheering with both arms up high, mouth open
+11 Coco pointing to the right with one arm, excited face
+12 Coco surprised, round mouth, hands on cheeks
+13 Coco sitting and splashing water with both hands, small water drops around
+14 Coco sniffing a small pink flower held in one hand, eyes closed
+15 Coco giving a thumbs up and winking
+16 Coco sleeping curled up sitting, eyes closed, peaceful
+```
+
+## 시트 11 — 놀이 부품 (`sheet11.png`)
+
+`sheet3.png` 를 참고 그림으로 붙이고 '시트 6·7 화풍 맞추기' 문장을 앞에 붙인다.
+
+```
+1 a shiny red balloon with a curly string, blank, no face
+2 a shiny yellow balloon with a curly string, blank, no face
+3 a shiny blue balloon with a curly string, blank, no face
+4 a shiny green balloon with a curly string, blank, no face
+5 a blank square light wooden letter tile with rounded corners, front view, nothing written
+6 a blank cream paper name tag, wide rounded rectangle with a thin golden border, nothing written
+7 one dinosaur footprint pressed into sand, three round chubby toes, top view
+8 a toy xylophone with six rainbow colored bars from long to short, front view, blank bars
+9 a red toy drum with two drumsticks
+10 a shiny golden toy trumpet, side view
+11 a wooden tambourine with small silver jingles
+12 a shiny plain golden star with soft glow, no face
+13 a small triangle flag on a thin stick, blank, no text, red
+14 a finish line arch with a checkered banner, blank, no text
+15 a cute colorful music note
+16 a puffy pink heart
+```
+
+칸 → 파일: 시트 10 `o_tino_clap cheer point wow splash sniff thumb sleep`, `o_coco_…` 같은 순서 · 시트 11 `o_balloon_r/y/b/g o_tile o_tag o_foot o_xylo o_drum o_horn o_tamb o_star o_flag o_finish o_note o_heart`

@@ -96,10 +96,10 @@ function update(dt) {
     if (f.t >= 1 && !got[f.si]) { got[f.si] = true; TK.spark(s.x, s.y, TK.pick(TK.COLS), 8, 0.7); TK.tone(TK.PENTA[(f.si * 2) % TK.PENTA.length] * 2, 0, 0.3, 'sine', 0.15); }
   });
   fly = fly.filter(f => f.t < 1);
-  if (phase === 'play' && got.length && got.every(Boolean)) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => HG.read(target), 400); twins.forEach(t => t.hop = 0); }
+  if (phase === 'play' && got.length && got.every(Boolean)) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => { HG.read(target); TK.wordPop(target, TK.W / 2, TK.H * 0.5); }, 400); twins.forEach(t => t.hop = 0); }
   if (phase === 'party') {
     if (Math.random() < dt * 14) bubbles.push({ x: rand(0, TK.W), y: TK.H + 30, r: rand(RMAX * 0.15, RMAX * 0.4), vy: -rand(90, 160) * TK.U, vx: rand(-20, 20) * TK.U, ph: rand(0, 6.28), h: hue(), si: -1, age: 0 });
-    if (phaseT > 4) { phase = 'play'; phaseT = 0; rounds++; bubbles = bubbles.filter(b => b.si < 0); newName(); sfx.sparkle(); }
+    if (phaseT > 4) { phase = 'play'; phaseT = 0; rounds++; bubbles = bubbles.filter(b => b.si < 0); newName(); TK.flash(); sfx.sparkle(); }
   }
 }
 
@@ -120,7 +120,7 @@ function draw() {
   for (let k = 0; k < 3; k++) { const x = ((TK.T * 10 * (k + 1) + k * 300) % (W + 300)) - 150, y = H * (0.12 + k * 0.08), s = Math.min(W, H) * 0.05; ctx.fillStyle = 'rgba(255,255,255,.9)'; ell(x, y, s * 1.4, s * 0.7); ctx.fill(); ell(x - s * 0.8, y + s * 0.15, s * 0.8, s * 0.55); ctx.fill(); }
   ctx.fillStyle = TK.grad(gy, H, '#9fdc7c', '#6fbf5a'); ctx.beginPath(); ctx.moveTo(0, gy); ctx.quadraticCurveTo(W * 0.5, gy - H * 0.05, W, gy); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   }
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
+  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' || t.hop >= 0 ? 'happy' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
   // 이름 칸: 모인 글자는 진하게, 아직이면 연한 빈 칸
   const s = slotSize(), hi = HG.hi(target);
   syl.forEach((ch, i) => {

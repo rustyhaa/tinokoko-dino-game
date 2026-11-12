@@ -45,6 +45,7 @@ TK.start = g => {
       updateParts(dt);
     }
     if (game.draw) game.draw();
+    { const f = (TK.T - flashT) / 0.55; if (f >= 0 && f < 1) { ctx.fillStyle = `rgba(255,252,242,${(1 - f) * (1 - f) * 0.95})`; ctx.fillRect(0, 0, TK.W, TK.H); } }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
@@ -170,7 +171,9 @@ TK.twin = (kind, pose, x, yb, h, o = {}) => {
   else if (pose === 'jump') name = kind + '_jump_v2';
   else name = kind === 'tino' ? 'tino_jump_v2' : 'coco_laugh_v2';
   const flip = pose === 'idle' && (o.face || (kind === 'tino' ? 'right' : 'left')) === 'right' ? -1 : 1;
-  return TK.sprite(name, x, yb, h, Object.assign({}, o, { flip }));
+  let sx = o.sx || 1, sy = o.sy || 1;   // 뛰기 직전·착지 순간 살짝 찌그러짐 (o.hop: 0~1 진행)
+  if (o.hop != null && o.hop >= 0) { const q = o.hop < 0.12 ? 1 - o.hop / 0.12 : o.hop > 0.85 ? (o.hop - 0.85) / 0.15 : 0, b = Math.sin(q * Math.PI / 2) * 0.1; sx *= 1 + b; sy *= 1 - b; }
+  return TK.sprite(name, x, yb, h, Object.assign({}, o, { flip, sx, sy }));
 };
 // 통통: 평소 작게 콩콩 / hop(0..1 진행) 크게 한 번
 TK.bob = (ph, amp, speed = 3.2) => Math.abs(Math.sin(TK.T * speed + ph)) * amp;
@@ -185,6 +188,11 @@ TK.drops = (x, y, c, n = 8, spd = 1) => { for (let i = 0; i < n; i++) parts.push
 TK.foam = (x, y, n = 3) => { for (let i = 0; i < n; i++) parts.push({ t: 'foam', x: x + TK.rand(-14, 14) * TK.U, y: y + TK.rand(-14, 14) * TK.U, vx: TK.rand(-20, 20) * TK.U, vy: -TK.rand(10, 50) * TK.U, r: TK.rand(5, 13) * TK.U, life: TK.rand(0.8, 1.6), max: 1.6, c: [255, 255, 255] }); };
 TK.confetti = dt => { if (Math.random() < dt * 40) parts.push({ t: 'conf', x: TK.rand(0, TK.W), y: -10, vx: TK.rand(-30, 30) * TK.U, vy: TK.rand(70, 150) * TK.U, w: TK.rand(8, 14) * TK.U, rot: TK.rand(0, TAU), vr: TK.rand(-6, 6), life: 3.5, max: 3.5, c: TK.pick(TK.COLS) }); };
 TK.clearParts = () => { parts.length = 0; };
+// 단어를 크게 띄우기 (완성 축하). 화면 폭에 맞춰 글자 크기를 정함
+TK.wordPop = (w, x, y, size) => { const n = [...w].length, fs = Math.min(size || Math.min(TK.W, TK.H) * 0.13, TK.W * 0.86 / (n * 1.02 * 1.15)); parts.push({ t: 'word', w, x: TK.clamp(x, TK.W * 0.1 + n * fs * 0.55, TK.W * 0.9 - n * fs * 0.55), y, vx: 0, vy: -26 * TK.U, size: fs, col: TK.pick(['#ff6b3d', '#ff8a2e', '#e8508a', '#3a8fe0']), life: 1.6, max: 1.6 }); };
+// 판이 바뀔 때 부드럽게: 화면이 연하게 하얘졌다가 새 판이 스르륵 (그림 위 덧칠)
+let flashT = -9;
+TK.flash = () => { flashT = TK.T; };
 function updateParts(dt) {
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i];
@@ -207,6 +215,10 @@ TK.drawParts = () => {
     else if (p.t === 'ring') { TK.ell(p.x, p.y, p.r, p.r); ctx.strokeStyle = TK.rgba(p.c, a); ctx.lineWidth = 4 * a + 1; ctx.stroke(); }
     else if (p.t === 'drop') { TK.ell(p.x, p.y, p.r, p.r); ctx.fillStyle = TK.rgba(p.c, a); ctx.fill(); }
     else if (p.t === 'foam') { TK.ell(p.x, p.y, p.r, p.r); ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`; ctx.fill(); ctx.strokeStyle = `rgba(190,220,255,${0.8 * a})`; ctx.lineWidth = 1.5; ctx.stroke(); }
+    else if (p.t === 'word' && window.H) {   // 단어 완성: 통 튀어 커졌다가 둥실 떠오르며 사라짐
+      const age = p.max - p.life, k = age < 0.35 ? TK.back(age / 0.35) : 1, fs = p.size * (0.4 + 0.75 * k) * (1 + 0.05 * Math.sin(age * 12));
+      ctx.save(); ctx.globalAlpha = Math.min(1, a * 2.2); window.H.drawWord(ctx, p.w, p.x, p.y, fs, { hi: 'all', hiColor: p.col, outline: 'rgba(255,255,255,.98)' }); ctx.restore();
+    }
     else if (p.t === 'conf') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = TK.rgba(p.c, Math.min(1, a * 2)); ctx.fillRect(-p.w / 2, -p.w / 4, p.w, p.w / 2); ctx.restore(); }
   });
 };
