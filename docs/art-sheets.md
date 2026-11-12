@@ -165,3 +165,29 @@ Cells in reading order (top-left, top-right, bottom-left, bottom-right):
 ```
 
 받은 그림은 저장소 `art/sheets/` 에 `bg_sea.png`, `sheet5.png` 로 올리면 Claude가 잘라서 연결한다.
+
+## 시트 6 — 새 공룡 8 + 새 고래 8 (`sheet6.png`, 2026-11-12)
+
+시트 공통 문장(위) 뒤에 붙인다. 참고 그림으로 `sheet3.png` 를 함께 붙이면 화풍이 맞는다.
+
+```
+Every animal is a cute chubby BABY version, full body, side view facing right unless noted, smiling, no sharp teeth, no claws showing. Make each species easy to tell apart by its key feature.
+1 baby Pachycephalosaurus on two legs, big smooth dome head with little bumps around it, light brown with tan belly
+2 baby Parasaurolophus on four legs, long curved tube crest sweeping back from its head, green with yellow stripes
+3 baby Velociraptor on two legs, small and slim, soft feathers on arms and tail, orange-red with cream belly, playful
+4 baby Diplodocus, very long neck stretched forward and very long whip tail, low body, gray-blue
+5 baby Iguanodon standing on two legs, thumb spike shaped like a small rounded cone, olive green
+6 baby Allosaurus on two legs, two small rounded bumps above the eyes, tan with brown stripes, gentle smile
+7 baby Mosasaurus swimming in a small splash, long body, four paddle flippers, tail fin, blue-green, no water background
+8 baby Plesiosaurus swimming, long thin neck, small head, round body, four big paddle flippers, teal, no water background
+9 minke whale, small sleek dark gray whale with a white band on each flipper, pointed snout
+10 gray whale, mottled gray with white spots and little barnacle patches, no dorsal fin, gentle bumps on its back
+11 bowhead whale, round black body, big curved smiling mouth with a white chin, no dorsal fin
+12 fin whale, very long slim gray body, white underside and white right jaw, small dorsal fin far back
+13 Korean finless porpoise, small smooth light gray porpoise with a round head and a natural smile, NO dorsal fin
+14 long-finned pilot whale, black with a big round bulging forehead, long thin flippers
+15 pink Amazon river dolphin, pink body, long thin beak, round forehead
+16 Indo-Pacific bottlenose dolphin jumping out of a small splash, gray with light speckled belly
+```
+
+칸 순서 → 파일: d_파키케팔로사우루스 · d_파라사우롤로푸스 · d_벨로키랍토르 · d_디플로도쿠스 · d_이구아노돈 · d_알로사우루스 · d_모사사우루스 · d_플레시오사우루스 · h_밍크고래 · h_귀신고래 · h_북극고래 · h_참고래 · h_상괭이 · h_들쇠고래 · h_분홍돌고래 · h_남방큰돌고래

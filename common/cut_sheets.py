@@ -24,6 +24,8 @@ SHEETS = {   # 파일 → (행, 열, 칸 이름들 / None 은 버림)
     'sheet4.png': (4, 4, ['o_rock', 'o_castle', 'o_bucket', 'o_shell', 'o_weed', 'o_log', 'o_bush', 'o_stump',
                           'o_mushroom', 'o_flowers', 'o_mossrock', 'o_tent', 'o_hay', 'o_cloud', None, None]),
     'sheet5.png': (2, 2, ['o_boat_hull', 'o_boat_sail', 'o_lifebuoy', 'o_gull']),   # 첫소리 배 부품
+    'sheet6.png': (4, 4, ['d_파키케팔로사우루스', 'd_파라사우롤로푸스', 'd_벨로키랍토르', 'd_디플로도쿠스', 'd_이구아노돈', 'd_알로사우루스', 'd_모사사우루스', 'd_플레시오사우루스',
+                          'h_밍크고래', 'h_귀신고래', 'h_북극고래', 'h_참고래', 'h_상괭이', 'h_들쇠고래', 'h_분홍돌고래', 'h_남방큰돌고래']),
     'bgsheet1.png': (2, 2, ['bg_stars', 'bg_steps', 'bg_band', 'bg_shapes']),
     'bgsheet2.png': (2, 2, ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night', None]),
 }

@@ -87,6 +87,9 @@ H.WORDS = [
 // 좋아하는 것: 공룡·고래 묶음
 H.DINOS = ['티라노사우루스', '트리케라톱스', '스테고사우루스', '브라키오사우루스', '안킬로사우루스', '스피노사우루스', '프테라노돈'];
 H.WHALES = ['혹등고래', '대왕고래', '범고래', '향유고래', '돌고래', '벨루가', '일각고래'];
+// 새 공룡 8·고래 8 (art/sheets/sheet6.png). 그림이 들어온 것만 아래 PIC_FILES 뒤에서 단어·묶음에 더함
+const MORE_DINOS = ['파키케팔로사우루스', '파라사우롤로푸스', '벨로키랍토르', '디플로도쿠스', '이구아노돈', '알로사우루스', '모사사우루스', '플레시오사우루스'];
+const MORE_WHALES = ['밍크고래', '귀신고래', '북극고래', '참고래', '상괭이', '들쇠고래', '분홍돌고래', '남방큰돌고래'];
 H.FAV = { '공룡': ['공룡'].concat(H.DINOS), '고래': ['고래'].concat(H.WHALES) };
 H.favWords = () => (H.cfg().fav || []).flatMap(k => H.FAV[k] || []);
 H.likes = k => (H.cfg().fav || []).includes(k);
@@ -123,6 +126,9 @@ const P = (names, fn) => names.split(' ').forEach(n => PICS[n] = fn);
 const PIC_FILES = /*PICS*/["브라키오사우루스", "스테고사우루스", "스피노사우루스", "안킬로사우루스", "트리케라톱스", "티라노사우루스", "프테라노돈", "물고기", "별", "병아리", "부엉이", "불가사리", "대왕고래", "돌고래", "범고래", "벨루가", "일각고래", "향유고래", "혹등고래", "개구리", "거미", "게", "고래", "공룡", "기차", "나무", "나비", "도토리", "라디오", "모자", "바나나", "바지", "사과", "사자", "아빠", "엄마", "오리", "오이", "우유", "지구", "치즈", "토끼", "토마토", "포도", "피자", "하마", "해", "해파리"]/*END*/;
 const PIMG = {};
 PIC_FILES.forEach(n => { const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; PIMG[n] = im; });
+[[MORE_DINOS, H.DINOS, '공룡'], [MORE_WHALES, H.WHALES, '고래']].forEach(([more, list, k]) => more.filter(n => PIC_FILES.includes(n) && !list.includes(n)).forEach(w => {
+  list.push(w); H.FAV[k].push(w); H.WORDS.push({ w, cat: 'animal', syl: [...w], cho: H.cho(w) });
+}));
 H.picImg = w => { const im = PIMG[w]; return im && im.complete && im.naturalWidth ? im : null; };
 H.hasPic = w => !!PICS[w] || !!PIMG[w];
 // 배경 그림 (shared/pics/bg_*.webp): 처음 부를 때 읽음. 사각형 (x,y,w,h)를 빈틈없이 채우게 잘라 그림
