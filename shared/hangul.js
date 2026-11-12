@@ -82,6 +82,7 @@ H.WORDS = [
   ['안킬로사우루스', 'animal'], ['스피노사우루스', 'animal'], ['프테라노돈', 'animal'],
   ['혹등고래', 'animal'], ['대왕고래', 'animal'], ['범고래', 'animal'], ['향유고래', 'animal'], ['돌고래', 'animal'], ['벨루가', 'animal'], ['일각고래', 'animal'],
   ['사과', 'food'], ['바나나', 'food'], ['포도', 'food'], ['우유', 'food'], ['토마토', 'food'], ['오이', 'food'], ['피자', 'food'], ['치즈', 'food'], ['도토리', 'food'],
+  ['딸기', 'food'], ['당근', 'food'], ['호박', 'food'], ['튤립', 'thing'], ['해바라기', 'thing'], ['벌', 'animal'],   // 글자 정원 그림 (sheet8)
   ['모자', 'thing'], ['바지', 'thing'], ['나무', 'thing'], ['해', 'thing'], ['기차', 'thing'], ['라디오', 'thing'], ['지구', 'thing'],
 ].map(([w, cat]) => ({ w, cat, syl: [...w], cho: H.cho(w) }));
 // 좋아하는 것: 공룡·고래 묶음
@@ -125,7 +126,7 @@ function sprite(ctx, n, h) { const im = IMG[n]; if (!im.complete || !im.naturalW
 const PICS = {};
 const P = (names, fn) => names.split(' ').forEach(n => PICS[n] = fn);
 // 손그림 일러스트 (art/ 시트에서 잘라 build_games.py 가 shared/pics/ 에 넣음). 있으면 코드 그림 대신 이것
-const PIC_FILES = /*PICS*/["갈리미무스", "디플로도쿠스", "딜로포사우루스", "마이아사우라", "모사사우루스", "벨로키랍토르", "브라키오사우루스", "스테고사우루스", "스피노사우루스", "아마르가사우루스", "안킬로사우루스", "알로사우루스", "이구아노돈", "카르노타우루스", "케찰코아틀루스", "테리지노사우루스", "트리케라톱스", "티라노사우루스", "파라사우롤로푸스", "파키케팔로사우루스", "프시타코사우루스", "프테라노돈", "플레시오사우루스", "물고기", "별", "병아리", "부엉이", "불가사리", "고추돌고래", "귀신고래", "꼬마향유고래", "남방큰돌고래", "낫돌고래", "대왕고래", "돌고래", "들쇠고래", "민부리고래", "밍크고래", "바키타", "범고래", "벨루가", "북극고래", "북방긴수염고래", "분홍돌고래", "상괭이", "쇠돌고래", "일각고래", "참고래", "참돌고래", "향유고래", "혹등고래", "개구리", "거미", "게", "고래", "공룡", "기차", "나무", "나비", "도토리", "라디오", "모자", "바나나", "바지", "사과", "사자", "아빠", "엄마", "오리", "오이", "우유", "지구", "치즈", "토끼", "토마토", "포도", "피자", "하마", "해", "해파리"]/*END*/;
+const PIC_FILES = /*PICS*/["갈리미무스", "디플로도쿠스", "딜로포사우루스", "마이아사우라", "모사사우루스", "벨로키랍토르", "브라키오사우루스", "스테고사우루스", "스피노사우루스", "아마르가사우루스", "안킬로사우루스", "알로사우루스", "이구아노돈", "카르노타우루스", "케찰코아틀루스", "테리지노사우루스", "트리케라톱스", "티라노사우루스", "파라사우롤로푸스", "파키케팔로사우루스", "프시타코사우루스", "프테라노돈", "플레시오사우루스", "물고기", "별", "병아리", "부엉이", "불가사리", "고추돌고래", "귀신고래", "꼬마향유고래", "남방큰돌고래", "낫돌고래", "대왕고래", "돌고래", "들쇠고래", "민부리고래", "밍크고래", "바키타", "범고래", "벨루가", "북극고래", "북방긴수염고래", "분홍돌고래", "상괭이", "쇠돌고래", "일각고래", "참고래", "참돌고래", "향유고래", "혹등고래", "개구리", "거미", "게", "고래", "공룡", "기차", "나무", "나비", "당근", "도토리", "딸기", "라디오", "모자", "바나나", "바지", "벌", "사과", "사자", "아빠", "엄마", "오리", "오이", "우유", "지구", "치즈", "토끼", "토마토", "튤립", "포도", "피자", "하마", "해", "해바라기", "해파리", "호박"]/*END*/;
 const PIMG = {};
 const PSET = new Set(PIC_FILES);   // 그림은 처음 쓰일 때 받음 (게임 하나 열 때 98장을 한꺼번에 받지 않게). 단어를 고를 때 미리 부름
 const pload = n => { if (!PSET.has(n) || PIMG[n]) return PIMG[n]; const im = new Image(); im.decoding = 'async'; im.src = SHARED + 'pics/' + encodeURIComponent(n) + '.webp'; return PIMG[n] = im; };
@@ -148,6 +149,12 @@ H.bgFit = (name, x, y, w, h, ax = 0.5, ay = 0.5) => {
 };
 // 필요할 때만 읽는 그림 (까꿍 물건 o_rock 등): 다 읽혔으면 Image, 아니면 null
 H.lazyImg = name => { let im = BG[name]; if (!im) { im = BG[name] = new Image(); im.src = SHARED + 'pics/' + name + '.webp'; } return im.complete && im.naturalWidth ? im : null; };
+// 손그림 물건(o_…): 밑변 가운데 (x,yb), 키 h (폭이 maxW 를 넘으면 줄임). 아직 안 읽혔으면 false → 게임이 코드 그림으로
+H.drawObj = (ctx, name, x, yb, h, maxW = 1e9) => {
+  const im = H.lazyImg(name); if (!im) return false;
+  let dh = h, dw = h * im.naturalWidth / im.naturalHeight; if (dw > maxW) { dh *= maxW / dw; dw = maxW; }
+  ctx.drawImage(im, x - dw / 2, yb - dh, dw, dh); return true;
+};
 H.drawBg = (ctx, name, x, y, w, h, ax, ay) => {
   const f = H.bgFit(name, x, y, w, h, ax, ay); if (!f) return null;
   ctx.drawImage(f.im, f.dx, f.dy, f.dw, f.dh); return f;
