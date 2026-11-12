@@ -23,6 +23,7 @@ SHEETS = {   # 파일 → (행, 열, 칸 이름들 / None 은 버림)
                           'h_혹등고래', 'h_대왕고래', 'h_범고래', 'h_향유고래', 'h_돌고래', 'h_벨루가', 'h_일각고래', 'f_별']),
     'sheet4.png': (4, 4, ['o_rock', 'o_castle', 'o_bucket', 'o_shell', 'o_weed', 'o_log', 'o_bush', 'o_stump',
                           'o_mushroom', 'o_flowers', 'o_mossrock', 'o_tent', 'o_hay', 'o_cloud', None, None]),
+    'sheet5.png': (2, 2, ['o_boat_hull', 'o_boat_sail', 'o_lifebuoy', 'o_gull']),   # 첫소리 배 부품
     'bgsheet1.png': (2, 2, ['bg_stars', 'bg_steps', 'bg_band', 'bg_shapes']),
     'bgsheet2.png': (2, 2, ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night', None]),
 }
@@ -109,6 +110,9 @@ def main():
                 o = cutout(c); k = 320 / max(o.size)   # 여백 없이 그림에 딱 맞게 (게임이 밑변에 세움)
                 if k < 1: o = o.resize((round(o.width * k), round(o.height * k)), Image.LANCZOS)
                 o.save(os.path.join(OUT, nm + '.png')); made.append((nm, o))
+    for fn in sorted(os.listdir(SRC)) if os.path.isdir(SRC) else []:   # 낱장 배경 (bg_sea.png 처럼 이름이 bg_ 로 시작): 흰 테두리만 잘라 그대로
+        if fn.startswith('bg_') and fn.endswith('.png'):
+            c = trim_white(Image.open(os.path.join(SRC, fn))).convert('RGB'); c.save(os.path.join(OUT, fn)); made.append((fn[:-4], c)); print('낱장 배경', fn, c.size)
     if made:   # 한눈에 보기
         t = 160; cols = 8; rows = (len(made) + cols - 1) // cols
         sheet = Image.new('RGB', (cols * t, rows * t), (200, 210, 225))

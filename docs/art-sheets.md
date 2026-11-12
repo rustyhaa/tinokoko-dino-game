@@ -140,3 +140,28 @@ Panels in reading order (top-left, top-right, bottom-left, bottom-right):
 15 leave this cell completely empty pure white
 16 leave this cell completely empty pure white
 ```
+
+
+## 첫소리 배 그림 (2026-11-12)
+
+### ① 배경 낱장 → `bg_sea.png` (가로 16:9, 가장 큰 크기로 한 장)
+
+```
+Wide 16:9 background scenery for a toddler's game, same hand-drawn children's picture-book style as the attached characters: soft colored-pencil and crayon texture, thin dark brown ink lines, warm pastel colors, gentle paper grain.
+Scene: a calm sunny seaside seen from the beach. Top 30%: light blue sky with two or three soft clouds and a small round sun in the upper left. Middle band (from 30% to 62% of the height): wide calm turquoise sea with gentle rolling waves, small white foam lines and a tiny island with one palm tree far away on the right horizon. Bottom 38%: smooth warm sand beach with a soft wet-sand edge and a few tiny shells.
+Keep the middle of the sea and the sand open and simple (a boat and characters will be placed on top). No boats, no people, no animals, no characters, no text, no letters.
+```
+
+### ② 배 부품 시트 → `sheet5.png` (2×2, 흰 배경)
+
+```
+Draw one square image split into a 2x2 grid of 4 separate cute illustrations on a plain pure white background, with clear white space between the cells, one subject per cell, centered, nothing touching the cell edges, no grid lines, no text, no letters, no numbers.
+Art style for every cell (match the attached characters if provided): hand-drawn children's picture-book illustration, soft colored-pencil and crayon texture, thin dark brown ink outline, warm pastel colors, chubby rounded toy-like shapes.
+Cells in reading order (top-left, top-right, bottom-left, bottom-right):
+1 a cute wooden toy sailboat hull only, exact side view facing right, wide and low, red-orange painted planks with a white stripe and five round yellow portholes, a wooden rail on top, flat empty deck, NO mast, NO sail, nobody on board
+2 a tall wooden mast with one big curved triangular sail with red and white horizontal stripes and a small yellow flag on top, side view, the mast is a straight vertical pole at the left edge of the sail, nothing else
+3 a red and white striped life ring buoy
+4 a cute round white seagull flying with wings spread, friendly face
+```
+
+받은 그림은 저장소 `art/sheets/` 에 `bg_sea.png`, `sheet5.png` 로 올리면 Claude가 잘라서 연결한다.
