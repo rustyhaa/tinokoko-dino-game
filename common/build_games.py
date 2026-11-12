@@ -117,9 +117,9 @@ ICON_ART = {
     'band':  ('bg_band', .5, [('assets/coco_laugh_v2', .5, .95, .6)]),
     'stars': ('bg_stars', .7, [('pics/별', .5, .62, .42)]),
     'shapes': ('bg_shapes', .5, [('pics/사과', .32, .72, .36), ('pics/바나나', .7, .74, .34)]),
-    'garden': ('bg_pk_forest', .5, [('pics/o_flowers', .5, .95, .5), ('pics/나비', .72, .42, .22)]),
-    'bath':   ('bg_shapes', .5, [('pics/오리', .3, .78, .34), ('pics/고래', .68, .8, .3), ('pics/o_cloud', .5, .36, .22)]),
-    'blow':   ('bg_pk_beach', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
+    'garden': ('bg_garden', .5, [('pics/해바라기', .33, .95, .6), ('pics/딸기', .7, .93, .3), ('pics/벌', .72, .42, .2)]),
+    'bath':   ('bg_bath', .5, [('pics/o_tub', .5, .97, .42), ('pics/o_duck', .74, .62, .2), ('pics/o_foam', .3, .6, .16)]),
+    'blow':   ('bg_sky', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
 }
 
 

@@ -55,7 +55,7 @@ function checkTile(ti) {
   }
 }
 const overTile = (x, y) => tiles.some(t => Math.abs(x - t.x) < t.s * 0.55 && Math.abs(y - t.y) < t.s * 0.55);
-const duckPos = () => ({ x: tub.x + tub.w * 0.4, y: tub.rim - tub.h * 0.02 - TK.hopY(duck.hop, tub.h * 0.5) });
+const duckPos = () => ({ x: tub.x + tub.w * (H.lazyImg('o_tub') ? 0.33 : 0.4), y: tub.rim - tub.h * 0.02 - TK.hopY(duck.hop, tub.h * 0.5) });
 
 TK.input({
   down(p) {
@@ -116,6 +116,8 @@ function drawSpot(s) {
   const wg = s.wig > 0 ? Math.sin(s.wig * 40) * r * 0.15 : 0;
   ctx.save(); ctx.translate(p.x + wg, p.y); ctx.rotate(s.rot); ctx.globalAlpha = 0.35 + 0.65 * a;
   const sc = 0.6 + 0.4 * a;
+  const art = { mud: 'o_mud', paint: 'o_paint', leaf: 'o_leafpile', sand: 'o_sand' }[s.kind];   // 손그림 얼룩
+  if (H.drawObj(ctx, art, 0, r * 0.95 * sc, r * 1.9 * sc, r * 2.5 * sc)) { ctx.restore(); return; }
   if (s.kind === 'mud') {
     ctx.fillStyle = '#8a5a33';
     ell(0, 0, r * sc, r * 0.85 * sc); ctx.fill(); ell(r * 0.6 * sc, r * 0.3 * sc, r * 0.5 * sc, r * 0.42 * sc); ctx.fill(); ell(-r * 0.55 * sc, r * 0.25 * sc, r * 0.42 * sc, r * 0.36 * sc); ctx.fill();
@@ -141,6 +143,11 @@ function drawTile(t) {
 }
 function drawBg() {
   const W = TK.W, H2 = TK.H;
+  if (H.drawBg(ctx, 'bg_bath', 0, 0, W, H2, 0.5, 1)) {   // 손그림 목욕탕 + 샤워기
+    const sh = H.lazyImg('o_shower');
+    if (sh) { const h = H2 * (W < H2 ? 0.13 : 0.2), w = h * sh.naturalWidth / sh.naturalHeight; ctx.save(); ctx.translate(W / 2 + w * 0.15, H2 * 0.02); ctx.drawImage(sh, -w / 2, 0, w, h); ctx.restore(); }
+    return;
+  }
   ctx.fillStyle = '#d8f1ff'; ctx.fillRect(0, 0, W, H2);
   const t = Math.max(40, W / 14);
   ctx.strokeStyle = 'rgba(120,180,220,.35)'; ctx.lineWidth = 2;
@@ -153,12 +160,23 @@ function drawBg() {
   TK.rr(hx - tub.w * 0.12, hy * 0.6, tub.w * 0.24, hy * 0.45, hy * 0.2); ctx.fillStyle = '#c7d3de'; ctx.fill();
   for (let k = 0; k < 6; k++) { ell(hx - tub.w * 0.09 + k * tub.w * 0.036, hy * 0.98, 2.5 * TK.U, 2.5 * TK.U); ctx.fillStyle = '#7f8fa0'; ctx.fill(); }
 }
+// 손그림 욕조: 테두리가 tub.rim 에 오게. 아이들은 그림 앞면 뒤로 들어가 물에 앉은 것처럼
+function tubImg() { const im = H.lazyImg('o_tub'); if (!im) return null; const w = tub.w * (TK.W < TK.H ? 1.04 : 0.9), h = w * im.naturalHeight / im.naturalWidth; return { im, w, h, x: tub.x - w / 2, y: tub.rim - h * 0.1 }; }
 function drawTubBack() {
+  if (tubImg()) return;
   ell(tub.x, tub.rim, tub.w * 0.5, tub.h * 0.22); ctx.fillStyle = '#e9f3fb'; ctx.fill();
   ell(tub.x, tub.rim + tub.h * 0.03, tub.w * 0.46, tub.h * 0.17); ctx.fillStyle = '#9fd6f5'; ctx.fill();
 }
 function drawTubFront() {
-  const x0 = tub.x - tub.w * 0.5, y0 = tub.rim;
+  const x0 = tub.x - tub.w * 0.5, y0 = tub.rim, ti = tubImg();
+  if (ti) {
+    ctx.drawImage(ti.im, ti.x, ti.y, ti.w, ti.h);
+    for (const [fx, k] of [[0.16, 1], [0.86, 0.8]]) H.drawObj(ctx, 'o_foam', x0 + tub.w * fx, y0 + tub.h * 0.12 + Math.sin(TK.T * 2 + fx * 9) * 2, tub.h * 0.55 * k, tub.w * 0.25);
+    const d = duckPos(), s2 = tub.h * 0.55;
+    if (H.likes('고래')) { ctx.save(); ctx.translate(d.x, d.y + s2 * 0.1); ctx.scale(-1, 1); H.drawPic(ctx, '고래', s2); ctx.restore(); }
+    else H.drawObj(ctx, 'o_duck', d.x, d.y + s2 * 0.12, s2, s2 * 1.4);
+    return;
+  }
   ctx.save(); ell(tub.x, tub.rim + tub.h * 0.03, tub.w * 0.46, tub.h * 0.17); ctx.clip();
   ctx.fillStyle = 'rgba(140,205,245,.85)'; ctx.fillRect(x0, y0 - tub.h * 0.05, tub.w, tub.h);
   ctx.restore();
@@ -186,7 +204,7 @@ function draw() {
     TK.twin(tw.kind, phase === 'party' || tw.hop >= 0 ? 'happy' : 'jump', tw.x, tw.yb - lift(tw), tw.h);
     ctx.restore();
   });
-  TK.ink(Math.max(2, TK.U * 3.2), drawTubFront);
+  if (tubImg()) drawTubFront(); else TK.ink(Math.max(2, TK.U * 3.2), drawTubFront);
   TK.drawParts();
 }
 

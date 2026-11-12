@@ -90,6 +90,7 @@ def cutout(cell):
 HOLES = {
     'o_boat_hull': [(x / 40, 0.2) for x in range(2, 39)],   # 난간 기둥 사이
     'o_lifebuoy': [(0.5, 0.5)],                              # 가운데 구멍
+    'o_basket': [(0.5, 0.2), (0.4, 0.15), (0.6, 0.15)],     # 손잡이 안쪽
 }
 def clear_holes(im, seeds):
     a = np.asarray(im).copy(); h, w = a.shape[:2]

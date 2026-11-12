@@ -50,4 +50,4 @@
 - 공룡·고래 각 23종 (sheet6·7). cut_sheets: 칸이 겹친 줄은 덩어리별 배정(own_blobs).
 - 새 게임 `book/` 공룡·고래 그림책 (메인 카드). 놀이터 카드 그림은 build_games.ICON_ART (손그림 배경+그림).
 - 그림은 처음 쓰일 때 받음(H.preload, pick 이 미리 부름). 단어 전체 강조는 1.06배(겹침 방지). 목욕 이름표 폭 맞춤.
-- 대기: sheet8(정원)·sheet9(목욕)·bgsheet3 그림 → 받으면 garden/bath/blow 에 연결 (docs/art-sheets.md 맨 아래).
+- 정원·목욕·이름 방울 손그림 연결 (sheet8·9, bgsheet3). H.drawObj(o_ 물건). 새 단어 딸기·당근·호박·튤립·해바라기·벌.
