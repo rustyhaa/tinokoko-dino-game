@@ -6,7 +6,7 @@ const B = 'http://localhost:8770/';
   const ctx = await b.newContext({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, permissions: ['microphone'] });
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   const R = {};
-  await p.goto(B + 'games/'); await p.waitForTimeout(800);
+  await p.goto(B + 'games/#parent'); await p.waitForTimeout(800);
   // 1) 아이 이름, 단계, 이번 주 글자
   await p.fill('#name0', '하늘'); await p.fill('#name1', '바다');
   await p.click('#stageSeg button[data-v="1"]');
@@ -32,13 +32,13 @@ const B = 'http://localhost:8770/';
   R.voicesInGame = await p.evaluate(() => Array.from(H.voices.keys()));
   R.focusPick = await p.evaluate(() => { const c = {}; for (let i = 0; i < 300; i++) H.pick(1).forEach(o => c[o.cho] = (c[o.cho] || 0) + 1); return c; });
   // 5) 3단계: 실로폰 가나다, 자음 짝꿍 자음 모드
-  await p.goto(B + 'games/'); await p.click('#stageSeg button[data-v="3"]');
+  await p.goto(B + 'games/#parent'); await p.click('#stageSeg button[data-v="3"]');
   await p.goto(B + 'band/'); await p.waitForTimeout(1200);
   await p.screenshot({ path: OUT + 'hg_band_gana.png' });
   await p.goto(B + 'shapes/'); await p.waitForTimeout(1200);
   R.shapesStage3 = await p.evaluate(() => __g.mode);
   // 6) 오늘 본 글자 기록
-  await p.goto(B + 'games/'); await p.click('#todayBox summary'); await p.waitForTimeout(300);
+  await p.goto(B + 'games/#parent'); await p.click('#todayBox summary'); await p.waitForTimeout(300);
   R.today = (await p.textContent('#todayList')).slice(0, 160);
   R.errs = errs;
   console.log(JSON.stringify(R, null, 1));

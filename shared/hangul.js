@@ -13,7 +13,19 @@ const H = window.H = {};
 const SRC = document.currentScript ? document.currentScript.src : location.href;
 const SHARED = new URL('.', SRC).href;
 const TAU = Math.PI * 2;
-H.FONT = '"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Gothic",sans-serif';
+H.FONT = '"TKFont","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Gothic",sans-serif';
+// 놀이터 글씨체 TKFont (shared/fonts, Pretendard 부분 글꼴): 캔버스 글자용으로 미리 읽음. 못 읽으면 위 목록의 기기 글씨체로 그대로 나옴
+//  페이지 CSS 에 @font-face 가 이미 있으면 그것을 바로 읽고, 없으면(까꿍·가나다 방울 등) 여기서 만들어 더함
+try {
+  if (window.FontFace && document.fonts && document.fonts.add) {
+    let hasFace = false;
+    document.fonts.forEach(f => { if (/TKFont/.test(f.family) && String(f.weight) === '800') { hasFace = true; f.load().catch(() => {}); } });
+    if (!hasFace) {
+      const tkFont = new FontFace('TKFont', 'url("' + SHARED + 'fonts/Pretendard-ExtraBold.woff2") format("woff2")', { weight: '800', style: 'normal', display: 'swap' });
+      document.fonts.add(tkFont); tkFont.load().catch(() => {});
+    }
+  }
+} catch (e) {}
 const now = () => performance.now() / 1000;
 // 아이폰 무음 스위치가 켜져 있어도 효과음(WebAudio)이 나오게: 미디어 재생으로 분류 (Safari 16.4+, 없으면 무시)
 try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}

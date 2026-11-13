@@ -52,7 +52,7 @@ const R = { demo: {}, home: {}, sleep: {}, hub: {}, pwa: {}, errs: [] };
   // 4) 놀이터 화면: 도움말, 잘 시간 설정
   for (const dev of ['iphoneSE', 'ipadP']) {
     const { ctx, p } = await page(dev);
-    await p.goto(B + 'games/'); await p.waitForTimeout(800);
+    await p.goto(B + 'games/#parent'); await p.waitForTimeout(800);
     await p.click('.help >> nth=2'); await p.click('#sleepSeg button[data-min="20"]');
     await p.screenshot({ path: OUT + `fr_hub_${dev}.png`, fullPage: true });
     const sx = await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth);

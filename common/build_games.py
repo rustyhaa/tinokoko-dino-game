@@ -30,6 +30,7 @@ GAMES = {   # 엔진(tk.js)으로 만든 게임
     'steps':  ('티노코코 공룡 발자국 길', '#f6dfa4'),
     'run':    ('티노코코 글자 달리기', '#bfe6fb'),
     'book':   ('티노코코 공룡·고래 그림책', '#cdeccf'),
+    'meet':   ('티노코코 공룡·고래 만나기', '#c4e8b8'),
 }
 STANDALONE = ['rainbow-bubbles', 'peekaboo']
 THREE_D = []   # three.js 3D 판 — 2026-11-08 느려서 폐기 (기록: docs/three-review/)
@@ -47,7 +48,9 @@ HTML = """<!doctype html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="한글 놀이터">
 <link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
+<link rel="preload" href="../shared/fonts/Pretendard-ExtraBold.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  @font-face{{font-family:'TKFont';src:url(../shared/fonts/Pretendard-ExtraBold.woff2) format('woff2');font-weight:800;font-style:normal;font-display:swap}}
   html,body{{margin:0;height:100%;overflow:hidden;background:{color};touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}}
   canvas{{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}}
@@ -120,6 +123,7 @@ ICON_ART = {
     'garden': ('bg_garden', .5, [('pics/해바라기', .33, .95, .6), ('pics/딸기', .7, .93, .3), ('pics/벌', .72, .42, .2)]),
     'bath':   ('bg_bath', .5, [('pics/o_tub', .5, .97, .42), ('pics/o_duck', .74, .62, .2), ('pics/o_foam', .3, .6, .16)]),
     'blow':   ('bg_sky', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
+    'meet':   ('bg_pk_forest', .5, [('pics/트리케라톱스', .42, .8, .5), ('pics/o_bush', .76, .98, .34), ('pics/o_mossrock', .2, .99, .24)]),
 }
 
 
@@ -316,7 +320,8 @@ def build():
                      {'src': '../shared/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
     write(os.path.join(ROOT, 'games', 'manifest.webmanifest'), json.dumps(man, ensure_ascii=False, indent=2) + '\n')
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
-    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js']
+    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js',
+             'shared/fonts/Pretendard-ExtraBold.woff2', 'shared/fonts/Pretendard-Medium.woff2']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += pics + ['shared/assets/%s.webp' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
     for name in THREE_D:
