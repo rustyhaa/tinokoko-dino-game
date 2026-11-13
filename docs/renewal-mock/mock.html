@@ -1,0 +1,75 @@
+<!doctype html><html lang="ko"><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3efe6;font-family:system-ui,"Noto Sans KR",sans-serif;color:#2b3550;padding:36px 40px 30px;width:1340px}
+h1{font-size:30px;margin:0 0 4px}.sub{color:#6b7488;margin:0 0 26px;font-size:17px}
+.row{display:flex;gap:44px;align-items:flex-start}
+.col{width:390px}.ph{width:390px;height:800px;border-radius:44px;border:10px solid #2b3550;overflow:hidden;position:relative;background:#fff;box-shadow:0 14px 30px rgba(40,30,10,.18)}
+.cap b{display:block;font-size:20px;margin:16px 0 4px}.cap{font-size:15.5px;line-height:1.55;color:#4a5368}
+.abs{position:absolute}.btn{position:absolute;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.82);display:grid;place-items:center;font-size:30px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+/* 1 지도 */
+.map{position:absolute;inset:0;background:linear-gradient(#bfe6fb 0,#d9f2c9 24%,#bfe39a 100%)}
+.place{position:absolute;border-radius:50%;border:7px solid #fffaf0;box-shadow:0 6px 0 #e3c98e,0 10px 16px rgba(60,40,10,.25);overflow:hidden;background-size:cover;background-position:center}
+.place img{position:absolute}
+.lock{filter:saturate(.35) opacity(.75)}
+/* 2 숲 */
+.tag{position:absolute;background:#fffdf3;border:4px solid #f1c64a;border-radius:22px;padding:4px 20px;font-weight:800;font-size:34px;letter-spacing:1px;color:#2b3550;box-shadow:0 3px 0 #dba92a}
+.tag i{font-style:normal;color:#ff6b3d;font-size:40px}
+/* 3 부모 */
+.par{position:absolute;inset:0;background:#eaf7ff;padding:26px 20px;font-size:15px;overflow:hidden}
+.par h2{font-size:21px;margin:0 0 12px}.card{background:#fff;border:2px solid #cfe6f5;border-radius:16px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;font-weight:600}
+.card small{margin-left:auto;color:#7a8799;font-weight:400}.chip{background:#ff9a2e;color:#fff;border-radius:10px;padding:4px 12px;font-size:14px}
+.chip.off{background:#f3f9fe;color:#2b3550;border:2px solid #cfe6f5}
+.old{border-style:dashed}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 10px}
+.g{background:#fff;border:2px solid #cfe6f5;border-radius:16px;padding:10px 6px;text-align:center;font-size:13px;font-weight:600}
+.g img,.g span{width:74px;height:74px;border-radius:18px;display:block;margin:0 auto 6px}.g span{background:linear-gradient(#8fd4ff,#fbe7b4);line-height:74px;font-size:30px;color:#e9644f;font-weight:800}
+</style>
+<h1>티노코코 한글 놀이터 — 리뉴얼 예시 화면</h1>
+<p class="sub">지금 있는 그림으로 짜 맞춘 예시입니다 (실제 구현 전 시안). 마을 지도 배경은 새로 그릴 예정이라 여기서는 임시 배경입니다.</p>
+<div class="row">
+<div class="col"><div class="ph"><div class="map">
+  <svg class="abs" style="inset:0" width="370" height="780" viewBox="0 0 370 780"><path d="M100 150 C 250 170, 300 250, 270 330 S 60 400, 100 480 S 300 560, 265 640 S 190 700, 185 745" fill="none" stroke="#f6e3b4" stroke-width="30" stroke-linecap="round"/><path d="M100 150 C 250 170, 300 250, 270 330 S 60 400, 100 480 S 300 560, 265 640 S 190 700, 185 745" fill="none" stroke="#fffaf0" stroke-width="4" stroke-dasharray="4 16" stroke-linecap="round"/></svg>
+  <img class="abs" src="../../shared/pics/o_cloud.webp" style="left:150px;top:26px;width:86px">
+  <img class="abs" src="../../shared/pics/나무.webp" style="left:8px;top:300px;width:60px"><img class="abs" src="../../shared/pics/o_bush.webp" style="left:298px;top:455px;width:62px"><img class="abs" src="../../shared/pics/o_flowers.webp" style="left:160px;top:560px;width:54px"><img class="abs" src="../../shared/pics/o_mushroom.webp" style="left:18px;top:598px;width:40px">
+  <div class="place" style="left:18px;top:78px;width:156px;height:156px;background-image:url(../../shared/pics/bg_pk_forest.webp)"><img src="../../shared/pics/티라노사우루스.webp" style="left:20px;top:40px;width:104px"></div>
+  <div class="place" style="left:200px;top:108px;width:150px;height:150px;background-image:url(../../shared/pics/bg_sea.webp)"><img src="../../shared/pics/혹등고래.webp" style="left:14px;top:38px;width:112px"></div>
+  <div class="place" style="left:196px;top:282px;width:140px;height:140px;background-image:url(../../shared/pics/bg_bath.webp)"><img src="../../shared/pics/o_tub.webp" style="left:16px;top:48px;width:96px"><img src="../../shared/pics/o_duck.webp" style="left:66px;top:22px;width:42px"></div>
+  <div class="place" style="left:30px;top:372px;width:144px;height:144px;background-image:url(../../shared/pics/bg_pk_beach.webp)"><img src="../../shared/pics/o_balloon_r.webp" style="left:22px;top:16px;width:44px"><img src="../../shared/pics/o_balloon_b.webp" style="left:68px;top:30px;width:40px"><img src="../../shared/pics/o_finish.webp" style="left:26px;top:76px;width:84px"></div>
+  <div class="place" style="left:192px;top:470px;width:144px;height:144px;background-image:url(../../shared/pics/bg_garden.webp);background-position:30% 60%"><img src="../../shared/pics/해바라기.webp" style="left:22px;top:20px;width:66px"><img src="../../shared/pics/딸기.webp" style="left:80px;top:66px;width:44px"></div>
+  <div class="place" style="left:24px;top:560px;width:140px;height:140px;background-image:url(../../shared/pics/bg_band.webp)"><img src="../../shared/pics/o_drum.webp" style="left:14px;top:56px;width:62px"><img src="../../shared/pics/o_horn.webp" style="left:66px;top:36px;width:60px"></div>
+  <div class="place lock" style="left:262px;top:650px;width:92px;height:92px;background-image:url(../../shared/pics/bg_shapes.webp);border-width:5px"><img src="../../shared/pics/o_tile.webp" style="left:20px;top:20px;width:42px"></div>
+  <img class="abs" src="../../shared/pics/o_tino_point.webp" style="left:150px;top:690px;height:92px"><img class="abs" src="../../shared/pics/o_coco_cheer.webp" style="left:206px;top:692px;height:90px">
+  <div class="btn" style="right:12px;top:12px">🔊</div><div class="btn" style="left:12px;top:12px;width:44px;height:44px;font-size:20px;opacity:.6">⚙️</div>
+</div></div><div class="cap"><b>① 첫 화면: 마을 지도</b>글자 없이 장소 그림만. 숲·바다(공룡·고래), 집(목욕), 길(달리기), 정원, 무대(악기)를 톡 하면 티노·코코가 걸어가 놀이 시작. 오른쪽 아래 흐린 책상(글자 그리기)은 부모가 켜야 열림. 왼쪽 위 톱니는 길게 눌러야 열리는 부모 화면.</div></div>
+
+<div class="col"><div class="ph">
+  <div class="abs" style="inset:0;background:url(../../shared/pics/bg_pk_forest.webp) center/cover"></div>
+  <img class="abs" src="../../shared/pics/스테고사우루스.webp" style="left:22px;top:300px;width:120px"><img class="abs" src="../../shared/pics/o_bush.webp" style="left:6px;top:330px;width:160px">
+  <img class="abs" src="../../shared/pics/o_stump.webp" style="left:250px;top:330px;width:120px">
+  <img class="abs" src="../../shared/pics/프테라노돈.webp" style="left:230px;top:96px;width:120px">
+  <img class="abs" src="../../shared/pics/o_mossrock.webp" style="left:20px;top:560px;width:130px"><img class="abs" src="../../shared/pics/o_log.webp" style="left:230px;top:590px;width:140px">
+  <div class="abs" style="left:65px;top:330px;width:240px;height:240px;border-radius:50%;background:rgba(255,250,235,.8)"></div>
+  <img class="abs" src="../../shared/pics/트리케라톱스.webp" style="left:78px;top:356px;width:214px">
+  <div class="tag" style="left:38px;top:566px">트리<i>케</i>라톱스</div>
+  <img class="abs" src="../../shared/pics/o_star.webp" style="left:36px;top:300px;width:44px"><img class="abs" src="../../shared/pics/o_star.webp" style="left:292px;top:520px;width:34px">
+  <img class="abs" src="../../shared/pics/o_tino_wow.webp" style="left:8px;top:660px;height:118px"><img class="abs" src="../../shared/pics/o_coco_clap.webp" style="left:270px;top:662px;height:116px">
+  <div class="btn" style="left:12px;top:12px">🗺️</div><div class="btn" style="right:12px;top:12px">🔊</div>
+</div><div class="cap"><b>② 숲 놀이: 공룡 만나기</b>덤불·그루터기·바위 뒤에 공룡이 숨어 있어요. 톡 하면 까꿍 튀어나와 "트, 리, 케, 라, 톱, 스" 글자마다 읽고(읽는 글자가 커짐) 티노·코코가 놀라고 손뼉. 다 만나면 바다로 넘어가 고래 차례. 까꿍 + 그림책을 하나로 합친 놀이.</div></div>
+
+<div class="col"><div class="ph"><div class="par">
+  <h2>부모 화면 <span style="font-size:13px;color:#7a8799;font-weight:400">톱니를 길게 누르면 열림</span></h2>
+  <div class="card">아이 이름 <small>하준 · 서준</small></div>
+  <div class="card">단계 <span class="chip">듣고 보기</span><span class="chip off">글자</span><span class="chip off">자음</span></div>
+  <div class="card">좋아하는 것 <span class="chip">공룡</span><span class="chip">고래</span></div>
+  <div class="card">책상 놀이(글자 그리기) <small>꺼짐</small></div>
+  <div class="card">목소리 <small>녹음 파일 사용</small></div>
+  <div class="card">잘 시간 · 배경음악 · 이번 주 본 글자 <small>›</small></div>
+  <div class="card old">➖ <span>예전 게임 5개</span><small>카드 닫기</small></div>
+  <div class="grid">
+    <div class="g"><img src="../../steps/icons/icon-192.png">공룡 발자국 길</div>
+    <div class="g"><img src="../../boat/icons/icon-192.png">첫소리 배</div>
+    <div class="g"><img src="../../blow/icons/icon-192.png">내 이름 방울</div>
+    <div class="g"><img src="../../rainbow-bubbles/icons/icon-192.png">가나다 방울</div>
+    <div class="g"><span>R</span>예전 러너</div>
+  </div>
+</div></div><div class="cap"><b>③ 부모 화면: 설정 + 숨긴 게임</b>설정은 아이 화면에서 빼서 여기로. 지도에서 빠진 게임 5개는 지우지 않고 맨 아래 '예전 게임' 카드 안에 그대로 두어 언제든 열 수 있어요. (이름은 예시)</div></div>
+</div>
