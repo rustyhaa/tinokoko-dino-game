@@ -1,0 +1,1319 @@
+# 티노코코 한글 놀이터 리뉴얼 — 1차 설계 (head → runners)
+
+기준: 브랜치 `claude/tinokoko-renewal` @ f1fafc3. 이 문서의 코드는 모두 `/tmp` 사본에서 실제로 빌드·실행·Playwright 확인을 마쳤다 (오류 0, 세로 360x740·가로 800x400 모두 한 판 이상 끝까지 진행, 두 판 뒤 숲→바다 전환, 친구 겹침 없음).
+
+러너 규칙: **코드 블록은 그대로 복사**한다. 고치거나 "더 낫게" 바꾸지 않는다. 결정할 것은 없다. 문제가 생기면 고치지 말고 보고한다.
+
+## 1. 결정 요약
+
+**만들 것 / 바꿀 것 (파일 단위)**
+
+| 파일 | 작업 |
+|---|---|
+| `games/index.html` | 전체 교체 (WP1, 2장) |
+| `meet/game.js` | 새 파일 (WP2, 3장) |
+| `shared/hangul.js` | 한 줄 바꾸기 (4.1) |
+| `common/build_games.py` | 네 군데 바꾸기 (4.2–4.5) |
+| `tests/hangul_test.js`, `tests/frame_test.js` | 놀이터 주소를 `games/#parent` 로 (4.6–4.9) |
+| `.gitignore` | `docs/renewal/shots/` 추가 (4.10) |
+| `docs/renewal/smoke.js` | 새 확인 스크립트 (5.3) |
+| 빌드가 만드는 것 | `meet/index.html`, `meet/icons/icon-192.png`, `meet/sw.js`, `sw.js`, `games/manifest.webmanifest`, 각 게임 `index.html` (글꼴 줄 추가) |
+
+지우는 파일은 없다. `assets/` 의 원본 PNG 는 건드리지 않는다. `shared/frame.js`, `common/deploy_pages.sh`, `peekaboo/index.html`, `rainbow-bubbles/index.html`, 루트 `index.html` 은 **바꾸지 않는다** (이유는 4장 끝).
+
+**WP1 놀이터 (`games/index.html`)**
+- 첫 화면은 글자 없는 **마을 지도**. 연두 하늘·풀 그라데이션 + 굽은 길(SVG) + 장식 그림 + 동그란 장소 버튼 7개 (mock.html ① 과 같은 그림·같은 짜임). 장소 → 놀이: 숲 `../meet/?s=forest`, 바다 `../meet/?s=sea`, 집 `../bath/`, 길 `../run/`, 정원 `../garden/`, 무대 `../band/`, 책상 `../stars/`.
+- 배치는 CSS 만으로: 화면 가운데에 비율 고정 "지도판" (세로 100×211, 가로 100×47.4). 장소·장식·쌍둥이 위치는 각 요소의 CSS 변수(`--pl/--pt/--ps` 세로, `--ll/--lt/--ls` 가로, 단위 %)로 정해 두고 `@media (orientation:landscape)` 에서 가로 변수로 바꿔 끼운다. 가로 화면은 위 4개 · 아래 3개 + 쌍둥이 두 줄. 장소 버튼은 `min-width/min-height:120px`.
+- 장소 톡: 버튼이 콩(`.go`) + 티노·코코 폴짝(`.hop`) + 작은 "뿅"(WebAudio) → 450ms 뒤 이동. 이동 중 두 번 눌러도 한 번만. 뒤로 가기(bfcache)로 돌아오면 `pageshow` 에서 초기화.
+- 책상은 `cfg.desk === true` 일 때만 열림 (부모 화면 새 패널 "책상 놀이(글자 그리기)" 켬/끔, `tk-hangul` 에 `desk` 로 저장 — 기존 `H.cfg()/H.saveCfg()` 와 허브의 `save()` 그대로 사용). 꺼져 있으면 흐리게, 톡하면 흔들림 + 낮은 소리, 이동 안 함.
+- 빈 곳·쌍둥이 톡도 폴짝 + 소리 (모든 톡에 반응).
+- 나중에 `shared/pics/bg_map.webp` 가 생기면: `new Image()` 로 읽어 보고 성공하면 `body.has-map` → 그 그림이 배경, 코드로 그린 길·장식은 숨김, 장소 버튼은 그대로. (빌드는 `bg_*` 를 자동으로 미리 저장 목록에 넣으므로 따로 할 일 없음.)
+- **부모 화면**: 왼쪽 위 작은 톱니(52px, 반투명)를 **1.0초 꾹** → 주황 고리가 차오르고 열림. 짧게 톡은 흔들리기만. 주소 `games/#parent` 로 열어도 바로 부모 화면 (테스트·부모 북마크용; 아이는 주소를 못 침). 맨 위 큰 고정 버튼 "🗺️ 지도로 돌아가기".
+- 부모 화면 안 패널은 **현재 허브의 것 전부, 같은 id·같은 함수·같은 문구** (스크립트는 현재 파일에서 그대로 복사했고, 바뀐 곳은 ① `#more` 기억 코드를 `#more→tk-more`, `#old→tk-old` 두 개로 일반화 ② 책상 패널 코드 추가 ③ 지도·톱니 코드 추가뿐). 순서: 이름 · 좋아하는 것 · 단계 · 이번 주 글자 · **책상 놀이(새)** · 목소리 · 이번 주 리포트 · 오늘 본 글자 · 생일 · 계절 · 배경음악 · 불어서 방울 · 잘 시간 · 설치 안내 · **지도 속 놀이 6장**(만나기·목욕·달리기·정원·실로폰·별자리, 기존 도움말 그대로 + 만나기 새 도움말) · 접힌 카드 **"다른 놀이 5개"**(까꿍·그림책·짝꿍·발자국·배) · 접힌 카드 **"예전 게임 3개"**(이름 방울·가나다 방울·러너). 카드의 아이콘·제목·부제·도움말은 기존 문구 그대로.
+- manifest·meta·아이콘·서비스워커 등록·`#upd` 새 버전 띠는 현재와 한 글자도 다르지 않다.
+- 기존 localStorage 키 전부 그대로 (`tk-hangul`, `tk-music`, `tk-blowmic`, `tk-season`, `tk-more`, `tk-sleep`, `tk-hangul-log`, `tk-hangul-week`, `tk-bday-said`). 새 키는 `tk-old` (접힌 카드 기억) 하나, 새 필드는 `tk-hangul.desk` 하나.
+
+**WP2 공룡·고래 만나기 (`meet/game.js`, 엔진 게임)**
+- 장면: 숲(`bg_pk_forest`; `o_bush o_stump o_mossrock o_log o_mushroom o_tent`; 친구 `H.DINOS`) / 바다(`bg_sea`; `o_rock o_castle o_shell o_weed o_bucket o_cloud`; 친구 `H.WHALES`). `?s=forest|sea` 로 시작, 없으면 고래만 좋아할 때 바다, 그 밖은 숲.
+- 한 판: 물건 4개(가로 화면 5개, 판을 만들 때 화면 방향으로 정함). 물건마다 친구 하나가 숨어 위로 살짝 보이고 2.2–4.8초마다 꼼지락.
+- 물건 톡 → 물건이 바깥쪽으로 비켜나며 작아짐, 친구가 가운데 크림색 동그란 빛으로 커지며 튀어나옴, 큰 이름표 + `H.read` (읽는 글자 `H.hi` 로 커짐), 가까운 쪽 쌍둥이 `wow` 0.9초 → `clap` 1.2초. `TK.wordPop` 안 씀.
+- 큰 친구 다시 톡 → 다시 읽고 콩. 다른 곳 톡(다른 물건이면 그 물건이 바로 열림) 또는 다 읽고 3.2초 → 친구가 물건 옆 제자리로 작아져 서고 작은 이름표. 서 있는 친구 톡 → 콩 + 다시 읽기.
+- 다 만나면 파티 2.5초 (쌍둥이 `TK.partyPose`, `TK.confetti`, 팡파르) → `TK.flash()` + 새 판. 두 판마다 숲↔바다 미끄러짐 전환 (0.45초 나감 + 0.45초 들어옴, 쌍둥이는 제자리).
+- 친구는 장면마다 **섞은 주머니**: 목록을 다 쓸 때까지 겹치지 않음 (한 판 안에서도 겹치지 않음). 그림이 있는 이름만 (`H.hasPic`).
+- 티노 왼쪽 아래, 코코 오른쪽 아래. 몸을 톡 → 하트 + 히히 + 폴짝. 빈 곳 톡 → 하얀 고리 + 작은 소리 + 그쪽(왼쪽 반 티노, 오른쪽 반 코코) 쌍둥이 폴짝.
+- 키보드: 아무 키 → 숨은 물건 하나 열기.
+- 배치 수치 (화면 비율): 세로 4개 `[.28,.42] [.72,.37] [.28,.71] [.72,.66]`, 세로 5개 `[.25,.39] [.75,.34] [.5,.54] [.25,.73] [.75,.69]`, 가로 4개 `[.18,.55] [.39,.80] [.61,.80] [.82,.55]`, 가로 5개 `[.18,.53] [.34,.80] [.5,.53] [.66,.80] [.82,.53]`. 물건 키 세로 `min(W·.32, H·.16)` (5개면 `.27/.135`), 가로 `min(W·.125, H·.24)` (5개면 `.11/.22`). 빛 원: 세로 중심 (W/2, .47H) 반지름 `min(.42W, .25H)`, 가로 중심 (W/2, .5H) 반지름 `min(.40H, .25W)`. 쌍둥이 키 세로 .15H (x .14W/.86W), 가로 .26H (x .07W/.93W). 360x740 에서 맨 위 이름표 윗변 ≈ 92px, 800x400 에서 ≈ 70px 이지만 x 가 84px 이상이라 집 버튼(12–80px)·소리 버튼과 겹치지 않음 (스크린샷으로 확인).
+- `window.__g` (phase, rounds, scene, found, total, focus, friends, actions()), `window.__demo` (숨은 물건 톡, '톡! 누가 숨었을까?'), `TKMusic.play('play')`.
+- 쓴 API 는 전부 tk.js/hangul.js 에 실제 있는 것만 (원본 시그니처 대조): `TK.start/input/twin/partyPose/flash/confetti/spark/hearts/ring/hopY/bob/ease/back/lerp/clamp/rand/pick/shuffle/sfx/ell/grad/drawParts`, `H.drawBg/drawObj/drawPic/drawTag/read/hi/preload/hasPic/DINOS/WHALES/likes`.
+
+**WP3 글꼴·빌드**
+- 글꼴 이름 `TKFont` (Pretendard ExtraBold 800 / Medium 500, `shared/fonts/`). `H.FONT` 맨 앞에 `"TKFont"`; hangul.js 가 캔버스용으로 800 을 미리 읽음 (페이지 CSS 에 이미 `@font-face` 가 있으면 그것을 `load()`, 없으면 `FontFace` 를 만들어 추가). 실패해도 기존 글꼴 목록으로 그대로 그려짐 (try/catch + `.catch`).
+- 빌드 템플릿(모든 엔진 게임 페이지)에 preload + `@font-face`(800). 놀이터는 500·800 둘 다.
+- 루트 `sw.js` 미리 저장 목록에 글꼴 2개. `meet` 는 `GAMES` 에 넣으면 페이지·아이콘·미리 저장·배포가 자동.
+
+## 남은 위험 (해결 못 한 것)
+1. 실제 아이폰 Safari 확인은 못 했다 (Chromium 만). 특히 `100dvh` 지도판 크기, 톱니 꾹 누르기(롱프레스 메뉴 막기 `-webkit-touch-callout:none` + `contextmenu` 막음), 장소 톡 소리.
+2. 아주 작은 화면(320x568)에서는 장소 버튼 최소 120px 때문에 원끼리 조금 겹칠 수 있다 (누르기에는 문제 없음).
+3. 세로 화면 파티 때 아래 줄 친구 이름표가 위 줄 친구 몸에 살짝 걸칠 수 있다 (이름표는 늘 맨 위에 그려 읽히게 함).
+4. `o_cloud` 를 바다 장면 "숨는 물건"으로 쓰라는 지시대로 넣었다 (모래 위 구름이 조금 어색할 수 있음).
+5. 기존 테스트 중 놀이터 설정을 누르는 두 파일은 `#parent` 로 고쳐야 통과한다 (4.6–4.9). `tests/home_test.js` 는 집 버튼 → `games/` 도착만 보므로 그대로 둠.
+
+## 2. WP1 — 새 놀이터 `games/index.html` (전체 교체)
+
+러너: 아래 블록 전체를 `games/index.html` 에 그대로 덮어쓴다 (Write). 한 글자도 바꾸지 않는다.
+
+````html
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>티노코코 한글 놀이터</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#8fd4ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="한글 놀이터">
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
+<link rel="icon" href="../shared/icons/icon-192.png">
+<link rel="preload" href="../shared/fonts/Pretendard-ExtraBold.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* 한글 놀이터: 아이 화면 = 글자 없는 마을 지도(장소를 톡 → 놀이), 부모 화면 = 왼쪽 위 톱니를 1초 꾹 (설정·안 보이는 놀이 카드). */
+  @font-face{font-family:'TKFont';src:url(../shared/fonts/Pretendard-Medium.woff2) format('woff2');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'TKFont';src:url(../shared/fonts/Pretendard-ExtraBold.woff2) format('woff2');font-weight:800;font-style:normal;font-display:swap}
+  :root{--bg:#eaf7ff;--card:#ffffff;--ink:#23324a;--sub:#5d6b80;--line:#cfe6f5;--accent:#ff9a2e;--accent-ink:#ffffff;--chip:#f3f9fe;--rec:#e9504f}
+  @media (prefers-color-scheme: dark){:root{--bg:#16202e;--card:#202d40;--ink:#eef4fb;--sub:#a9b7c9;--line:#2f405a;--chip:#28374d}}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.5 'TKFont',system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+    -webkit-tap-highlight-color:transparent}
+  body:not(.par){height:100%;overflow:hidden}
+  body.par .map,body.par .gear{display:none}
+
+  /* ---------- 아이 화면: 마을 지도 (글자 없음) ---------- */
+  .map{position:fixed;inset:0;overflow:hidden;background:linear-gradient(#bfe6fb 0,#d9f2c9 24%,#bfe39a 100%);touch-action:manipulation;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .has-map .map{background:#bfe39a url(../shared/pics/bg_map.webp) center/cover no-repeat}
+  .has-map .road,.has-map .deco{display:none}
+  /* 지도판: 세로 화면 100×211, 가로 화면 100×47.4 비율 상자를 화면 가운데에. 안의 위치는 모두 % (--pl/--pt/--ps 세로, --ll/--lt/--ls 가로) */
+  .board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,47.4vh);height:min(211vw,100vh)}
+  @supports (height:100dvh){.board{width:min(100vw,47.4dvh);height:min(211vw,100dvh)}}
+  .road{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  .road.land{display:none}
+  .deco,.place,.twins{position:absolute;left:calc(var(--pl) * 1%);top:calc(var(--pt) * 1%);width:calc(var(--ps) * 1%)}
+  .deco{height:auto;pointer-events:none}
+  .place{display:block;aspect-ratio:1/1;min-width:120px;min-height:120px;border-radius:50%;border:6px solid #fffaf0;overflow:hidden;
+    background-color:#d9f2c9;background-position:center;background-size:cover;background-repeat:no-repeat;
+    box-shadow:0 6px 0 #e3c98e,0 10px 16px rgba(60,40,10,.25);outline:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    animation:breathe 3.2s ease-in-out infinite}
+  .place:nth-of-type(2n){animation-delay:-1.6s}
+  .place img{position:absolute;display:block;height:auto;pointer-events:none}
+  .place:focus-visible{box-shadow:0 0 0 6px var(--accent),0 6px 0 #e3c98e}
+  .place.off{filter:saturate(.35) opacity(.72);animation:none;cursor:default}
+  .place.go{animation:go .45s ease-out forwards}
+  .place.wig{animation:wig .45s ease-in-out}
+  .twins{aspect-ratio:1.8/1;display:flex;justify-content:center;align-items:flex-end;gap:2%}
+  .mt{display:block;height:100%;flex:none}
+  .mt img{display:block;height:100%;width:auto;pointer-events:none;animation:bob 2.4s ease-in-out infinite}
+  .mt.c img{animation-delay:-1.2s}
+  .mt.hop{animation:hop .45s ease-out}
+  .mt.c.hop{animation-delay:.08s}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  @keyframes go{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1.06)}}
+  @keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%) rotate(-2deg)}}
+  @keyframes hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-28%)}}
+  /* 부모 톱니: 1초 꾹 누르면 고리가 차오르며 부모 화면. 짧게 톡은 흔들리기만 */
+  .gear{position:fixed;z-index:4;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));width:52px;height:52px;padding:0;border:0;border-radius:50%;
+    background:rgba(255,255,255,.7);opacity:.6;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  .gear svg{width:100%;height:100%;display:block;pointer-events:none}
+  .gear .ring{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-dasharray:144.5;stroke-dashoffset:144.5;transform:rotate(-90deg);transform-origin:26px 26px}
+  .gear.hold{opacity:1}
+  .gear.hold .ring{stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+  .gear.wig{animation:wig .45s ease-in-out}
+  @media (orientation:landscape){
+    .board{width:min(100vw,211vh);height:min(47.4vw,100vh)}
+    @supports (height:100dvh){.board{width:min(100vw,211dvh);height:min(47.4vw,100dvh)}}
+    .road.port{display:none}
+    .road.land{display:block}
+    .deco,.place,.twins{left:calc(var(--ll) * 1%);top:calc(var(--lt) * 1%);width:calc(var(--ls) * 1%)}
+    .p-only{display:none}
+  }
+
+  /* ---------- 부모 화면 ---------- */
+  .wrap{max-width:1000px;margin:0 auto;display:grid;gap:16px}
+  .back{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:3;min-height:58px;width:100%;border:0;border-radius:18px;background:var(--accent);color:var(--accent-ink);
+    font:inherit;font-weight:800;font-size:1.15rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  header{display:flex;align-items:center;gap:14px}
+  header{justify-content:center;text-align:center}
+  header img.tw{height:110px;width:auto;flex:none;animation:twhop 2.4s ease-in-out infinite}
+  header img.c{animation-delay:1.2s}
+  @keyframes twhop{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px) rotate(-3deg)}}
+  @media (max-width:420px){header img.tw{height:84px}}
+  h1{font-size:1.55rem;margin:0;text-wrap:balance}
+  header p{margin:2px 0 0;color:var(--sub);font-size:.92rem}
+  .panel{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+  .panel b{font-size:1rem}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button,.btn{min-height:44px;min-width:56px;padding:0 14px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+  .seg button.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .seg.jamo button{min-width:46px;padding:0 8px;font-size:1.15rem}
+  .note{color:var(--sub);font-size:.88rem;flex-basis:100%;margin:0}
+  input[type=text],select{min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;padding:0 12px;min-width:0}
+  input[type=text]{width:8.5em}
+  .btn.rec{background:var(--rec);border-color:var(--rec);color:#fff}
+  .btn.rec.on{animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.55}}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%}
+  .chips span{background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.88rem}
+  ul.games{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+  ul.games li{position:relative;background:var(--card);border:2px solid var(--line);border-radius:20px;display:flex;flex-direction:column;min-width:0}
+  ul.games li:has(a:focus-visible),ul.games li:hover{border-color:var(--accent)}
+  ul.games li a{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px 12px;color:inherit;text-decoration:none;outline:none}
+  ul.games li img,.ic{width:100px;height:100px;border-radius:24px;display:block}
+  .ic{background:linear-gradient(#8fd4ff,#fbe7b4);display:grid;place-items:center;font-weight:800;color:#e9644f;font-size:2rem}
+  ul.games li b{font-size:1.04rem}
+  ul.games li small{color:var(--sub);font-size:.82rem;text-align:center}
+  .help{position:absolute;top:6px;right:6px;width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--chip);color:var(--sub);font:700 1.05rem/1 system-ui,sans-serif;cursor:pointer}
+  .help[aria-expanded="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .tip{padding:0 14px 14px;font-size:.86rem;display:grid;gap:4px}
+  .tip[hidden]{display:none}
+  .tip p{margin:0}
+  .tip em{font-style:normal;font-weight:700;color:var(--accent)}
+  details.more{background:none;border:0;padding:0;font-size:inherit}
+  details.more>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--card);border:2px dashed var(--line);border-radius:20px;padding:12px 16px}
+  details.more>summary::-webkit-details-marker{display:none}
+  details.more>summary:hover,details.more>summary:focus-visible{border-color:var(--accent);outline:none}
+  details.more>summary small{color:var(--sub);margin-left:auto}
+  details.more[open]>summary small::before{content:'카드 닫기';}
+  details.more[open]>summary small{font-size:0}
+  details.more[open]>summary small::before{font-size:.86rem}
+  .more-ic{width:44px;height:44px;border-radius:14px;background:var(--chip);border:2px solid var(--line);display:grid;place-items:center;font:800 1.4rem/1 system-ui,sans-serif;color:var(--accent);transition:transform .2s}
+  details.more[open] .more-ic{transform:rotate(45deg)}
+  details.more>ul.games{margin-top:14px}
+  details{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 14px;font-size:.92rem}
+  summary{font-weight:700;cursor:pointer;min-height:28px}
+  details .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+  details ul{padding-left:1.1em;margin:8px 0 0}
+  details li{margin:4px 0}
+  #upd{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;max-width:calc(100% - 32px);
+    border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+</style>
+</head>
+<body>
+<main class="map" id="map" aria-label="놀이 마을 지도">
+  <div class="board">
+    <svg class="road port" viewBox="0 0 100 211" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M26 37 C 45 28, 62 30, 73.5 44.5 S 82 80, 71 91 S 38 72, 26.5 83.5 S 14 118, 25 129 S 58 122, 72 135 S 88 165, 77.5 177.5 S 48 196, 30 190" fill="none" stroke="#f6e3b4" stroke-width="8" stroke-linecap="round"/>
+      <path d="M26 37 C 45 28, 62 30, 73.5 44.5 S 82 80, 71 91 S 38 72, 26.5 83.5 S 14 118, 25 129 S 58 122, 72 135 S 88 165, 77.5 177.5 S 48 196, 30 190" fill="none" stroke="#fffaf0" stroke-width="1.2" stroke-dasharray="1.4 4" stroke-linecap="round"/>
+    </svg>
+    <svg class="road land" viewBox="0 0 100 47.4" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M18.5 13.5 C 26 22, 32 9, 38.5 17.5 S 52 6, 58.5 13.5 S 72 24, 78.5 17.5 S 98 22, 90 32 S 80 34, 72.5 35 S 60 42, 53.5 37.5 S 41 30, 34.5 35.5 S 22 44, 13 41" fill="none" stroke="#f6e3b4" stroke-width="3.6" stroke-linecap="round"/>
+      <path d="M18.5 13.5 C 26 22, 32 9, 38.5 17.5 S 52 6, 58.5 13.5 S 72 24, 78.5 17.5 S 98 22, 90 32 S 80 34, 72.5 35 S 60 42, 53.5 37.5 S 41 30, 34.5 35.5 S 22 44, 13 41" fill="none" stroke="#fffaf0" stroke-width="0.6" stroke-dasharray="0.6 1.8" stroke-linecap="round"/>
+    </svg>
+    <img class="deco" src="../shared/pics/o_cloud.webp" alt="" style="--pl:40;--pt:1.4;--ps:22;--ll:88;--lt:4;--ls:10">
+    <img class="deco" src="../shared/pics/나무.webp" alt="" style="--pl:0;--pt:49;--ps:12;--ll:2;--lt:22;--ls:7">
+    <img class="deco" src="../shared/pics/o_bush.webp" alt="" style="--pl:84;--pt:51;--ps:15;--ll:84;--lt:70;--ls:9">
+    <img class="deco" src="../shared/pics/o_flowers.webp" alt="" style="--pl:42;--pt:47.5;--ps:13;--ll:92;--lt:62;--ls:7">
+    <img class="deco" src="../shared/pics/o_mushroom.webp" alt="" style="--pl:4;--pt:72;--ps:11;--ll:93;--lt:86;--ls:5">
+    <img class="deco p-only" src="../shared/pics/o_flowers.webp" alt="" style="--pl:44;--pt:71;--ps:12;--ll:0;--lt:0;--ls:0">
+
+    <a class="place" href="../meet/?s=forest" aria-label="숲 (공룡 만나기)" style="--pl:5;--pt:7.58;--ps:42;--ll:10;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_pk_forest.webp)"><img src="../shared/pics/티라노사우루스.webp" alt="" style="left:13%;top:24%;width:67%"></a>
+    <a class="place" href="../meet/?s=sea" aria-label="바다 (고래 만나기)" style="--pl:53;--pt:11.37;--ps:41;--ll:30;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_sea.webp)"><img src="../shared/pics/혹등고래.webp" alt="" style="left:9%;top:25%;width:75%"></a>
+    <a class="place" href="../bath/" aria-label="집 (글자 목욕)" style="--pl:52;--pt:34.12;--ps:38;--ll:50;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_bath.webp)"><img src="../shared/pics/o_tub.webp" alt="" style="left:11%;top:34%;width:69%"><img src="../shared/pics/o_duck.webp" alt="" style="left:47%;top:16%;width:30%"></a>
+    <a class="place" href="../run/" aria-label="길 (글자 달리기)" style="--pl:7;--pt:30.33;--ps:39;--ll:70;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_pk_beach.webp)"><img src="../shared/pics/o_balloon_r.webp" alt="" style="left:15%;top:9%;width:30%"><img src="../shared/pics/o_balloon_b.webp" alt="" style="left:47%;top:19%;width:27%"><img src="../shared/pics/o_finish.webp" alt="" style="left:18%;top:50%;width:58%"></a>
+    <a class="place" href="../garden/" aria-label="정원 (글자 정원)" style="--pl:53;--pt:54.98;--ps:38;--ll:45;--lt:61.18;--ls:17;background-image:url(../shared/pics/bg_garden.webp);background-position:30% 60%"><img src="../shared/pics/해바라기.webp" alt="" style="left:15%;top:12%;width:46%"><img src="../shared/pics/딸기.webp" alt="" style="left:56%;top:44%;width:31%"></a>
+    <a class="place" href="../band/" aria-label="무대 (가나다 실로폰)" style="--pl:6;--pt:52.13;--ps:38;--ll:26;--lt:56.96;--ls:17;background-image:url(../shared/pics/bg_band.webp)"><img src="../shared/pics/o_drum.webp" alt="" style="left:10%;top:38%;width:44%"><img src="../shared/pics/o_horn.webp" alt="" style="left:47%;top:26%;width:43%"></a>
+    <a class="place desk off" id="pDesk" href="../stars/" aria-label="책상 (글자 별자리)" aria-disabled="true" style="--pl:60;--pt:75.83;--ps:35;--ll:65;--lt:58.02;--ls:15;background-image:url(../shared/pics/bg_shapes.webp)"><img src="../shared/pics/o_tile.webp" alt="" style="left:24%;top:44%;width:46%"><img src="../shared/pics/o_star.webp" alt="" style="left:28%;top:10%;width:42%"></a>
+
+    <div class="twins" id="twins" style="--pl:8;--pt:79.6;--ps:44;--ll:3;--lt:54;--ls:20">
+      <span class="mt t"><img src="../shared/pics/o_tino_point.webp" alt="티노"></span>
+      <span class="mt c"><img src="../shared/pics/o_coco_cheer.webp" alt="코코"></span>
+    </div>
+  </div>
+</main>
+<button class="gear" id="gear" type="button" aria-label="부모 화면 (1초 꾹 누르기)">
+  <svg viewBox="0 0 52 52" aria-hidden="true">
+    <g fill="#5d6b80">
+      <rect x="23" y="12" width="6" height="28" rx="2"/>
+      <rect x="23" y="12" width="6" height="28" rx="2" transform="rotate(45 26 26)"/>
+      <rect x="23" y="12" width="6" height="28" rx="2" transform="rotate(90 26 26)"/>
+      <rect x="23" y="12" width="6" height="28" rx="2" transform="rotate(135 26 26)"/>
+      <circle cx="26" cy="26" r="10"/>
+    </g>
+    <circle cx="26" cy="26" r="4.5" fill="#ffffff"/>
+    <circle class="ring" cx="26" cy="26" r="23"/>
+  </svg>
+</button>
+
+<div class="wrap" id="parent" hidden>
+  <button class="back" id="backMap" type="button">🗺️ 지도로 돌아가기</button>
+  <header>
+    <img class="tw t" src="../shared/assets/tino_jump_v2.webp" alt="티노">
+    <h1>부모 화면</h1>
+    <img class="tw c" src="../shared/assets/coco_laugh_v2.webp" alt="코코">
+  </header>
+
+  <h2 style="font-size:1.15rem;margin:8px 0 0">부모 설정</h2>
+
+  <div class="panel">
+    <b>아이 이름</b>
+    <input type="text" id="name0" maxlength="5" placeholder="첫째 이름" autocomplete="off">
+    <input type="text" id="name1" maxlength="5" placeholder="둘째 이름" autocomplete="off">
+    <p class="note">넣으면 이름 방울·글자 까꿍 등에 이름 글자로 나와요. 이 기기에만 저장돼요.</p>
+  </div>
+
+  <div class="panel">
+    <b>좋아하는 것</b>
+    <div class="seg" id="favSeg"><button data-v="공룡">🦕 공룡</button><button data-v="고래">🐳 고래</button></div>
+    <p class="note">켜 두면 공룡 7종(티라노사우루스·트리케라톱스·스테고사우루스·브라키오사우루스·안킬로사우루스·스피노사우루스·프테라노돈)과 고래 7종(혹등고래·대왕고래·범고래·향유고래·돌고래·벨루가·일각고래)이 모든 게임에 더 자주 나와요. 별자리엔 고래·공룡 별자리, 정원엔 공룡알, 목욕탕엔 장난감 고래, 실로폰엔 공룡·고래 친구가 와요.</p>
+  </div>
+
+  <div class="panel">
+    <b>단계</b>
+    <div class="seg" id="stageSeg"><button data-v="1">① 듣고 보기</button><button data-v="2">② 자음 모양</button><button data-v="3">③ 가나다</button></div>
+    <p class="note" id="stageNote"></p>
+  </div>
+
+  <div class="panel">
+    <b>이번 주 글자</b>
+    <div class="seg jamo" id="focusSeg"></div>
+    <p class="note">최대 3개. 고른 자음과 그 자음으로 시작하는 단어가 여러 게임에 더 자주 나와요.</p>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="deskTitle">
+    <b id="deskTitle">책상 놀이(글자 그리기)</b>
+    <div class="seg" id="deskSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
+    <span class="note">켜면 지도 오른쪽 아래 책상이 열려요. 책상을 톡 하면 '글자 별자리'(별을 이어 자음 그리기)로 가요. 끄면 흐리게 보이고 눌러도 들어가지 않아요.</span>
+  </div>
+
+  <details id="voiceBox">
+    <summary>아빠·엄마 목소리로 읽어주기</summary>
+    <p class="note" style="margin-top:8px">녹음해 둔 글자는 기기 음성 대신 그 목소리로 읽어줘요. 녹음은 이 기기에만 저장되고 밖으로 보내지 않아요.</p>
+    <div class="row">
+      <select id="recKey" aria-label="녹음할 글자"></select>
+      <button class="btn rec" id="recBtn" type="button">● 녹음</button>
+      <button class="btn" id="playBtn" type="button">▶ 들어보기</button>
+      <button class="btn" id="delBtn" type="button">지우기</button>
+    </div>
+    <p class="note" id="recState" style="margin-top:6px"></p>
+    <div class="row"><button class="btn" id="ttsBtn" type="button">기기 음성 시험</button><span class="note" style="flex-basis:auto" id="ttsState"></span></div>
+  </details>
+
+  <details id="weekBox">
+    <summary>이번 주 리포트</summary>
+    <div id="weekList" class="row"></div>
+  </details>
+
+  <details id="todayBox">
+    <summary>오늘 본 글자</summary>
+    <div id="todayList" class="row"></div>
+  </details>
+
+  <div class="panel" role="group" aria-labelledby="bdayTitle">
+    <b id="bdayTitle">생일</b>
+    <input type="date" id="bday" style="min-height:44px;font:inherit;border:2px solid var(--line);border-radius:12px;padding:0 10px;background:var(--chip);color:var(--ink)">
+    <button class="btn" type="button" id="bdayClear">지우기</button>
+    <span class="note">생일 날엔 게임 화면 위에 이름 글자 깃발과 케이크가 나오고 "생일 축하해" 하고 말해줘요 (연도는 상관없어요).</span>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="seasonTitle">
+    <b id="seasonTitle">계절 장식</b>
+    <div class="seg" id="seasonSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
+    <span class="note">겨울엔 눈, 봄엔 꽃잎, 가을엔 낙엽이 천천히 내려요.</span>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="musicTitle">
+    <b id="musicTitle">배경음악</b>
+    <div class="seg" id="musicSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
+    <span class="note">별자리·발자국 길·짝꿍·까꿍에서 아주 작게 흘러요. 글자를 읽을 땐 더 작아져요. 실로폰은 아이가 연주하니 음악 없음.</span>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="blowTitle">
+    <b id="blowTitle">불어서 방울</b>
+    <div class="seg" id="blowSeg"><button data-v="0">끔</button><button data-v="1">켬</button></div>
+    <span class="note">'내 이름 방울'에서 마이크에 "후~" 불면 방울이 생겨요. 켜면 처음 한 번 마이크 허락을 물어요. 소리 크기만 보고 녹음·저장하지 않아요.</span>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="sleepTitle">
+    <b id="sleepTitle">잘 시간</b>
+    <div class="seg" id="sleepSeg">
+      <button data-min="0">끔</button><button data-min="10">10분</button><button data-min="20">20분</button><button data-min="30">30분</button>
+    </div>
+    <span id="sleepState" class="note"></span>
+  </div>
+
+  <details>
+    <summary>폰·태블릿에 앱으로 설치하기</summary>
+    <ul>
+      <li><b>아이폰·아이패드</b>: Safari로 이 화면 열기 → 공유 버튼 → "홈 화면에 추가"</li>
+      <li><b>안드로이드</b>: Chrome으로 열기 → 오른쪽 위 ⋮ → "앱 설치" 또는 "홈 화면에 추가"</li>
+      <li>아이콘은 "한글 놀이터" 하나만 생겨요. 한 번 열어 두면 인터넷 없이도 모든 게임이 열려요.</li>
+      <li>게임 중 왼쪽 위 집 버튼을 톡 누르면 지도로 돌아와요. 이 부모 화면은 지도 왼쪽 위 톱니를 1초 꾹 누르면 열려요.</li>
+      <li>아이가 다른 앱으로 못 나가게 하려면: 아이폰 설정 → 손쉬운 사용 → 사용법 유도 접근 / 안드로이드 설정 → 보안 → 앱 고정.</li>
+    </ul>
+  </details>
+
+  <h2 style="font-size:1.15rem;margin:8px 0 0">지도 속 놀이</h2>
+  <ul class="games">
+    <li><a href="../meet/"><img src="../meet/icons/icon-192.png" alt=""><b>공룡·고래 만나기</b><small>숨은 친구를 톡! 이름을 읽어 줘요</small></a>
+      <button class="help" aria-expanded="false" aria-label="공룡·고래 만나기 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 지도의 숲(공룡)·바다(고래)에서 열려요. 덤불·바위 뒤에 친구가 숨어 살짝 보여요. 물건을 톡 하면 친구가 가운데로 까꿍 나와 "트, 리, 케…" 이름을 글자마다 읽어 줘요(읽는 글자가 커져요). 다 만나면 새 친구들, 두 판마다 숲과 바다가 바뀌어요.</p><p><em>익히는 것</em> 긴 이름을 글자마다 끊어 듣기, 공룡·고래 종류. '글자 까꿍'과 '그림책'을 합친 놀이예요.</p><p><em>같이 놀 때</em> 나온 친구를 다시 톡 하면 또 읽어 줘요. 이름표를 손가락으로 짚으며 따라 읽어 주세요.</p></div></li>
+    <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>쓱쓱 닦으면 단어가 나와요</small></a>
+      <button class="help" aria-expanded="false" aria-label="글자 목욕 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 벽 타일의 얼룩을 손가락으로 쓱쓱 문지르면 그림과 단어가 드러나며 읽어줘요. 두 장 다 닦으면 샤워.</p><p><em>익히는 것</em> 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 타일을 누르면 다시 읽어줘요.</p></div></li>
+    <li><a href="../run/"><img src="../run/icons/icon-192.png" alt=""><b>글자 달리기</b><small>폴짝! 풍선 글자를 모아 단어를</small></a>
+      <button class="help" aria-expanded="false" aria-label="글자 달리기 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 티노와 코코가 달려요. 화면 왼쪽을 톡 하면 티노, 오른쪽을 톡 하면 코코가 폴짝 뛰어 글자 풍선을 터뜨려요. 글자가 다 모이면 "나, 비. 나비!" 하고 단어를 읽고, 그림 깃발이 길가에 꽂혀요. 단어 셋이면 결승선!</p><p><em>익히는 것</em> 글자 하나하나 → 단어로 잇기.</p><p><em>같이 놀 때</em> 두 아이가 왼쪽·오른쪽을 하나씩 맡아 보세요. 놓친 풍선은 다시 오고, 돌멩이에 부딪혀도 괜찮아요.</p></div></li>
+    <li><a href="../garden/"><img src="../garden/icons/icon-192.png" alt=""><b>글자 정원</b><small>쑥쑥 자라면 이름표가 피어요</small></a>
+      <button class="help" aria-expanded="false" aria-label="글자 정원 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 흙을 톡 누르거나 문지르면 비가 내려 자라고, 다 자라면 "당근" 이름표가 피어나요. 바구니에 단어 카드가 모여요.</p><p><em>익히는 것</em> 채소·꽃 이름, 원인과 결과.</p></div></li>
+    <li><a href="../band/"><img src="../band/icons/icon-192.png" alt=""><b>가나다 실로폰</b><small>두드리면 글자가 노래해요</small></a>
+      <button class="help" aria-expanded="false" aria-label="가나다 실로폰 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 실로폰 바마다 글자가 있어 치면 그 글자를 소리 내요. 쓸면 차례로. 북·나팔·탬버린도 있고, 친구가 이름표를 달고 와요.</p><p><em>익히는 것</em> 글자 소리, 순서.</p><p><em>같이 놀 때</em> "가, 나, 다" 같이 불러 주세요.</p></div></li>
+    <li><a href="../stars/"><img src="../stars/icons/icon-192.png" alt=""><b>글자 별자리</b><small>별을 이으면 자음이 빛나요</small></a>
+      <button class="help" aria-expanded="false" aria-label="글자 별자리 도움말">?</button>
+      <div class="tip" hidden><p><em>노는 법</em> 크게 반짝이는 별을 차례로 톡 하면 선이 이어져 자음이 완성돼요. 별은 쓰는 순서(획순)대로 놓여 있어요. 두 판에 한 번은 '긋기' 판: 반짝이 별을 손가락으로 따라 쓱 그으면 빛 길이 남아요(삐뚤어도 괜찮아요).</p><p><em>익히는 것</em> 자음 모양, 쓰기 순서 감각, 손가락으로 따라 쓰기.</p><p><em>같이 놀 때</em> 잠자기 전 차분한 놀이로 좋아요.</p></div></li>
+  </ul>
+
+  <details class="more" id="more">
+    <summary><span class="more-ic" aria-hidden="true">+</span><b>다른 놀이 5개</b><small>카드 열기</small></summary>
+    <ul class="games">
+      <li><a href="../peekaboo/"><img src="../peekaboo/icons/icon-192.png" alt=""><b>글자 까꿍</b><small>물건을 톡! 그림과 이름이 까꿍</small></a>
+        <button class="help" aria-expanded="false" aria-label="글자 까꿍 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 물건을 톡 누르면 뒤에서 그림이 나오고 "까꿍! 나, 비. 나비!" 하고 읽어줘요. 티노·코코를 둘 다 찾으면 다음 장면.</p><p><em>익히는 것</em> 그림·소리·글자 잇기(통단어), 이름 글자.</p><p><em>같이 놀 때</em> 글자를 손가락으로 가리키며 따라 읽어 주세요.</p></div></li>
+      <li><a href="../book/"><img src="../book/icons/icon-192.png" alt=""><b>공룡·고래 그림책</b><small>넘기면 친구 이름을 읽어 줘요</small></a>
+        <button class="help" aria-expanded="false" aria-label="공룡·고래 그림책 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 양옆 화살표를 톡(또는 옆으로 쓱) 하면 다음 친구가 나와요. 공룡 23종은 숲, 고래 23종은 바다에서. 친구를 톡 하면 콩 뛰며 "티, 라, 노…" 이름을 읽어 줘요.</p><p><em>익히는 것</em> 긴 이름을 글자마다 끊어 듣기, 공룡·고래 종류.</p><p><em>같이 놀 때</em> 그림책처럼 한 장씩 넘기며 생김새를 이야기해 주세요. 설정의 <em>좋아하는 것</em>에서 고래를 켜면 고래가 먼저 나와요.</p></div></li>
+      <li><a href="../shapes/"><img src="../shapes/icons/icon-192.png" alt=""><b>자음 짝꿍</b><small>ㄱ·ㄴ·ㅁ·ㅇ 같은 모양에 쏙</small></a>
+        <button class="help" aria-expanded="false" aria-label="자음 짝꿍 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 아래 자음 블록을 위쪽 같은 모양 그림자에 끌어 놓으면 딱 붙고 "기역! 고래의 기역" 하고 읽어줘요. 1단계에선 그림을 그림자에 맞춰요.</p><p><em>익히는 것</em> 자음 모양 구분, 첫소리.</p><p><em>같이 놀 때</em> 붙은 블록을 다시 누르면 또 읽어줘요. 책·간판에서 같은 모양 찾기로 이어가기.</p></div></li>
+      <li><a href="../steps/"><img src="../steps/icons/icon-192.png" alt=""><b>공룡 발자국 길</b><small>발자국을 톡! 쿵쿵 글자 길</small></a>
+        <button class="help" aria-expanded="false" aria-label="공룡 발자국 길 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 반짝이는 발자국을 톡 하면 티노와 코코가 번갈아 훌쩍 뛰어 그 글자를 읽어요. 끝까지 가면 고래가 물을 뿜으며 "공, 룡. 공룡!" 하고 단어를 완성해요. 두 아이가 한 번씩 번갈아 누르기 좋아요.</p><p><em>익히는 것</em> 음절 하나하나 → 단어로 잇기, 왼쪽에서 오른쪽으로 읽는 방향.</p><p><em>같이 놀 때</em> 발자국을 하나씩 짚으며 같이 소리 내 주세요. 다 간 뒤 발자국을 누르면 그 글자를 다시 읽어요.</p></div></li>
+      <li><a href="../boat/"><img src="../boat/icons/icon-192.png" alt=""><b>첫소리 배</b><small>친구를 배에 태우면 첫소리를 들려줘요</small></a>
+        <button class="help" aria-expanded="false" aria-label="첫소리 배 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 친구를 톡 하거나 끌어 오면 배에 앉고 "기역. 고래."처럼 첫소리와 이름을 읽어줘요. 넷이 다 타면 출발.</p><p><em>익히는 것</em> 첫소리, 동물·물건 이름.</p><p><em>같이 놀 때</em> 두 아이가 한 친구씩 동시에 태울 수 있어요.</p></div></li>
+    </ul>
+  </details>
+  <details class="more" id="old">
+    <summary><span class="more-ic" aria-hidden="true">+</span><b>예전 게임 3개</b><small>카드 열기</small></summary>
+    <ul class="games">
+      <li><a href="../blow/"><img src="../blow/icons/icon-192.png" alt=""><b>내 이름 방울</b><small>방울 속 글자로 이름을 만들어요</small></a>
+        <button class="help" aria-expanded="false" aria-label="내 이름 방울 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 화면을 누르면 방울이 생겨요(꾹 누르면 크게). 방울마다 이름 글자가 하나씩 들어 있어 톡 터뜨리면 아래 이름 칸에 쏙. 다 모이면 이름을 읽어줘요.</p><p><em>익히는 것</em> 아이 이름·가족 이름 글자. 아래 '아이 이름'에 넣으면 그 이름부터 나와요.</p><p><em>불어서 방울</em> 아래 설정에서 켜면 마이크에 "후~" 불어서도 방울이 생겨요.</p></div></li>
+      <li><a href="../rainbow-bubbles/"><img src="../rainbow-bubbles/icons/icon-192.png" alt=""><b>가나다 방울</b><small>방울 속 글자를 톡</small></a>
+        <button class="help" aria-expanded="false" aria-label="가나다 방울 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 방울마다 글자가 들어 있어 톡 터뜨리면 그 소리를 내요. 일곱 개가 다 모이면 무지개 완성. 3단계는 가나다라마바사.</p><p><em>익히는 것</em> 글자 하나하나의 소리.</p><p><em>같이 놀 때</em> 오른쪽 위 톱니에서 '동요'·'색 이름'으로도 바꿀 수 있어요.</p></div></li>
+      <li><a href="../"><span class="ic" aria-hidden="true">R</span><b>예전 동시점프 러너</b><small>예전 달리기 게임 (점수 있음)</small></a>
+        <button class="help" aria-expanded="false" aria-label="동시점프 러너 도움말">?</button>
+        <div class="tip" hidden><p><em>노는 법</em> 달리다가 탭으로 점프해 돌멩이를 넘어요. 실패와 점수가 있는 예전 게임이라 한글·별 시범·잘 시간은 없어요.</p></div></li>
+    </ul>
+  </details>
+</div>
+<script src="../shared/hangul.js"></script>
+<script>
+// ---------- 도움말 ----------
+// 배경음악 켬/끔 (music.js 가 tk-music 을 읽음)
+const musicSeg = document.getElementById('musicSeg');
+function renderMusic() { let v = '1'; try { v = localStorage.getItem('tk-music') === '0' ? '0' : '1'; } catch (e) {} musicSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); }
+musicSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; try { localStorage.setItem('tk-music', b.dataset.v); } catch (err) {} renderMusic(); });
+renderMusic();
+// 불어서 방울 켬/끔 (blow/game.js 가 tk-blowmic 을 읽음)
+const blowSeg = document.getElementById('blowSeg');
+function renderBlow() { let v = '0'; try { v = localStorage.getItem('tk-blowmic') === '1' ? '1' : '0'; } catch (e) {} blowSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); }
+blowSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; try { localStorage.setItem('tk-blowmic', b.dataset.v); } catch (err) {} renderBlow(); });
+renderBlow();
+// 다른 놀이·예전 게임 카드: 열림 상태를 이 기기에 기억 (#more → tk-more, #old → tk-old)
+[['more', 'tk-more'], ['old', 'tk-old']].forEach(([id, key]) => {
+  const box = document.getElementById(id);
+  try { if (localStorage.getItem(key) === '1') box.open = true; } catch (e) {}
+  box.addEventListener('toggle', () => { try { localStorage.setItem(key, box.open ? '1' : '0'); } catch (e) {} });
+});
+document.querySelectorAll('.help').forEach(b => b.addEventListener('click', () => {
+  const tip = b.nextElementSibling, open = b.getAttribute('aria-expanded') !== 'true';
+  b.setAttribute('aria-expanded', String(open)); tip.hidden = !open;
+}));
+// ---------- 한글 설정 (shared/hangul.js 와 같은 저장소: tk-hangul) ----------
+let cfg = H.cfg();
+const save = () => { H.saveCfg(cfg); renderRecKeys(); };
+// 생일 (cfg.bday = 'MM-DD', tk.js 가 읽음)
+const bday = document.getElementById('bday');
+if (cfg.bday) bday.value = '2024-' + cfg.bday;
+bday.addEventListener('change', () => { cfg.bday = bday.value ? bday.value.slice(5) : ''; save(); });
+document.getElementById('bdayClear').addEventListener('click', () => { bday.value = ''; cfg.bday = ''; save(); });
+// 계절 장식 켬/끔 (tk.js 가 tk-season 을 읽음)
+const seasonSeg = document.getElementById('seasonSeg');
+function renderSeason() { let v = '1'; try { v = localStorage.getItem('tk-season') === '0' ? '0' : '1'; } catch (e) {} seasonSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); }
+seasonSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; try { localStorage.setItem('tk-season', b.dataset.v); } catch (err) {} renderSeason(); });
+renderSeason();
+['name0', 'name1'].forEach((id, i) => { const el = document.getElementById(id); el.value = cfg.names[i] || ''; el.addEventListener('input', () => { cfg.names[i] = el.value.trim(); save(); }); });
+const STAGE_NOTE = { 1: '그림·소리·글자를 보고 들어요. 자음 짝꿍은 그림 맞추기, 별자리는 ㄱ·ㄴ·ㅁ·ㅇ만.', 2: '①에 더해 자음 모양(ㄱ~ㅅ·ㅇ 8개)을 맞추고 이어요. 처음엔 이 단계를 추천해요.', 3: '②에 더해 자음 14개 전부와 가나다라마바사 소리가 나와요.' };
+const stageSeg = document.getElementById('stageSeg');
+function renderStage() { stageSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', +b.dataset.v === cfg.stage)); document.getElementById('stageNote').textContent = STAGE_NOTE[cfg.stage]; }
+stageSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cfg.stage = +b.dataset.v; save(); renderStage(); });
+renderStage();
+const favSeg = document.getElementById('favSeg');
+function renderFav() { favSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', (cfg.fav || []).includes(b.dataset.v))); }
+favSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v, f = cfg.fav || []; cfg.fav = f.includes(v) ? f.filter(x => x !== v) : f.concat(v); save(); renderFav(); if (cfg.fav.includes(v)) H.read(v); });
+renderFav();
+const focusSeg = document.getElementById('focusSeg');
+H.JAMO.forEach(j => { const b = document.createElement('button'); b.type = 'button'; b.textContent = j; b.dataset.v = j; b.setAttribute('aria-label', H.JAMO_NAME[j]); focusSeg.appendChild(b); });
+function renderFocus() { focusSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', (cfg.focus || []).includes(b.dataset.v))); }
+focusSeg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const j = b.dataset.v, f = cfg.focus || [];
+  cfg.focus = f.includes(j) ? f.filter(x => x !== j) : f.concat(j).slice(-3);
+  save(); renderFocus(); H.readJamo(j);
+});
+renderFocus();
+// ---------- 책상 놀이 켬/끔 (cfg.desk === true 일 때만 지도의 책상 → 글자 별자리) ----------
+const deskSeg = document.getElementById('deskSeg'), pDesk = document.getElementById('pDesk');
+function renderMap() { const on = cfg.desk === true; pDesk.classList.toggle('off', !on); pDesk.setAttribute('aria-disabled', String(!on)); }
+function renderDesk() { const v = cfg.desk === true ? '1' : '0'; deskSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); renderMap(); }
+deskSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cfg.desk = b.dataset.v === '1'; save(); renderDesk(); });
+renderDesk();
+// ---------- 부모 목소리 녹음 ----------
+const recKey = document.getElementById('recKey'), recState = document.getElementById('recState'), recBtn = document.getElementById('recBtn');
+function renderRecKeys() {
+  const keep = recKey.value; recKey.innerHTML = '';
+  const groups = [['이름', H.words().filter(w => w.cat === 'name').map(w => [w.w, w.w])], ['단어', H.WORDS.filter(w => w.cat !== 'name').map(w => [w.w, w.w])],
+    ['자음', H.JAMO.map(j => [j, j + ' ' + H.JAMO_NAME[j]])], ['가나다', H.GANA.map(s => [s, s])]];
+  groups.forEach(([label, items]) => { const g = document.createElement('optgroup'); g.label = label; items.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = (H.voices.has(v) ? '● ' : '') + t; g.appendChild(o); }); recKey.appendChild(g); });
+  if (keep) recKey.value = keep;
+  recState.textContent = `녹음한 글자 ${H.voices.size}개` + (H.voices.size ? ': ' + Array.from(H.voices.keys()).slice(0, 12).join(', ') + (H.voices.size > 12 ? ' …' : '') : '');
+}
+H.recLoad().then(renderRecKeys); renderRecKeys();
+let mr = null, chunks = [], stopT = 0;
+recBtn.addEventListener('click', async () => {
+  if (mr && mr.state === 'recording') { mr.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { recState.textContent = '이 브라우저는 녹음을 지원하지 않아요.'; return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = []; mr = new MediaRecorder(stream);
+    mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    mr.onstop = async () => {
+      clearTimeout(stopT); stream.getTracks().forEach(t => t.stop()); recBtn.classList.remove('on'); recBtn.textContent = '● 녹음';
+      const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+      if (blob.size < 500) { recState.textContent = '녹음이 너무 짧아요. 다시 해 주세요.'; return; }
+      await H.recSave(recKey.value, blob); renderRecKeys(); recState.textContent = `"${recKey.value}" 녹음했어요. ▶ 로 들어보세요.`;
+    };
+    mr.start(); recBtn.classList.add('on'); recBtn.textContent = '■ 멈추기'; recState.textContent = `"${recKey.value}"를 말해 주세요 (3초 뒤 자동으로 멈춰요)`;
+    stopT = setTimeout(() => { if (mr.state === 'recording') mr.stop(); }, 3000);
+  } catch (e) { recState.textContent = '마이크를 쓸 수 없어요. 브라우저 설정에서 마이크를 허용해 주세요.'; }
+});
+document.getElementById('playBtn').addEventListener('click', () => { const k = recKey.value; if (H.voices.has(k)) H.say(k, k); else recState.textContent = `"${k}"는 아직 녹음이 없어요. 기기 음성으로 들려줄게요.`, (H.JAMO.includes(k) ? H.readJamo(k) : H.read(k)); });
+document.getElementById('delBtn').addEventListener('click', async () => { const k = recKey.value; if (!H.voices.has(k)) return; await H.recDel(k); renderRecKeys(); recState.textContent = `"${k}" 녹음을 지웠어요.`; });
+document.getElementById('ttsBtn').addEventListener('click', () => {
+  const ok = window.speechSynthesis && speechSynthesis.getVoices().some(v => /^ko/i.test(v.lang));
+  document.getElementById('ttsState').textContent = ok ? '한국어 음성이 있어요.' : '한국어 음성을 찾지 못했어요. 기기 설정에서 한국어 음성을 내려받거나 녹음을 써 주세요.';
+  H.read('티노');
+});
+// ---------- 오늘 본 글자 ----------
+function renderToday() {
+  const v = H.todayLog(), box = document.getElementById('todayList'); box.innerHTML = '';
+  const add = (title, obj) => { const keys = Object.entries(obj).sort((a, b) => b[1] - a[1]); const p = document.createElement('div'); p.className = 'chips';
+    p.innerHTML = `<b style="flex-basis:100%">${title} ${keys.length ? '' : '- 아직 없어요'}</b>` + keys.slice(0, 24).map(([k, n]) => `<span>${k} ×${n}</span>`).join(''); box.appendChild(p); };
+  add('단어', v.w); add('자음', v.j); add('글자 소리', v.s);
+}
+document.getElementById('todayBox').addEventListener('toggle', renderToday); renderToday();
+// ---------- 이번 주 리포트: 최근 7일 많이 본 것·안 본 자음, 다음 주 글자 추천 ----------
+function renderWeek() {
+  const v = H.weekLog(), box = document.getElementById('weekList'); box.innerHTML = '';
+  const p = (html) => { const d = document.createElement('div'); d.className = 'chips'; d.innerHTML = html; box.appendChild(d); };
+  const top = (obj, n) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+  const total = Object.values(v.w).reduce((a, b) => a + b, 0) + Object.values(v.j).reduce((a, b) => a + b, 0) + Object.values(v.s).reduce((a, b) => a + b, 0);
+  p(`<b style="flex-basis:100%">최근 7일 중 ${v.days}일 놀았어요 · 글자를 ${total}번 듣고 봤어요</b>`);
+  const tw = top(v.w, 10); p(`<b style="flex-basis:100%">많이 본 단어</b>` + (tw.length ? tw.map(([k, n]) => `<span>${k} ×${n}</span>`).join('') : '<span>아직 없어요</span>'));
+  // 자음별: 자음 놀이에서 본 횟수 + 그 자음으로 시작하는 단어를 본 횟수
+  const seen = {}; H.JAMO.forEach(j => seen[j] = v.j[j] || 0); Object.entries(v.w).forEach(([w, n]) => { const c = H.cho(w); if (c in seen) seen[c] += n; });
+  const set = H.jamoSet();
+  p(`<b style="flex-basis:100%">자음별 (지금 단계 자음)</b>` + set.map(j => `<span>${j} ×${seen[j]}</span>`).join(''));
+  const rec = set.slice().sort((a, b) => seen[a] - seen[b]).slice(0, 3);
+  const d = document.createElement('div'); d.className = 'row';
+  d.innerHTML = `<span class="note" style="flex-basis:100%">다음 주 추천 글자: 적게 본 자음 <b>${rec.join(' · ')}</b></span><button class="btn" type="button" id="weekApply">이번 주 글자로 정하기</button>`;
+  box.appendChild(d);
+  d.querySelector('#weekApply').addEventListener('click', () => { cfg.focus = rec; save(); renderFocus(); renderWeek(); H.readJamo(rec[0]); });
+}
+document.getElementById('weekBox').addEventListener('toggle', renderWeek); renderWeek();
+// ---------- 잘 시간 (frame.js 가 읽음) ----------
+const seg = document.getElementById('sleepSeg'), state = document.getElementById('sleepState');
+const read = () => { try { return JSON.parse(localStorage.getItem('tk-sleep') || 'null'); } catch (e) { return null; } };
+function render() {
+  const v = read(), left = v ? v.until - Date.now() : 0;
+  seg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', v ? +b.dataset.min === v.min : b.dataset.min === '0'));
+  if (!v) state.textContent = '시간이 되면 어느 게임에서든 티노·코코가 하품하고 잠들어요. 깨우려면 게임 화면 오른쪽 아래 해 버튼을 1초 꾹.';
+  else if (left <= 0) state.textContent = '지금은 잠자는 시간이에요. 다시 놀려면 "끔"을 누르세요.';
+  else { const t = new Date(v.until); state.textContent = `${t.getHours() < 12 ? '오전' : '오후'} ${t.getHours() % 12 || 12}시 ${String(t.getMinutes()).padStart(2, '0')}분에 잠들어요 (${Math.ceil(left / 60000)}분 남음)`; }
+}
+seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const m = +b.dataset.min;
+  try { if (m) localStorage.setItem('tk-sleep', JSON.stringify({ min: m, until: Date.now() + m * 60000 })); else localStorage.removeItem('tk-sleep'); } catch (err) {}
+  render();
+});
+render(); setInterval(render, 15000);
+// ---------- 마을 지도 (아이 화면): 장소를 톡 → 콩 + 둘이 폴짝 → 0.45초 뒤 그 놀이로 ----------
+const mapEl = document.getElementById('map'), twinEls = document.querySelectorAll('.mt');
+let mapAc = null, going = false;
+function blip(f1, f2, delay) {
+  try {
+    const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+    if (!mapAc) mapAc = new C();
+    if (mapAc.state !== 'running') mapAc.resume();
+    const t = mapAc.currentTime + (delay || 0), o = mapAc.createOscillator(), g = mapAc.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + 0.18);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    o.connect(g); g.connect(mapAc.destination); o.start(t); o.stop(t + 0.3);
+  } catch (e) {}
+}
+function restartAnim(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function hopTwins() { twinEls.forEach(el => restartAnim(el, 'hop')); }
+twinEls.forEach(el => el.addEventListener('animationend', e => { if (e.animationName === 'hop') el.classList.remove('hop'); }));
+document.querySelectorAll('.place').forEach(a => {
+  a.addEventListener('animationend', e => { if (e.animationName === 'wig') a.classList.remove('wig'); });
+  a.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (going) return;
+    if (a.classList.contains('off')) { restartAnim(a, 'wig'); blip(330, 260); return; }
+    going = true; a.classList.add('go'); hopTwins(); blip(523, 1046);
+    const href = a.getAttribute('href');
+    setTimeout(() => { location.href = href; }, 450);
+  });
+});
+mapEl.addEventListener('click', e => {
+  if (going) return;
+  hopTwins();
+  if (e.target.closest('.twins')) { blip(500, 650); blip(640, 820, 0.12); } else blip(660, 880);
+});
+addEventListener('pageshow', () => { going = false; document.querySelectorAll('.place.go').forEach(a => a.classList.remove('go')); renderMap(); });
+// 지도 그림(나중에 shared/pics/bg_map.webp 가 생기면): 읽히면 그것을 배경으로, 코드로 그린 길·장식은 숨김 (장소 버튼은 그대로)
+{ const bgm = new Image(); bgm.onload = () => document.body.classList.add('has-map'); bgm.src = '../shared/pics/bg_map.webp'; }
+// ---------- 부모 화면: 톱니를 1초 꾹 (짧게 톡은 흔들리기만) ----------
+const gear = document.getElementById('gear'), parentEl = document.getElementById('parent');
+let holdT = 0, holdStart = 0;
+function openParent() {
+  document.body.classList.add('par'); parentEl.hidden = false;
+  renderToday(); renderWeek(); renderDesk(); window.scrollTo(0, 0);
+}
+function closeParent() {
+  parentEl.hidden = true; document.body.classList.remove('par'); renderMap();
+  if (location.hash === '#parent') history.replaceState(null, '', location.pathname + location.search);
+}
+function holdEnd() {
+  if (!holdT) return;
+  clearTimeout(holdT); holdT = 0; gear.classList.remove('hold');
+  if (Date.now() - holdStart < 1000) restartAnim(gear, 'wig');
+}
+gear.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  try { gear.setPointerCapture(e.pointerId); } catch (err) {}
+  holdStart = Date.now(); gear.classList.add('hold'); clearTimeout(holdT);
+  holdT = setTimeout(() => { holdT = 0; gear.classList.remove('hold'); openParent(); }, 1000);
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => gear.addEventListener(ev, holdEnd));
+gear.addEventListener('contextmenu', e => e.preventDefault());
+gear.addEventListener('click', e => e.preventDefault());
+gear.addEventListener('animationend', () => gear.classList.remove('wig'));
+document.getElementById('backMap').addEventListener('click', closeParent);
+if (location.hash === '#parent') openParent();
+// ---------- 놀이터 앱 (사이트 맨 위 sw.js 하나) ----------
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  const root = new URL('../', location.href).href;
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { if (r.scope !== root && r.scope.startsWith(root)) r.unregister(); })).catch(() => {});
+  navigator.serviceWorker.register('../sw.js', { scope: '../' }).then(r => r.update()).catch(() => {});
+  // 새 버전을 받아 바뀌면(처음 설치 말고) 작은 띠: 다시 열면 새 게임·수정이 바로 보임
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!had || document.getElementById('upd')) return;
+    const b = document.createElement('button'); b.id = 'upd'; b.type = 'button';
+    b.textContent = '새 버전이 준비됐어요 — 눌러서 다시 열기';
+    b.addEventListener('click', () => location.reload());
+    document.body.appendChild(b);
+  });
+}
+</script>
+</body>
+</html>
+````
+
+## 3. WP2 — 새 엔진 게임 `meet/game.js` (새 파일)
+
+러너: 폴더 `meet/` 를 만들고 아래 블록 전체를 `meet/game.js` 로 저장한다. `meet/index.html`, `meet/icons/icon-192.png`, `meet/sw.js` 는 손으로 만들지 않는다 — WP3 후 빌드가 만든다.
+
+````js
+// 티노코코 공룡·고래 만나기 — 글자 까꿍 + 공룡·고래 그림책을 합친 놀이 (점수·모으기·실패 없음)
+//  숲(공룡)·바다(고래)에 물건 4개(가로 화면은 5개). 물건마다 친구가 하나씩 숨어 살짝 보이며 가끔 꼼지락.
+//  물건을 톡 → 물건이 옆으로 비켜나고 친구가 가운데 동그란 빛 속에 크게 까꿍, 이름표를 글자마다 읽어 줌 (H.read + H.hi).
+//  친구를 또 톡 → 다시 읽고 콩. 다른 곳을 톡하거나 다 읽고 3.2초 → 친구가 물건 옆에 작은 이름표를 달고 섬.
+//  다 만나면 잠깐 축하 → 새 친구들. 두 판마다 숲 ↔ 바다로 쓱 넘어감. 친구는 섞은 주머니에서 다 나올 때까지 겹치지 않게.
+//  주소 ?s=forest|sea 로 시작 장면을 고름 (놀이터 지도의 숲·바다).
+(() => {
+'use strict';
+const { ctx, sfx } = TK;
+const HG = window.H;   /* 한글 모듈 (이 파일 안의 H 는 화면 높이로 쓰지 않음) */
+
+const SCENES = {
+  forest: { bg: 'bg_pk_forest', ax: 0.5, ay: 0.6, objs: ['o_bush', 'o_stump', 'o_mossrock', 'o_log', 'o_mushroom', 'o_tent'], sky: '#bfe9ff', ground: '#9fdc7c', blob: '#6fbf5a' },
+  sea: { bg: 'bg_sea', ax: 0.5, ay: 0.45, objs: ['o_rock', 'o_castle', 'o_shell', 'o_weed', 'o_bucket', 'o_cloud'], sky: '#9fdcff', ground: '#f6dfa4', blob: '#c9b48a' },
+};
+// 물건 자리 (화면 비율, 물건 밑변 가운데). p = 세로 화면, l = 가로 화면, 숫자 = 물건 수
+const SLOTS = {
+  p4: [[0.28, 0.42], [0.72, 0.37], [0.28, 0.71], [0.72, 0.66]],
+  p5: [[0.25, 0.39], [0.75, 0.34], [0.5, 0.54], [0.25, 0.73], [0.75, 0.69]],
+  l4: [[0.18, 0.55], [0.39, 0.80], [0.61, 0.80], [0.82, 0.55]],
+  l5: [[0.18, 0.53], [0.34, 0.80], [0.5, 0.53], [0.66, 0.80], [0.82, 0.53]],
+};
+
+const qs = new URLSearchParams(location.search).get('s');
+let scene = qs === 'forest' || qs === 'sea' ? qs : (HG.likes('고래') && !HG.likes('공룡') ? 'sea' : 'forest');
+const bags = { forest: [], sea: [] };
+let objs = [], focus = null, found = 0, rounds = 0, inScene = 0, phase = 'play', phaseT = 0, slideX = 0, swapped = false;
+let G = { port: true, cx: 0, cy: 0, R: 1, th: 1, tx: [0, 0], slotW: 1 };
+const twins = [{ kind: 'tino', hop: -1, react: 0, love: 0 }, { kind: 'coco', hop: -1, react: 0, love: 0 }];
+
+const isWhale = w => HG.WHALES.includes(w) || w === '고래';
+function pool(sc) {
+  const l = (sc === 'sea' ? HG.WHALES : HG.DINOS).filter(HG.hasPic);
+  return l.length ? l : [sc === 'sea' ? '고래' : '공룡'];
+}
+// 섞은 주머니: 한 바퀴 다 나올 때까지 같은 친구가 다시 나오지 않음 (한 판 안에서도 겹치지 않게)
+function takeFriends(sc, n) {
+  const out = [];
+  let guard = 0;
+  while (out.length < n && guard++ < 200) {
+    if (!bags[sc].length) bags[sc] = TK.shuffle(pool(sc));
+    const i = bags[sc].findIndex(w => !out.includes(w));
+    if (i < 0) { out.push(bags[sc].shift()); continue; }
+    out.push(bags[sc].splice(i, 1)[0]);
+  }
+  return out;
+}
+
+function layout() {
+  const W = TK.W, H = TK.H, port = W < H, n = objs.length || 4, five = n >= 5;
+  const slots = SLOTS[(port ? 'p' : 'l') + (five ? 5 : 4)];
+  const s = port ? Math.min(W * (five ? 0.27 : 0.32), H * (five ? 0.135 : 0.16)) : Math.min(W * (five ? 0.11 : 0.125), H * (five ? 0.22 : 0.24));
+  objs.forEach((o, i) => { const sl = slots[i % slots.length]; o.x = sl[0] * W; o.y = sl[1] * H; o.s = s; o.side = sl[0] < 0.5 ? -1 : 1; });
+  G = {
+    port, cx: W / 2, cy: H * (port ? 0.47 : 0.5),
+    R: port ? Math.min(W * 0.42, H * 0.25) : Math.min(H * 0.40, W * 0.25),
+    th: H * (port ? 0.15 : 0.26),
+    tx: port ? [W * 0.14, W * 0.86] : [W * 0.07, W * 0.93],
+    slotW: port ? W * 0.44 : W * 0.15,
+  };
+}
+function newRound() {
+  const n = TK.W >= TK.H ? 5 : 4, names = TK.shuffle(SCENES[scene].objs).slice(0, n), fr = takeFriends(scene, n);
+  HG.preload(fr); HG.preload(bags[scene].slice(0, 5));
+  objs = names.map((name, i) => ({ name, friend: fr[i], st: 'hid', inT: -i * 0.09, mv: 0, popT: 0, lv: 0, hop: -1, wig: 0,
+    nextWig: TK.T + TK.rand(1.2, 3.5), readT: 0, doneT: 0, from: null, x: 0, y: 0, s: 1, side: 1 }));
+  found = 0; focus = null;
+  layout();
+}
+
+// ---------- 친구 자리 (밑변 가운데 x, yb, 키 h) ----------
+function peekPose(o) {
+  const wig = o.wig > 0 ? Math.sin(Math.PI * Math.min(1, o.wig / 0.6)) : 0, h = o.s * (isWhale(o.friend) ? 0.8 : 1.0);
+  return { x: o.x + o.side * o.s * 0.14, yb: o.y - o.s * (1.15 + 0.15 * wig) + h, h };
+}
+function centerPose(o) { const wh = isWhale(o.friend); return { x: G.cx, yb: G.cy + G.R * (wh ? 0.35 : 0.55), h: G.R * (wh ? 0.9 : 1.25) }; }
+function slotPose(o) { const wh = isWhale(o.friend); return { x: o.x - o.side * o.s * 0.12, yb: o.y - o.s * 0.04, h: o.s * (wh ? 0.85 : 1.15) }; }
+function mix(a, b, t, tk) { return { x: TK.lerp(a.x, b.x, t), yb: TK.lerp(a.yb, b.yb, t), h: TK.lerp(a.h, b.h, tk == null ? t : tk) }; }
+function friendPose(o) {
+  if (o.st === 'hid') return peekPose(o);
+  if (o.st === 'pop') return mix(peekPose(o), centerPose(o), TK.ease(o.popT), TK.back(o.popT));
+  if (o.lv < 1) return mix(o.from || centerPose(o), slotPose(o), TK.ease(o.lv));
+  return slotPose(o);
+}
+// 이름표 글자 크기: 그려질 크기 a 를 폭 maxW 안에 맞추고, drawTag 가 긴 이름을 줄이는 만큼 미리 키워서 넘김
+function tagSize(w, maxW, cap) {
+  const n = [...w].length, a = Math.min(cap, maxW / (n * 1.02 + 0.7));
+  return n > 4 ? a / Math.max(0.5, 4.5 / n) : a;
+}
+
+// ---------- 동작 ----------
+function readFriend(o) { HG.read(o.friend); o.readT = TK.T; o.doneT = 0; }
+function open(o) {
+  o.st = 'pop'; o.popT = 0; o.mv = 0; o.hop = -1; focus = o;
+  readFriend(o);
+  sfx.rustle(); sfx.boing();
+  TK.spark(o.x, o.y - o.s * 0.8, TK.pick(TK.COLS), 12);
+  twins[o.x < TK.W / 2 ? 0 : 1].react = 2.1;
+}
+function dismiss(o) {
+  if (!o || o.st !== 'pop') return;
+  o.from = friendPose(o); o.st = 'out'; o.lv = 0; o.hop = -1;
+  if (focus === o) focus = null;
+}
+function hitFocus(x, y) { return !!focus && Math.abs(x - G.cx) < G.R * 0.8 && Math.abs(y - G.cy) < G.R * 0.95; }
+function objAt(x, y) {
+  let best = null, bd = 1e9;
+  objs.forEach(o => {
+    const moved = o.st !== 'hid', cx = o.x + (moved ? o.side * o.s * 0.2 : 0), hw = o.s * (moved ? 1.0 : 0.78);
+    const top = o.y - o.s * (moved ? 1.45 : 1.3), bot = o.y + o.s * 0.22;
+    if (Math.abs(x - cx) < hw && y > top && y < bot) { const d = Math.abs(x - cx) + Math.abs(y - (o.y - o.s * 0.55)); if (d < bd) { bd = d; best = o; } }
+  });
+  return best;
+}
+function twinAt(x, y) {
+  for (let i = 0; i < 2; i++) if (Math.abs(x - G.tx[i]) < G.th * 0.45 && y > TK.H - G.th * 1.05) return i;
+  return -1;
+}
+function cheerTwin(i) { const t = twins[i]; t.hop = 0; t.love = 1.0; sfx.giggle(t.kind); TK.hearts(G.tx[i], TK.H - G.th * 0.9, 6); }
+function bumpTwin(i) { if (twins[i].hop < 0) twins[i].hop = 0; }
+function tap(x, y) {
+  const ti = twinAt(x, y);
+  if (ti >= 0) { cheerTwin(ti); return; }
+  if (phase !== 'play') { TK.spark(x, y, TK.pick(TK.COLS), 8); sfx.soft(); bumpTwin(x < TK.W / 2 ? 0 : 1); return; }
+  if (focus && hitFocus(x, y)) { readFriend(focus); focus.hop = 0; sfx.boing(); TK.spark(x, y, TK.pick(TK.COLS), 10); return; }
+  const o = objAt(x, y);
+  if (focus) { dismiss(focus); sfx.soft(); }
+  if (o && o.st === 'hid') { open(o); return; }
+  if (o && o.st === 'out' && o.lv >= 1) { o.hop = 0; readFriend(o); sfx.boing(); TK.spark(o.x, o.y - o.s, TK.pick(TK.COLS), 8); return; }
+  TK.ring(x, y, 14 * TK.U, [255, 255, 255]); sfx.soft(); bumpTwin(x < TK.W / 2 ? 0 : 1);
+}
+TK.input({
+  down(p) { tap(p.x, p.y); },
+  key() {
+    if (phase !== 'play') return;
+    if (focus) dismiss(focus);
+    const hid = objs.filter(o => o.st === 'hid');
+    if (hid.length) open(TK.pick(hid));
+  },
+});
+
+function nextRound() {
+  rounds++; inScene++;
+  if (inScene >= 2) { phase = 'slide'; phaseT = 0; swapped = false; sfx.whoosh(); return; }
+  newRound(); phase = 'play'; phaseT = 0; TK.flash();
+}
+function update(dt) {
+  phaseT += dt;
+  twins.forEach(t => {
+    t.react = Math.max(0, t.react - dt); t.love = Math.max(0, t.love - dt);
+    if (t.hop >= 0) { t.hop += dt * 2.4; if (t.hop > 1) t.hop = -1; }
+    if (phase === 'party' && t.hop < 0) t.hop = 0;
+  });
+  objs.forEach(o => {
+    o.inT += dt; o.wig = Math.max(0, o.wig - dt);
+    if (o.hop >= 0) { o.hop += dt * 2.2; if (o.hop > 1) o.hop = -1; }
+    if (o.st === 'hid' && o.inT > 0.4 && TK.T > o.nextWig) { o.wig = 0.6; o.nextWig = TK.T + TK.rand(2.2, 4.8); }
+    if (o.st !== 'hid') o.mv = Math.min(1, o.mv + dt / 0.35);
+    if (o.st === 'pop') {
+      o.popT = Math.min(1, o.popT + dt / 0.45);
+      if (o.popT >= 1) {
+        const n = [...o.friend].length, h = HG.hi(o.friend), el = TK.T - o.readT;
+        if (!o.doneT && el > 0.8 && (h === -1 || el > n * 0.7 + 3)) o.doneT = TK.T;
+        if (o.doneT && TK.T - o.doneT > 3.2) dismiss(o);
+      }
+    } else if (o.st === 'out' && o.lv < 1) {
+      o.lv = Math.min(1, o.lv + dt / 0.45);
+      if (o.lv >= 1) { found++; sfx.ting(TK.pick([784, 880, 1046.5])); }
+    }
+  });
+  if (phase === 'play' && objs.length && found >= objs.length && !focus) {
+    phase = 'party'; phaseT = 0; sfx.fanfare();
+    twins.forEach((t, i) => TK.hearts(G.tx[i], TK.H - G.th, 5));
+  }
+  if (phase === 'party') { TK.confetti(dt); if (phaseT > 2.5) nextRound(); }
+  if (phase === 'slide') {
+    if (phaseT < 0.45) slideX = -TK.ease(phaseT / 0.45) * TK.W;
+    else {
+      if (!swapped) { swapped = true; scene = scene === 'forest' ? 'sea' : 'forest'; inScene = 0; newRound(); }
+      slideX = TK.W * (1 - TK.ease((phaseT - 0.45) / 0.45));
+      if (phaseT >= 0.9) { slideX = 0; phase = 'play'; phaseT = 0; }
+    }
+  }
+}
+
+// ---------- 그리기 ----------
+function drawBack() {
+  const sc = SCENES[scene];
+  if (!HG.drawBg(ctx, sc.bg, 0, 0, TK.W, TK.H, sc.ax, sc.ay)) { ctx.fillStyle = TK.grad(0, TK.H, sc.sky, sc.ground); ctx.fillRect(0, 0, TK.W, TK.H); }
+}
+function drawThing(o, x, yb, sc, rot) {
+  const h = o.s * sc;
+  ctx.save(); ctx.translate(x, yb); if (rot) ctx.rotate(rot);
+  if (!HG.drawObj(ctx, o.name, 0, 0, h, h * 1.7)) { TK.ell(0, -h * 0.4, h * 0.62, h * 0.42); ctx.fillStyle = SCENES[scene].blob; ctx.fill(); }
+  ctx.restore();
+}
+function drawFriend(o, p) {
+  ctx.save(); ctx.translate(p.x, p.yb - TK.hopY(o.hop, p.h * 0.2)); HG.drawPic(ctx, o.friend, p.h); ctx.restore();
+}
+function drawSmallTag(o) {
+  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24), hy = TK.hopY(o.hop, p.h * 0.2);
+  const y = Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9);
+  HG.drawTag(ctx, o.friend, p.x, y, size, { hi: HG.hi(o.friend) });
+}
+function drawObjects() {
+  const order = objs.slice().sort((a, b) => a.y - b.y);
+  order.forEach(o => {
+    const inK = TK.back(TK.clamp(o.inT / 0.4, 0, 1));
+    if (inK <= 0.001) return;
+    const mvE = TK.ease(o.mv), ox = TK.clamp(o.x + o.side * o.s * 0.55 * mvE, o.s * 0.5, TK.W - o.s * 0.5), osc = inK * (1 - 0.3 * mvE);
+    const rot = o.wig > 0 ? Math.sin(o.wig * 26) * 0.07 * (o.wig / 0.6) : 0;
+    if (o.st === 'hid' && o.inT >= 0.4) {
+      ctx.save(); ctx.beginPath(); ctx.rect(-TK.W, -TK.H, TK.W * 3, TK.H + o.y - o.s * 0.3); ctx.clip();
+      drawFriend(o, peekPose(o)); ctx.restore();
+    }
+    const settled = o.st === 'out' && o.lv >= 1;
+    if (settled) drawFriend(o, slotPose(o));
+    ctx.fillStyle = 'rgba(40,30,10,.16)'; TK.ell(ox, o.y, o.s * 0.55 * osc, o.s * 0.1 * osc); ctx.fill();
+    drawThing(o, ox, o.y, osc, rot);
+  });
+  order.forEach(o => { if (o.st === 'out' && o.lv >= 1) drawSmallTag(o); });
+}
+function drawFocus() {
+  objs.filter(o => o.st === 'pop' || (o.st === 'out' && o.lv < 1)).forEach(o => {
+    const k = o.st === 'pop' ? TK.ease(o.popT) : 1 - TK.ease(o.lv);
+    if (k > 0.01) {
+      TK.ell(G.cx, G.cy, G.R * k, G.R * k); ctx.fillStyle = 'rgba(255,250,235,.82)'; ctx.fill();
+      ctx.lineWidth = Math.max(3, G.R * 0.03) * k; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
+    }
+    const p = friendPose(o);
+    ctx.fillStyle = 'rgba(60,40,20,.14)'; TK.ell(p.x, p.yb + p.h * 0.02, p.h * 0.4, p.h * 0.06); ctx.fill();
+    drawFriend(o, p);
+    if (o.st === 'pop' && o.popT > 0.5) {
+      const size = tagSize(o.friend, Math.min(TK.W * 0.92, G.R * 2.4), G.R * 0.26);
+      ctx.save(); ctx.globalAlpha = TK.clamp((o.popT - 0.5) * 2, 0, 1);
+      HG.drawTag(ctx, o.friend, G.cx, G.cy + G.R * 0.78, size, { hi: HG.hi(o.friend) });
+      ctx.restore();
+    }
+  });
+}
+function drawTwins() {
+  twins.forEach((t, i) => {
+    let pose = 'idle';
+    if (phase === 'party') pose = TK.partyPose(i);
+    else if (t.react > 1.2) pose = 'wow';
+    else if (t.react > 0) pose = 'clap';
+    else if (t.love > 0) pose = 'happy';
+    const yb = TK.H * 0.985 - TK.hopY(t.hop, G.th * 0.28) - TK.bob(i * 1.7, G.th * 0.02);
+    TK.twin(t.kind, pose, G.tx[i], yb, G.th, { face: i ? 'left' : 'right', hop: t.hop });
+  });
+}
+function draw() {
+  const sc = SCENES[scene];
+  if (slideX) { ctx.fillStyle = TK.grad(0, TK.H, sc.sky, sc.ground); ctx.fillRect(0, 0, TK.W, TK.H); }
+  ctx.save(); ctx.translate(slideX, 0);
+  drawBack(); drawObjects(); drawFocus();
+  ctx.restore();
+  drawTwins();
+  TK.drawParts();
+}
+
+// ---------- 자동 확인·별 시범 ----------
+window.__g = {
+  get phase() { return phase; }, get rounds() { return rounds; }, get scene() { return scene; },
+  get found() { return found; }, get total() { return objs.length; },
+  get focus() { return focus ? focus.friend : null; }, get friends() { return objs.map(o => o.friend); },
+  actions() {
+    if (phase !== 'play') return [];
+    const hid = objs.filter(o => o.st === 'hid' && !hitFocus(o.x, o.y - o.s * 0.5));
+    if (hid.length) { const o = hid[0]; return [{ type: 'tap', x: o.x, y: o.y - o.s * 0.5, wait: 700 }]; }
+    if (focus) return [{ type: 'tap', x: TK.W * 0.5, y: TK.H * 0.06, wait: 700 }];
+    return [];
+  },
+};
+window.__demo = () => {
+  if (phase !== 'play' || focus) return null;
+  const hid = objs.filter(o => o.st === 'hid'); if (!hid.length) return null;
+  const o = TK.pick(hid);
+  return { kind: 'tap', x: o.x, y: o.y - o.s * 0.5, say: '톡! 누가 숨었을까?' };
+};
+TK.start({ resize: layout, init() { newRound(); }, update, draw });
+if (window.TKMusic) TKMusic.play('play');
+})();
+````
+
+## 4. WP3 — 글꼴·빌드 연결 (정확한 바꾸기)
+
+러너: 각 항목을 Edit 도구로 `old_string` → `new_string` 그대로 적용한다 (old 는 현재 파일에 정확히 한 번 있음을 확인했음). 순서대로 적용.
+
+### 4.1 `shared/hangul.js` — H.FONT 을 TKFont 로 시작 + 캔버스용 글꼴 읽기
+
+old_string:
+
+````text
+H.FONT = '"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Gothic",sans-serif';
+````
+
+new_string:
+
+````text
+H.FONT = '"TKFont","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Gothic",sans-serif';
+// 놀이터 글씨체 TKFont (shared/fonts, Pretendard 부분 글꼴): 캔버스 글자용으로 미리 읽음. 못 읽으면 위 목록의 기기 글씨체로 그대로 나옴
+//  페이지 CSS 에 @font-face 가 이미 있으면 그것을 바로 읽고, 없으면(까꿍·가나다 방울 등) 여기서 만들어 더함
+try {
+  if (window.FontFace && document.fonts && document.fonts.add) {
+    let hasFace = false;
+    document.fonts.forEach(f => { if (/TKFont/.test(f.family) && String(f.weight) === '800') { hasFace = true; f.load().catch(() => {}); } });
+    if (!hasFace) {
+      const tkFont = new FontFace('TKFont', 'url("' + SHARED + 'fonts/Pretendard-ExtraBold.woff2") format("woff2")', { weight: '800', style: 'normal', display: 'swap' });
+      document.fonts.add(tkFont); tkFont.load().catch(() => {});
+    }
+  }
+} catch (e) {}
+````
+
+### 4.2 `common/build_games.py` — GAMES 에 meet 추가
+
+old_string:
+
+````text
+    'book':   ('티노코코 공룡·고래 그림책', '#cdeccf'),
+}
+````
+
+new_string:
+
+````text
+    'book':   ('티노코코 공룡·고래 그림책', '#cdeccf'),
+    'meet':   ('티노코코 공룡·고래 만나기', '#c4e8b8'),
+}
+````
+
+### 4.3 `common/build_games.py` — HTML 템플릿: 글꼴 preload + @font-face (str.format 용 겹중괄호 그대로)
+
+old_string:
+
+````text
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
+<style>
+  html,body{{
+````
+
+new_string:
+
+````text
+<link rel="apple-touch-icon" href="../shared/icons/icon-180.png">
+<link rel="preload" href="../shared/fonts/Pretendard-ExtraBold.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face{{font-family:'TKFont';src:url(../shared/fonts/Pretendard-ExtraBold.woff2) format('woff2');font-weight:800;font-style:normal;font-display:swap}}
+  html,body{{
+````
+
+### 4.4 `common/build_games.py` — ICON_ART 에 meet 카드 그림
+
+old_string:
+
+````text
+    'blow':   ('bg_sky', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
+}
+````
+
+new_string:
+
+````text
+    'blow':   ('bg_sky', .5, [('assets/tino_jump_v2', .5, .97, .5)]),
+    'meet':   ('bg_pk_forest', .5, [('pics/트리케라톱스', .42, .8, .5), ('pics/o_bush', .76, .98, .34), ('pics/o_mossrock', .2, .99, .24)]),
+}
+````
+
+### 4.5 `common/build_games.py` — sw.js 미리 저장 목록에 글꼴 2개
+
+old_string:
+
+````text
+'shared/hangul.js', 'shared/music.js']
+
+````
+
+new_string:
+
+````text
+'shared/hangul.js', 'shared/music.js',
+             'shared/fonts/Pretendard-ExtraBold.woff2', 'shared/fonts/Pretendard-Medium.woff2']
+
+````
+
+### 4.6 `tests/hangul_test.js` — 부모 설정 테스트는 부모 화면(#parent)으로 열기 (1/3)
+
+old_string:
+
+````text
+  await p.goto(B + 'games/'); await p.waitForTimeout(800);
+````
+
+new_string:
+
+````text
+  await p.goto(B + 'games/#parent'); await p.waitForTimeout(800);
+````
+
+### 4.7 `tests/hangul_test.js` — (2/3)
+
+old_string:
+
+````text
+await p.goto(B + 'games/'); await p.click('#stageSeg
+````
+
+new_string:
+
+````text
+await p.goto(B + 'games/#parent'); await p.click('#stageSeg
+````
+
+### 4.8 `tests/hangul_test.js` — (3/3)
+
+old_string:
+
+````text
+await p.goto(B + 'games/'); await p.click('#todayBox
+````
+
+new_string:
+
+````text
+await p.goto(B + 'games/#parent'); await p.click('#todayBox
+````
+
+### 4.9 `tests/frame_test.js` — 놀이터 화면 테스트는 #parent 로 (도움말·잘 시간 버튼이 부모 화면 안에 있음)
+
+old_string:
+
+````text
+    await p.goto(B + 'games/'); await p.waitForTimeout(800);
+````
+
+new_string:
+
+````text
+    await p.goto(B + 'games/#parent'); await p.waitForTimeout(800);
+````
+
+### 4.10 `.gitignore` — 스모크 스크린샷은 커밋하지 않음 (docs/ 는 배포되므로)
+
+old_string:
+
+````text
+tests/shots/
+
+````
+
+new_string:
+
+````text
+tests/shots/
+docs/renewal/shots/
+
+````
+
+### 4.11 바꾸지 않는 파일 (확인 결과)
+
+- `peekaboo/index.html`: 글자는 모두 `HG.drawTag/drawWord` → `H.FONT` 를 씀. hangul.js 가 TKFont 를 스스로 읽으므로 **변경 없음** (확인: 까꿍에서 `document.fonts.check('800 20px TKFont') === true`).
+- `rainbow-bubbles/index.html`: 방울 속 글자는 `HG.drawWord` (→ TKFont). 자기 글꼴을 쓰는 곳은 부모용 작은 메뉴 CSS(`system-ui`)와 잠잘 때 라틴 글자 `'z'` 하나뿐이라 **변경 없음**.
+- `shared/frame.js`: 집 버튼은 `<site>/games/` 로 가고 새 놀이터는 그 주소에서 지도를 먼저 보여 줌 → **변경 없음**. 놀이터는 지금처럼 frame.js 를 읽지 않는다.
+- `common/deploy_pages.sh`: 배포 경로를 `GAMES` 에서 읽으므로 `meet` 가 자동 포함 → **변경 없음**.
+- `shared/tk.js`, `shared/music.js`, 다른 게임 `game.js`: **변경 없음**.
+- `sw.js`, `*/index.html`(엔진 게임), `games/manifest.webmanifest`, `meet/icons/icon-192.png`, `meet/sw.js`: 손대지 말고 빌드로 만든다 (5장).
+
+## 5. 확인 (러너용 체크리스트)
+
+### 5.1 순서
+
+1. 2장 블록 → `games/index.html` 덮어쓰기.
+2. 3장 블록 → `meet/game.js` 새로 저장.
+3. 4.1–4.10 바꾸기를 순서대로.
+4. 5.3 블록 → `docs/renewal/smoke.js` 새로 저장.
+5. 아래 명령 실행 (저장소 루트 `/home/user/tinokoko-dino-game` 에서).
+
+### 5.2 명령과 기대 결과
+
+```bash
+cd /home/user/tinokoko-dino-game
+python3 -B common/build_games.py
+#  기대: "built 11 engine games + 2 standalone, 247 precached files, playground-xxxxxxxxxx" (숫자 247 은 shared/pics 파일 수에 따라 조금 다를 수 있음)
+ls meet
+#  기대: game.js  icons  index.html  sw.js
+grep -c "TKFont" meet/index.html book/index.html
+#  기대: 각 1
+grep -n "fonts/Pretendard\|\"./meet/" sw.js
+#  기대: Pretendard-ExtraBold.woff2, Pretendard-Medium.woff2, ./meet/, ./meet/index.html, ./meet/icons/icon-192.png, ./meet/game.js
+node --check meet/game.js && node --check shared/hangul.js && node --check shared/tk.js && node --check shared/frame.js && node --check docs/renewal/smoke.js && echo JS-OK
+python3 -c "import re;s=open('games/index.html',encoding='utf-8').read();open('/tmp/hub_inline.js','w').write(re.findall(r'<script>(.*?)</script>',s,re.S)[0])" && node --check /tmp/hub_inline.js && echo HUB-JS-OK
+git status --short assets/
+#  기대: 아무것도 안 나옴 (원본 PNG 그대로)
+python3 -m http.server 8090 >/dev/null 2>&1 &
+sleep 1
+node docs/renewal/smoke.js | tee /tmp/smoke_out.json
+```
+
+스모크 결과(JSON)에서 확인할 것 — 하나라도 다르면 고치지 말고 결과와 스크린샷을 그대로 보고:
+
+| 키 | 기대 |
+|---|---|
+| 모든 항목 `errs` | `[]` |
+| `hub/port.minSide`, `hub/land.minSide` | 120 이상 (확인 때 123 / 120) |
+| `hub/*.inView` | `true` (장소 버튼이 화면 밖으로 안 나감) |
+| `hub/*.shortOpened` | `false` (짧은 톡으로 부모 화면 안 열림) |
+| `hub/*.stayedOnDesk` | `true` (꺼진 책상 톡 → 이동 안 함) |
+| `hub/*.longOpened` | `true` (1초 꾹 → 부모 화면) |
+| `hub/*.deskCfg` | `true` (책상 켬 저장) |
+| `hub/*.moreKeys` | `["1","1"]` (접힌 카드 열림 기억) |
+| `hub/*.missingIds` | `[]` (기존 설정 id 전부 있음) |
+| `hub/*.cards` | `14` |
+| `hub/*.backOk` | `true` (돌아가기 + 책상이 밝아짐) |
+| `hub/*.navUrl` | `meet/?s=forest` |
+| `hub/*.hashOpens`, `hub/*.noSideScroll` | `true`, `true` |
+| `meet_forest/*.start.scene` / `meet_sea/*.start.scene` | `forest` / `sea` |
+| `meet_*/port.start.total` / `meet_*/land.start.total` | `4` / `5` |
+| `meet_*/*.partyShot` | `true` |
+| `meet_*/*.fin.rounds` | `1` 이상, `fin.phase` = `play`, `fin.demo` = `true` |
+| `cycle.scenes` | `forest,forest,sea,sea` |
+| `cycle.forestNoRepeat` | `true` |
+
+선택 (시간이 되면): 기존 테스트가 새 놀이터로도 통과하는지.
+
+```bash
+mkdir -p tests/shots
+python3 -m http.server 8770 >/dev/null 2>&1 &
+sleep 1
+node tests/hangul_test.js
+#  기대: errs [], cfg 에 names ["하늘","바다"]·stage 1·focus ["ㅎ","ㅂ"], recState "\"하늘\" 녹음했어요…", shapesStage3 "jamo"
+```
+
+### 5.3 스모크 스크립트 `docs/renewal/smoke.js` (새 파일, 그대로 저장)
+
+````js
+// 리뉴얼 확인: 놀이터 지도·부모 화면, 공룡·고래 만나기(숲·바다) — 세로 360x740, 가로 800x400
+//  저장소 루트에서 서버를 먼저: python3 -m http.server 8090
+//  실행: node docs/renewal/smoke.js   (스크린샷은 docs/renewal/shots/)
+const { chromium } = require('playwright');
+const path = require('path'), fs = require('fs');
+const B = process.env.BASE || 'http://localhost:8090/';
+const OUT = path.join(__dirname, 'shots') + '/';
+fs.mkdirSync(OUT, { recursive: true });
+const VIEWS = [{ name: 'port', viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true }, { name: 'land', viewport: { width: 800, height: 400 }, isMobile: true, hasTouch: true }];
+(async () => {
+  const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  const R = {};
+  for (const v of VIEWS) {
+    // ---------- 1) 놀이터 지도 ----------
+    {
+      const ctx = await b.newContext(v); const p = await ctx.newPage(); const errs = [];
+      p.on('pageerror', e => errs.push(String(e)));
+      await p.goto(B + 'games/'); await p.waitForTimeout(1200);
+      await p.screenshot({ path: OUT + `hub_map_${v.name}.png` });
+      const places = await p.evaluate(() => Array.from(document.querySelectorAll('.place')).map(a => { const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.left), y: Math.round(r.top), off: a.classList.contains('off') }; }));
+      const minSide = Math.min(...places.map(q => Math.min(q.w, q.h)));
+      const inView = places.every(q => q.x >= -2 && q.y >= -2 && q.x + q.w <= v.viewport.width + 2 && q.y + q.h <= v.viewport.height + 2);
+      // 짧게 톱니 톡: 부모 화면이 열리면 안 됨
+      const g = await p.evaluate(() => { const r = document.getElementById('gear').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      await p.mouse.move(g.x, g.y); await p.mouse.down(); await p.waitForTimeout(200); await p.mouse.up(); await p.waitForTimeout(300);
+      const shortOpened = await p.evaluate(() => !document.getElementById('parent').hidden);
+      // 책상(꺼짐) 톡: 이동하면 안 됨
+      const desk = places.find(q => q.href === '../stars/');
+      await p.mouse.click(desk.x + desk.w / 2, desk.y + desk.h / 2); await p.waitForTimeout(700);
+      const stayedOnDesk = p.url().endsWith('/games/');
+      // 1초 꾹: 부모 화면
+      await p.mouse.move(g.x, g.y); await p.mouse.down(); await p.waitForTimeout(500);
+      await p.screenshot({ path: OUT + `hub_gear_hold_${v.name}.png` });
+      await p.waitForTimeout(700); await p.mouse.up(); await p.waitForTimeout(300);
+      const longOpened = await p.evaluate(() => !document.getElementById('parent').hidden);
+      await p.screenshot({ path: OUT + `hub_parent_${v.name}.png` });
+      // 책상 켜기 → 저장 확인 → 지도로
+      await p.click('#deskSeg button[data-v="1"]');
+      const deskCfg = await p.evaluate(() => JSON.parse(localStorage.getItem('tk-hangul') || '{}').desk);
+      await p.click('#more summary'); await p.click('#old summary'); await p.waitForTimeout(200);
+      await p.screenshot({ path: OUT + `hub_parent_full_${v.name}.png`, fullPage: true });
+      const moreKeys = await p.evaluate(() => [localStorage.getItem('tk-more'), localStorage.getItem('tk-old')]);
+      const ids = await p.evaluate(() => ['name0', 'name1', 'favSeg', 'stageSeg', 'stageNote', 'focusSeg', 'deskSeg', 'voiceBox', 'recKey', 'recBtn', 'playBtn', 'delBtn', 'recState', 'ttsBtn', 'ttsState', 'weekBox', 'weekList', 'todayBox', 'todayList', 'bday', 'bdayClear', 'seasonSeg', 'musicSeg', 'blowSeg', 'sleepSeg', 'sleepState', 'more', 'old', 'backMap'].filter(id => !document.getElementById(id)));
+      const cards = await p.evaluate(() => Array.from(document.querySelectorAll('ul.games a')).map(a => a.getAttribute('href')));
+      await p.click('#backMap'); await p.waitForTimeout(300);
+      const backOk = await p.evaluate(() => document.getElementById('parent').hidden && !document.getElementById('pDesk').classList.contains('off'));
+      await p.screenshot({ path: OUT + `hub_map_desk_on_${v.name}.png` });
+      // 숲 톡 → 0.45초 뒤 meet/?s=forest
+      const forest = places.find(q => q.href === '../meet/?s=forest');
+      await p.mouse.click(forest.x + forest.w / 2, forest.y + forest.h / 2); await p.waitForTimeout(150);
+      await p.screenshot({ path: OUT + `hub_tap_${v.name}.png` });
+      await p.waitForURL(/meet\/\?s=forest/, { timeout: 3000 }).catch(() => {});
+      const navUrl = p.url();
+      await p.goto(B + 'games/#parent'); await p.waitForTimeout(500);
+      const hashOpens = await p.evaluate(() => !document.getElementById('parent').hidden);
+      const noSideScroll = await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+      R[`hub/${v.name}`] = { minSide, inView, shortOpened, stayedOnDesk, longOpened, deskCfg, moreKeys, missingIds: ids, cards: cards.length, backOk, navUrl: navUrl.replace(B, ''), hashOpens, noSideScroll, errs };
+      await ctx.close();
+    }
+    // ---------- 2) 공룡·고래 만나기 ----------
+    for (const s of ['forest', 'sea']) {
+      const ctx = await b.newContext(v); const p = await ctx.newPage(); const errs = [];
+      p.on('pageerror', e => errs.push(String(e))); p.on('console', m => { if (m.type() === 'error' && !/404|Failed to load resource/.test(m.text())) errs.push(m.text()); });
+      await p.goto(B + `meet/?s=${s}`); await p.waitForTimeout(1500);
+      await p.screenshot({ path: OUT + `meet_${s}_${v.name}_1start.png` });
+      const cdp = await ctx.newCDPSession(p);
+      const tap = async (x, y) => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] }); await p.waitForTimeout(60); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
+      const st0 = await p.evaluate(() => ({ scene: __g.scene, total: __g.total, friends: __g.friends }));
+      let steps = 0, popShot = false, partyShot = false; const t0 = Date.now();
+      while (Date.now() - t0 < 60000) {
+        const st = await p.evaluate(() => ({ rounds: __g.rounds, phase: __g.phase, focus: __g.focus, acts: __g.actions() }));
+        if (st.phase === 'party' && !partyShot) { partyShot = true; await p.waitForTimeout(600); await p.screenshot({ path: OUT + `meet_${s}_${v.name}_3party.png` }); }
+        if (st.rounds >= 1 && st.phase === 'play') break;
+        if (!st.acts.length) { await p.waitForTimeout(200); continue; }
+        for (const a of st.acts) {
+          steps++; await tap(a.x, a.y);
+          if (!popShot) { popShot = true; await p.waitForTimeout(1100); await p.screenshot({ path: OUT + `meet_${s}_${v.name}_2pop.png` }); }
+          await p.waitForTimeout(a.wait || 300);
+        }
+      }
+      await p.waitForTimeout(1200);
+      await p.screenshot({ path: OUT + `meet_${s}_${v.name}_4next.png` });
+      const fin = await p.evaluate(() => ({ rounds: __g.rounds, phase: __g.phase, scene: __g.scene, friends: __g.friends, demo: !!(window.__demo && window.__demo()) }));
+      R[`meet_${s}/${v.name}`] = { start: st0, steps, partyShot, fin, secs: Math.round((Date.now() - t0) / 1000), errs };
+      await ctx.close();
+    }
+  }
+  // ---------- 3) 두 판 뒤 장면 바뀜 (숲 → 바다), 겹치지 않는 친구 ----------
+  {
+    const ctx = await b.newContext(VIEWS[0]); const p = await ctx.newPage(); const errs = [];
+    p.on('pageerror', e => errs.push(String(e)));
+    await p.goto(B + 'meet/?s=forest'); await p.waitForTimeout(1200);
+    const cdp = await ctx.newCDPSession(p);
+    const tap = async (x, y) => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] }); await p.waitForTimeout(40); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
+    const seen = []; let last = -1, slideShot = false; const t0 = Date.now();
+    while (Date.now() - t0 < 90000) {
+      const st = await p.evaluate(() => ({ rounds: __g.rounds, phase: __g.phase, scene: __g.scene, friends: __g.friends, acts: __g.actions() }));
+      if (st.rounds !== last && st.phase === 'play') { last = st.rounds; seen.push({ scene: st.scene, friends: st.friends }); }
+      if (st.phase === 'slide' && !slideShot) { slideShot = true; await p.waitForTimeout(250); await p.screenshot({ path: OUT + 'meet_slide_port.png' }); }
+      if (st.rounds >= 3 && st.phase === 'play') break;
+      for (const a of st.acts) { await tap(a.x, a.y); await p.waitForTimeout(450); }
+      if (!st.acts.length) await p.waitForTimeout(150);
+    }
+    await p.screenshot({ path: OUT + 'meet_after3_port.png' });
+    const forestFriends = seen.filter(r => r.scene === 'forest').flatMap(r => r.friends);
+    R.cycle = { seen, forestNoRepeat: new Set(forestFriends).size === forestFriends.length, scenes: seen.map(r => r.scene).join(','), errs };
+    await ctx.close();
+  }
+  console.log(JSON.stringify(R, null, 1));
+  await b.close();
+})();
+````
+
+### 5.4 스크린샷마다 보여야 하는 것 (`docs/renewal/shots/`)
+
+| 파일 | 보여야 하는 것 |
+|---|---|
+| `hub_map_port.png` | 연두 지도, 굽은 크림색 길(흰 점선), 동그란 장소 7개(숲·티라노 / 바다·혹등고래 / 길·풍선과 결승 깃발 / 집·욕조와 오리 / 무대·북과 나팔 / 정원·해바라기와 딸기 / 오른쪽 아래 흐린 책상), 구름·나무·덤불·꽃·버섯 장식, 왼쪽 아래 길 위 티노(왼쪽)·코코(오른쪽), 왼쪽 위 작은 톱니. **글자 없음.** |
+| `hub_map_land.png` | 같은 그림, 위 줄 4개(숲·바다·집·길) + 아래 줄 3개(무대·정원·책상), 쌍둥이 왼쪽 아래, 가로 스크롤 없음. |
+| `hub_gear_hold_*.png` | 톱니 둘레에 주황 고리가 반쯤 차 있음. |
+| `hub_parent_*.png` | 맨 위 주황 "🗺️ 지도로 돌아가기", 티노·"부모 화면"·코코, "부모 설정", 이름 칸. Pretendard 글씨. |
+| `hub_parent_full_*.png` | 모든 설정 패널(책상 놀이 켬 선택됨 포함) → 설치 안내 → "지도 속 놀이" 카드 6장 → 열린 "다른 놀이 5개"(까꿍·그림책·짝꿍·발자국·배) → 열린 "예전 게임 3개"(이름 방울·가나다 방울·R 러너). 고정 버튼이 중간에 한 번 겹쳐 찍히는 것은 정상(전체 화면 캡처 특성). |
+| `hub_map_desk_on_*.png` | 책상이 흐리지 않고 다른 장소처럼 밝음 (별이 나무판 위에). |
+| `hub_tap_*.png` | 숲 버튼이 조금 커져 있고 쌍둥이가 위로 떠 있음 (이동 직전). |
+| `meet_forest_port_1start.png` | 숲 배경, 물건 4개(덤불·그루터기·이끼바위·통나무 등), 각 물건 위로 공룡 머리/등이 살짝 보임, 아래 양옆 티노·코코, 왼쪽 위 집 버튼·오른쪽 위 소리 버튼과 겹치는 것 없음. |
+| `meet_forest_port_2pop.png` | 가운데 크림색 원 안에 공룡 크게, 그 아래 노란 이름표(공룡 이름), 물건 하나가 옆으로 비켜나 작아짐, 가까운 쌍둥이가 놀람/손뼉 자세. |
+| `meet_*_3party.png` | 친구 4(가로 5)마리가 각자 물건 옆에 서 있고 머리 위 작은 이름표, 색종이, 쌍둥이 만세/손뼉. |
+| `meet_*_4next.png` | 새 친구들이 숨은 새 판 (같은 장면). |
+| `meet_sea_*` | 바다 배경, 바위·모래성·조개·해초·양동이·구름 중 4(5)개, 고래가 숨음. |
+| `meet_*_land_*` | 가로 화면: 물건 5개, 위아래 두 줄 지그재그. |
+| `meet_slide_port.png` | 숲 그림이 왼쪽으로 밀려 나가는 중 (오른쪽은 하늘·풀색), 쌍둥이는 제자리. |
+| `meet_after3_port.png` | 바다 장면에서 셋째 판 이후 (`cycle.scenes` 와 일치). |
+
+### 5.5 끝나면
+
+`git status` 에 보여야 하는 것: 수정 `games/index.html`, `shared/hangul.js`, `common/build_games.py`, `tests/hangul_test.js`, `tests/frame_test.js`, `.gitignore`, `sw.js`, 엔진 게임 `*/index.html` (글꼴 두 줄), 새 `meet/`(game.js·index.html·icons/icon-192.png·sw.js), 새 `docs/renewal/smoke.js`. `assets/` 변화 없음, 지워진 파일 없음. 커밋은 head 가 확인한 뒤에.
