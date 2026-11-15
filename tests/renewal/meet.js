@@ -6,7 +6,7 @@ module.exports = async (page, view, util) => {
   /* 수집: 입력 없이 두 번째 판까지 가며 샘플 */
   const samples = []; let seenCele = false, celeRects = null;
   const grab = async () => {
-    const s = await page.evaluate(() => ({ ph: __g.phase, tp: __tkp.phase, rects: __g.tagRects, tw: __tkp.twins.map(t => ({ pose: t.pose, h: t.h })), found: __g.found, focus: __g.focus })).catch(() => null);
+    const s = await page.evaluate(() => ({ ph: __g.phase, tp: __tkp.phase, rects: __g.tagRects, tw: __tkp.twins.map(t => ({ pose: t.pose, h: t.h })), layers: __g.layers, found: __g.found, focus: __g.focus })).catch(() => null);
     if (!s) return; samples.push(s);
     if (s.tp === 'cele' && !celeRects) celeRects = s.rects;
   };
@@ -30,6 +30,14 @@ module.exports = async (page, view, util) => {
   else ok('tag font >= 15px in portrait', fs.length > 4 && Math.min(...fs) >= 14.99, 'min=' + Math.min(...fs).toFixed(1));
   const oy = await util.g(() => __g.objY);
   if (view.name === 'port') ok('object bottoms reach 0.6H (portrait)', Math.max(...oy) >= 0.6 * H, 'max=' + (Math.max(...oy) / H).toFixed(2) + 'H');
+  const party = samples.filter(s => s.tp === 'cele' && s.rects.length);
+  const hit = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.5 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 0.5;
+  const onScr = r => r.x - r.w / 2 >= -0.5 && r.x + r.w / 2 <= W + 0.5 && r.y - r.h / 2 >= -0.5 && r.y + r.h / 2 <= H + 0.5;
+  const overl = party.filter(s => s.rects.some((a, i) => s.rects.some((b, j) => j > i && hit(a, b))));
+  ok('party: no two tags overlap', party.length > 0 && overl.length === 0, party.length + ' samples, ' + overl.length + ' bad');
+  ok('party: every tag fully on screen', party.length > 0 && party.every(s => s.rects.every(onScr)), '');
+  const lay = samples.filter(s => s.layers && s.layers.length);
+  ok('draw order: tags drawn after pictures and focus in every frame', lay.length > 5 && lay.every(s => s.layers.join() === 'pictures,focus,tags'), lay.length ? lay[0].layers.join() : 'none');
   /* M4: 바다 장면 물건에 o_cloud 없음, o_lifebuoy 가능 */
   const ctx = await page.context().browser().newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const p2 = await ctx.newPage(), errs = [];
