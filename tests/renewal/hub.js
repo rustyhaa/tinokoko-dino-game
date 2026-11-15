@@ -18,12 +18,7 @@ module.exports = async ({ browser, view, base, shotDir, newCtx, watch, sleep }) 
     C('H2 each side >= 120', places.every(q => q.w >= 119.5 && q.h >= 119.5), places.map(q => Math.round(Math.min(q.w, q.h))).join(','));
     C('H2 all inside the screen', places.every(q => q.x >= -2 && q.y >= -2 && q.x + q.w <= V.w + 2 && q.y + q.h <= V.h + 2));
     C('data-place keys', JSON.stringify(places.map(q => q.k).sort()) === JSON.stringify(['band', 'bath', 'forest', 'garden', 'run', 'sea', 'stars']), places.map(q => q.k).join(','));
-    C('only desk is locked by default (GM)', places.filter(q => q.off).length === 1 && places.find(q => q.off).k === 'stars', places.filter(q => q.off).map(q => q.k).join(','));
-    /* 책상 잠김: 톡해도 머묾 */
-    const d = places.find(q => q.k === 'stars');
-    await p.mouse.click(d.x + d.w / 2, d.y + d.h / 2); await p.waitForTimeout(700);
-    C('H3 desk locked: tap stays on /games/', /\/games\/$/.test(p.url()), p.url());
-    C('desk wipe not started', (await radius(p)) <= 0, await radius(p));
+    C('no place is locked by default (desk opens unless a parent turned it off)', places.filter(q => q.off).length === 0, places.filter(q => q.off).map(q => q.k).join(','));
     /* H9 */
     await p.evaluate(() => { const b = document.createElement('button'); b.id = 'upd'; b.textContent = 'x'; document.body.appendChild(b); });
     C('H9 #upd hidden on the map', await p.evaluate(() => getComputedStyle(document.getElementById('upd')).display === 'none'));

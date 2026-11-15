@@ -170,7 +170,7 @@
     <a class="place" data-place="run" href="../run/" aria-label="길 (글자 달리기)" style="--pl:7;--pt:30.33;--ps:39;--ll:70;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_pk_beach.webp)"><img src="../shared/pics/o_balloon_r.webp" alt="" style="left:15%;top:9%;width:30%"><img src="../shared/pics/o_balloon_b.webp" alt="" style="left:47%;top:19%;width:27%"><img src="../shared/pics/o_finish.webp" alt="" style="left:18%;top:50%;width:58%"></a>
     <a class="place" data-place="garden" href="../garden/" aria-label="정원 (글자 정원)" style="--pl:53;--pt:54.98;--ps:38;--ll:45;--lt:61.18;--ls:17;background-image:url(../shared/pics/bg_garden.webp);background-position:30% 60%"><img src="../shared/pics/해바라기.webp" alt="" style="left:15%;top:12%;width:46%"><img src="../shared/pics/딸기.webp" alt="" style="left:56%;top:44%;width:31%"></a>
     <a class="place" data-place="band" href="../band/" aria-label="무대 (가나다 실로폰)" style="--pl:6;--pt:52.13;--ps:38;--ll:26;--lt:56.96;--ls:17;background-image:url(../shared/pics/bg_band.webp)"><img src="../shared/pics/o_drum.webp" alt="" style="left:10%;top:38%;width:44%"><img src="../shared/pics/o_horn.webp" alt="" style="left:47%;top:26%;width:43%"></a>
-    <a class="place desk off" id="pDesk" data-place="stars" href="../stars/" aria-label="책상 (글자 별자리)" aria-disabled="true" style="--pl:60;--pt:75.83;--ps:35;--ll:65;--lt:58.02;--ls:15;background-image:url(../shared/pics/bg_stars.webp)"><img src="../shared/pics/o_star.webp" alt="" style="left:18%;top:20%;width:34%"><img src="../shared/pics/o_star.webp" alt="" style="left:52%;top:44%;width:28%"></a>
+    <a class="place desk" id="pDesk" data-place="stars" href="../stars/" aria-label="책상 (글자 별자리)" aria-disabled="false" style="--pl:60;--pt:75.83;--ps:35;--ll:65;--lt:58.02;--ls:15;background-image:url(../shared/pics/bg_stars.webp)"><img src="../shared/pics/o_star.webp" alt="" style="left:18%;top:20%;width:34%"><img src="../shared/pics/o_star.webp" alt="" style="left:52%;top:44%;width:28%"></a>
 
     <div class="twins" id="twins" style="--pl:8;--pt:79.6;--ps:44;--ll:3;--lt:54;--ls:20">
       <span class="mt t"><img src="../shared/pics/o_tino_point.webp" alt="티노"></span>
@@ -230,7 +230,7 @@
   <div class="panel" role="group" aria-labelledby="deskTitle">
     <b id="deskTitle">책상 놀이(글자 그리기)</b>
     <div class="seg" id="deskSeg"><button data-v="1">켬</button><button data-v="0">끔</button></div>
-    <span class="note">켜면 지도 오른쪽 아래 책상이 열려요. 책상을 톡 하면 '글자 별자리'(별을 이어 자음 그리기)로 가요. 끄면 흐리게 보이고 눌러도 들어가지 않아요.</span>
+    <span class="note">처음엔 켜져 있어요. 지도의 별 그림(책상)을 톡 하면 '글자 별자리'(별을 이어 자음 그리기)로 가요. 끄면 흐리게 보이고 눌러도 들어가지 않아요.</span>
   </div>
 
   <details id="voiceBox">
@@ -413,10 +413,10 @@ focusSeg.addEventListener('click', e => {
   save(); renderFocus(); H.readJamo(j);
 });
 renderFocus();
-// ---------- 책상 놀이 켬/끔 (cfg.desk === true 일 때만 지도의 책상 → 글자 별자리) ----------
+// ---------- 책상 놀이 켬/끔 (처음엔 켜져 있음. 부모가 끄면 cfg.desk === false → 지도의 책상이 잠김) ----------
 const deskSeg = document.getElementById('deskSeg'), pDesk = document.getElementById('pDesk');
-function renderMap() { const on = cfg.desk === true; pDesk.classList.toggle('off', !on); pDesk.setAttribute('aria-disabled', String(!on)); }
-function renderDesk() { const v = cfg.desk === true ? '1' : '0'; deskSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); renderMap(); }
+function renderMap() { const on = cfg.desk !== false; pDesk.classList.toggle('off', !on); pDesk.setAttribute('aria-disabled', String(!on)); }
+function renderDesk() { const v = cfg.desk !== false ? '1' : '0'; deskSeg.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v)); renderMap(); }
 deskSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cfg.desk = b.dataset.v === '1'; save(); renderDesk(); });
 renderDesk();
 // ---------- 부모 목소리 녹음 ----------
