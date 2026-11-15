@@ -8,18 +8,20 @@
 //     해 버튼을 1초 꾹 누르면 깨움.
 //  5) 태블릿·모바일 보정: iOS 소리·음성 잠금 해제, 두 손가락 확대·더블탭 확대 막기, 안전 영역.
 //  6) 놀이터 앱 하나: 사이트 맨 위의 sw.js 하나로 모든 게임을 오프라인 저장. 예전 게임별 설치는 정리.
+//  7) 놀이 연결 연출: 들어올 때 크림색 원이 열리며 시작(#tkfx 위), 나갈 때 손그림 티노·코코 인사 뒤 크림색이 화면을 덮음.
 //  게임 쪽 약속: window.__paused 가 true 면 게임 진행(update)을 멈춘다.
 // =====================================================================
 (function () {
 'use strict';
 // 기능 설정: 러너처럼 잘 시간·별 시범이 없는 페이지는 window.TK_FRAME = { demo:false, sleep:false } 로 끈다
-const CFG = Object.assign({ home: true, demo: true, sleep: true }, window.TK_FRAME || {});
+const CFG = Object.assign({ home: true, demo: true, sleep: true, iris: true }, window.TK_FRAME || {});
 // 경로는 이 파일(shared/frame.js) 위치 기준으로 계산 → 게임 폴더·루트 러너 어디서든 동작
 const SRC = document.currentScript ? document.currentScript.src : location.href;
 const SHARED = new URL('.', SRC).href;
 const ROOT = new URL('../', SHARED).href;
 const HUB = ROOT + 'games/';
 const ASSET = SHARED + 'assets/';
+const PICS = SHARED + 'pics/';
 const now = () => performance.now() / 1000;
 const isMuted = () => (window.TK && TK.muted) || !!(document.getElementById('snd') && document.getElementById('snd').classList.contains('off'));
 
@@ -49,6 +51,7 @@ html,body{overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-selec
 #tksun{bottom:max(14px,env(safe-area-inset-bottom));right:max(14px,env(safe-area-inset-right));z-index:7;position:absolute}
 #tkbye{position:fixed;inset:0;z-index:9;display:none;background:rgba(255,255,255,0);transition:background .35s}
 #tkbye.show{display:block;background:rgba(255,255,255,.88)}
+#tkbye.cream{background:#fff8e7;transition:background .4s}
 #tkbye img{position:absolute;bottom:-50%;height:min(44vh,60vw);animation:tkup .45s ease-out forwards}
 #tkbye img.t{left:18%}
 #tkbye img.c{right:18%}
@@ -145,10 +148,11 @@ let leaving = false;
 function goodbye() {
   if (leaving) return; leaving = true; window.__paused = true;
   const bye = document.createElement('div'); bye.id = 'tkbye';
-  bye.innerHTML = `<img class="t" src="${ASSET}tino_jump_v2.webp" alt=""><img class="c" src="${ASSET}coco_laugh_v2.webp" alt="">`;
+  bye.innerHTML = `<img class="t" src="${PICS}o_tino_cheer.webp" alt=""><img class="c" src="${PICS}o_coco_cheer.webp" alt="">`;   /* 손그림 만세 */
   document.body.appendChild(bye);
   requestAnimationFrame(() => bye.classList.add('show'));
   setTimeout(() => bye.querySelectorAll('img').forEach(i => i.classList.add('wave')), 450);
+  setTimeout(() => bye.classList.add('cream'), 1000);   /* 1.0초에 크림색이 화면을 덮고 1.4초에 지도로 */
   faudio(); say('안녕!'); [784, 659.25, 523.25].forEach((f, i) => ftone(f, i * 0.14, 0.3, 0.12, 'triangle'));
   setTimeout(() => { location.href = HUB; }, 1400);
 }
@@ -196,6 +200,25 @@ setInterval(sleepCheck, 1000);
 
 // ---------- 별 시범 ----------
 let demo = null, lastInput = now(), start = now(), firstDone = false, idleRuns = 0;
+/* 열림 원: 페이지가 뜨자마자 크림색으로 덮어 두고, TKP.ready(없으면 즉시)와 900ms 중 먼저인 때에 (W/2, H*0.55) 에서 0.5초 동안 열림 */
+let iris = CFG.iris === false ? 'done' : 'cover', irisT0 = 0;
+if (iris === 'cover') {
+  let go = false;
+  const open = () => { if (go) return; go = true; iris = 'opening'; irisT0 = now(); };
+  const rd = window.TKP && TKP.ready && TKP.ready.then ? TKP.ready : Promise.resolve();
+  rd.then(open, open); setTimeout(open, 900);
+}
+function drawIris(t) {
+  if (iris === 'done') return;
+  let r = 0;
+  if (iris === 'opening') {
+    const q = Math.min(1, (t - irisT0) / 0.5);
+    r = (1 - Math.pow(1 - q, 3)) * Math.hypot(W, H);
+    if (q >= 1) { iris = 'done'; start = t; return; }
+  }
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); if (r > 0) g.arc(W / 2, H * 0.55, r, 0, Math.PI * 2);
+  g.fillStyle = '#fff8e7'; g.fill('evenodd'); g.restore();
+}
 const onInput = () => { lastInput = now(); idleRuns = 0; demo = null; };
 addEventListener('pointerdown', onInput, true); addEventListener('keydown', onInput, true);
 function tryDemo() {
@@ -207,7 +230,9 @@ function tryDemo() {
   let len = 0; for (let i = 1; i < d.pts.length; i++) len += Math.hypot(d.pts[i].x - d.pts[i - 1].x, d.pts[i].y - d.pts[i - 1].y);
   d.len = len; d.t = 0; d.trail = [];
   d.dur = 0.6 + (d.kind === 'path' ? Math.min(2.2, 0.7 + len / (600 * U)) : d.kind === 'hold' ? 1.6 : 0.4) + 0.6;
-  demo = d; say(d.say || '');
+  demo = d;
+  try { window.dispatchEvent(new CustomEvent('tk:demo', { detail: { x: d.pts[0].x, y: d.pts[0].y } })); } catch (e) {}
+  if (d.sayKey && window.TKP && TKP.say) TKP.say(d.sayKey); else say(d.say || '');
   return true;
 }
 function at(d, q) {   // 경로 위 q(0~1) 위치
@@ -275,7 +300,7 @@ function loop() {
   const t = now(), dt = Math.min(0.05, t - last); last = t;
   g.clearRect(0, 0, W, H);
   if (CFG.deco !== false && !sleeping && !leaving) { try { drawDeco(t, dt); } catch (e) { if (!window.__decoErr) { window.__decoErr = String(e); console.warn('deco', e); } } }
-  if (CFG.demo && !demo && !sleeping && !leaving) {
+  if (CFG.demo && !demo && !sleeping && !leaving && iris === 'done') {
     const idleLimit = idleRuns < 3 ? 10 : 25;
     if ((!firstDone && t - start > 1.6) || (firstDone && t - lastInput > idleLimit)) {
       if (tryDemo()) { firstDone = true; idleRuns++; lastInput = t; }
@@ -305,6 +330,7 @@ function loop() {
     g.restore();
     if (d.t >= d.dur) demo = null;
   }
+  drawIris(t);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -317,6 +343,6 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
 }
 
 // 자동 확인용
-window.__frame = { get demo() { return !!demo; }, get demoSay() { return demo && demo.say; }, get sleeping() { return sleeping; }, get leaving() { return leaving; }, goodbye, sleepCheck };
+window.__frame = { get demo() { return !!demo; }, get demoSay() { return demo && demo.say; }, get iris() { return iris; }, get sleeping() { return sleeping; }, get leaving() { return leaving; }, goodbye, sleepCheck };
 sleepCheck();   // 이미 잘 시간이 지났으면 들어오자마자 잠든 화면
 })();

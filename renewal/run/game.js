@@ -1,73 +1,95 @@
 // 티노코코 글자 달리기 — 탭 하나로 노는 달리기 (한글 놀이터, 예전 동시점프 러너 리뉴얼)
 //  티노와 코코가 길을 달린다. 하늘에 글자 풍선이 차례로 떠 오고, 화면 왼쪽을 톡 하면 티노가, 오른쪽을 톡 하면 코코가 폴짝.
-//  점프해서 풍선에 닿으면 퐁! 글자가 위쪽 단어 카드 제자리로 날아가며 "나." 하고 읽는다. 다 모이면 "나, 비. 나비!"
+//  [리뉴얼: 자석 점프] 톡 하면 가장 가까운 다가오는 풍선이 친구 머리로 끌려와 퐁! — 타이밍을 맞출 필요가 없다.
+//  글자가 위쪽 단어 카드 제자리로 날아가며 "나." 하고 읽는다. 다 모이면 "나, 비. 나비!"
 //  단어가 완성되면 그 그림 깃발이 길가에 꽂힌다. 단어 셋이면 결승선 잔치 → 다음 길(바닷가 → 숲 → 밤).
 //  실패·점수 없음: 놓친 풍선은 다시 날아오고, 돌멩이에 부딪히면 "쿵" 하고 웃으며 계속 달린다.
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
-const HG = window.H;   // 한글 모듈 (이 파일의 높이는 Hh)
+const HG = window.H;   /* 한글 모듈 (이 파일의 높이는 Hh) */
+const TKP = window.TKP;   /* 공용 놀이 틀 */
 const SCENES = ['bg_pk_beach', 'bg_pk_forest', 'bg_pk_night'];
 let phase = 'play', phaseT = 0, rounds = 0, scene = 0, wordsDone = 0, scroll = 0, speed = 200;
 let word = null, got = [], balloons = [], queue = [], rocks = [], flags = [], fly = [], finish = null, lastWord = '';
-let gy = 500, th = 120, U = 1, spawnT = 0, rockT = 3;
-const twins = [{ kind: 'tino', x: 0, y: 0, vy: 0, air: false, bonk: 0, happy: 0 }, { kind: 'coco', x: 0, y: 0, vy: 0, air: false, bonk: 0, happy: 0 }];
+let gy = 500, th = 120, U = 1, spawnT = 0, rockT = 3, caught = 0, missed = 0;
+const twins = [{ kind: 'tino', x: 0, y: 0, vy: 0, air: false, bonk: 0 }, { kind: 'coco', x: 0, y: 0, vy: 0, air: false, bonk: 0 }];
+/* 놀이 틀: 쌍둥이는 놀이가 위치를 정해 직접 그림 (달리기 자세 idle) */
+TKP.init({ id: 'run', place: 'run', twins: null, idlePose: 'idle', music: 'beach', preload: [...SCENES, 'o_balloon_r', 'o_balloon_g', 'o_balloon_b', 'o_balloon_y', 'o_rock', 'o_flag', 'o_finish'] });
 
 function layout() {
   const W = TK.W, Hh = TK.H, port = W < Hh; U = TK.U;
-  gy = Hh * (port ? 0.8 : 0.84); th = Math.min(Hh * (port ? 0.16 : 0.24), W * 0.2);
-  speed = Math.min(W, Hh * 1.6) * 0.28;   // 화면 크기에 맞춘 차분한 속도
-  twins[0].x = W * (port ? 0.2 : 0.16); twins[1].x = W * (port ? 0.42 : 0.3);
+  gy = Hh * (port ? 0.74 : 0.84); th = Math.min(Hh * (port ? 0.2 : 0.24), W * (port ? 0.3 : 0.2));
+  speed = Math.min(W, Hh * 1.6) * 0.28;   /* 화면 크기에 맞춘 차분한 속도 */
+  twins[0].x = W * (port ? 0.2 : 0.16); twins[1].x = W * (port ? 0.46 : 0.3);
   twins.forEach(t => { if (!t.air) t.y = 0; });
 }
-const balloonY = () => gy - th * 1.35;   // 점프하면 닿는 높이
+const balloonY = () => gy - th * 1.35;   /* 점프하면 닿는 높이 */
 const jumpV = () => Math.sqrt(2 * 2400 * U * th * 1.05);
 function newWord() {
   const stage = HG.cfg().stage, maxLen = stage <= 1 ? 2 : 3;
   const fav = HG.favWords().filter(w => [...w].length >= 2 && [...w].length <= maxLen && w !== lastWord && HG.hasPic(w));
   const pool = HG.pick(12, { pic: true, exclude: [lastWord] }).filter(o => o.syl.length >= 2 && o.syl.length <= maxLen);
   const w = (fav.length && wordsDone % 2 === 0 ? HG.word(TK.pick(fav)) : pool[0]) || HG.word('나비');
-  word = w; lastWord = w.w; got = w.syl.map(() => false); queue = w.syl.map((_, i) => i); spawnT = 0.8;
+  word = w; lastWord = w.w; got = w.syl.map(() => false); queue = w.syl.map((_, i) => i); spawnT = 0.6;
 }
 function spawnBalloon(si) {
   balloons.push({ si, x: TK.W + 60 * U, y: balloonY(), ph: rand(0, 6), c: TK.COLS[(si * 2 + wordsDone) % 7], pop: -1 });
 }
+/* 자석 점프: 화면 안(또는 곧 들어올) 풍선 중 가장 가까운 것을 친구 머리로 끌어옴 */
 function jump(t) {
   if (t.air || phase === 'scene') return;
   t.air = true; t.vy = jumpV(); sfx.boing();
+  let best = null, bd = 1e9;
+  balloons.forEach(b => { if (b.pop >= 0 || b.tgt) return; if (b.x > t.x - th * 0.5 && b.x < TK.W + th * 0.5) { const d = Math.abs(b.x - t.x); if (d < bd) { bd = d; best = b; } } });
+  if (best) { best.tgt = t; best.tg0 = { x: best.x, y: best.y }; best.tgT = 0; TK.ring(best.x, best.y, th * 0.3, [255, 255, 255]); }
 }
 function tapAt(x, y) {
   TK.audio();
-  if (phase === 'party') { HG.read(word.w); return; }
-  jump(x < TK.W / 2 ? twins[0] : twins[1]);
+  if (TKP.busy && TKP.tap(x, y)) return;
+  if (phase === 'party') { HG.read(word.w); TKP.tapEmpty(x, y); return; }
+  if (phase === 'scene') { TKP.tapEmpty(x, y); return; }
+  /* 친구 몸을 톡 해도 그 친구가 뜀(풍선이 있는 놀이라 이름 읽기는 뺌). 그 친구가 공중이면 땅에 있는 다른 친구가 뜀 */
+  const hit = TKP.twinAt(x, y);
+  let t = twins[hit >= 0 ? hit : (x < TK.W / 2 ? 0 : 1)];
+  if (t.air) { const o = twins[t === twins[0] ? 1 : 0]; if (o.air) { TKP.tapEmpty(x, y); return; } t = o; }
+  jump(t);
 }
 TK.input({ down(p) { tapAt(p.x, p.y); }, key(e) { jump(e && e.key === 'ArrowRight' ? twins[1] : twins[0]); } });
 
 function collect(b) {
+  if (b.tgt) caught++;
   b.pop = 0; sfx.pop(); TK.spark(b.x, b.y, b.c, 10, 0.8);
   if (!got[b.si] && !fly.some(f => f.si === b.si)) { fly.push({ si: b.si, x: b.x, y: b.y, fx: b.x, fy: b.y, t: 0 }); HG.saySyl(word.syl[b.si]); }
 }
 const slot = i => { const fs = cardFont(), gap = fs * 1.02; return { x: TK.W / 2 - (word.syl.length - 1) * gap / 2 + i * gap, y: TK.H * 0.12 }; };
-const cardFont = () => Math.min(TK.W, TK.H) * 0.085;
+const cardFont = () => Math.min(TK.W, TK.H) * 0.1;
 
 function update(dt) {
+  TKP.update(dt);
   phaseT += dt;
   const run = phase === 'play' || phase === 'party' ? speed : phase === 'finish' ? speed * 0.6 : 0;
   scroll += run * dt;
   // 친구들: 점프·착지, 부딪힘 흔들림
   twins.forEach(t => {
     if (t.air) { t.y += t.vy * dt; t.vy -= 2400 * U * dt; if (t.y <= 0) { t.y = 0; t.air = false; t.vy = 0; } }
-    t.bonk = Math.max(0, t.bonk - dt); t.happy = Math.max(0, t.happy - dt);
+    t.bonk = Math.max(0, t.bonk - dt);
   });
   // 풍선: 차례로 날아옴, 놓치면 다시 줄 끝으로
   if (phase === 'play') {
     spawnT -= dt;
-    if (spawnT <= 0 && queue.length && balloons.filter(b => b.pop < 0).length < 2) { spawnBalloon(queue.shift()); spawnT = 2.2; }
+    if (spawnT <= 0 && queue.length && balloons.filter(b => b.pop < 0).length < 2) { spawnBalloon(queue.shift()); spawnT = 1.4; }
   }
   balloons.forEach(b => {
+    if (b.pop >= 0) { b.pop += dt * 3; b.x -= run * dt; return; }
+    if (b.tgt) {   /* 끌려오는 중: 스크롤은 무시하고 친구 머리로 */
+      b.tgT += dt / 0.38; const k = TK.ease(clamp(b.tgT, 0, 1)), t = b.tgt;
+      b.x = TK.lerp(b.tg0.x, t.x, k); b.y = TK.lerp(b.tg0.y, gy - t.y - th * 0.85, k);
+      if (b.tgT >= 1) collect(b);
+      return;
+    }
     b.x -= run * dt; b.y = balloonY() + Math.sin(TK.T * 2 + b.ph) * th * 0.08;
-    if (b.pop >= 0) { b.pop += dt * 3; return; }
     twins.forEach(t => { const hy = gy - t.y - th * 0.85; if (t.y > th * 0.25 && Math.abs(b.x - t.x) < th * 0.45 && Math.abs(b.y - hy) < th * 0.6) collect(b); });
-    if (b.x < -60 * U && !got[b.si]) { b.pop = 9; queue.push(b.si); }   // 놓친 글자는 다시
+    if (b.x < -60 * U && !got[b.si]) { b.pop = 9; queue.push(b.si); missed++; }   /* 놓친 글자는 다시 */
   });
   balloons = balloons.filter(b => b.pop < 1 && b.x > -80 * U);
   // 날아가는 글자 → 단어 카드
@@ -78,7 +100,7 @@ function update(dt) {
   });
   fly = fly.filter(f => f.t < 1);
   // 돌멩이: 가끔. 부딪히면 쿵 하고 웃기만
-  if (phase === 'play') { rockT -= dt; if (rockT <= 0) { rocks.push({ x: TK.W + 40 * U, hit: false, r: th * rand(0.16, 0.22) }); rockT = rand(4, 7); } }
+  if (phase === 'play') { rockT -= dt; if (rockT <= 0) { rocks.push({ x: TK.W + 40 * U, hit: false, r: th * rand(0.16, 0.22) }); rockT = TK.W < TK.H ? rand(6, 9) : rand(4, 7); } }
   rocks.forEach(r => {
     r.x -= run * dt;
     twins.forEach(t => { if (!r.hit && !t.air && Math.abs(r.x - t.x) < th * 0.25) { r.hit = true; t.bonk = 0.5; t.air = true; t.vy = jumpV() * 0.45; TK.tone(140, 0, 0.18, 'sine', 0.25, 80); sfx.giggle(t.kind, 0.1); } });
@@ -87,21 +109,22 @@ function update(dt) {
   flags.forEach(f => f.x -= run * dt); flags = flags.filter(f => f.x > -200 * U);
   // 단어 완성
   if (phase === 'play' && word && got.length && got.every(Boolean)) {
-    phase = 'party'; phaseT = 0; wordsDone++; sfx.fanfare(); setTimeout(() => { HG.read(word.w); TK.wordPop(word.w, TK.W / 2, TK.H * 0.34); }, 350);
-    twins.forEach(t => t.happy = 2); flags.push({ x: TK.W + 80 * U, w: word.w });
+    phase = 'party'; phaseT = 0; wordsDone++; sfx.sparkle();
+    const w0 = word.w; setTimeout(() => { HG.read(w0); TK.wordPop(w0, TK.W / 2, TK.H * 0.34); }, 350);
+    TKP.found(TK.W / 2, TK.H * 0.34, { side: 0 }); TKP.react(1, 'clap', 1.2);
+    flags.push({ x: TK.W + 80 * U, w: word.w });
   }
   if (phase === 'party') {
     TK.confetti(dt * 0.5);
-    if (phaseT > 3.2) {
+    if (phaseT > 2.2) {
       if (wordsDone % 3 === 0) { phase = 'finish'; phaseT = 0; finish = { x: TK.W + 60 * U }; }
       else { phase = 'play'; phaseT = 0; newWord(); }
     }
   }
   if (phase === 'finish') {
     if (finish) finish.x -= speed * 0.6 * dt;
-    if (finish && finish.x < twins[1].x && !finish.done) { finish.done = true; sfx.fanfare(); sfx.clap(); twins.forEach(t => { t.happy = 3; jump(t); }); }
-    if (finish && finish.done) TK.confetti(dt);
-    if (phaseT > 6.5) { phase = 'scene'; phaseT = 0; }
+    if (finish && finish.x < twins[1].x && !finish.done) { finish.done = true; TKP.celebrate({ big: true, word: true, onDone: () => { phase = 'scene'; phaseT = 0; } }); TKP.say('finish'); }
+    if (phaseT > 25) { phase = 'scene'; phaseT = 0; }   /* 안전장치: 축하가 무시됐을 때 */
   }
   if (phase === 'scene' && phaseT > 0.8) { scene = (scene + 1) % SCENES.length; rounds++; finish = null; rocks = []; flags = []; phase = 'play'; phaseT = 0; newWord(); TK.flash(); sfx.sparkle(); }
 }
@@ -110,7 +133,7 @@ function update(dt) {
 function drawBg() {
   const W = TK.W, Hh = TK.H, f = HG.bgFit(SCENES[scene], 0, 0, W, Hh, 0, 1);
   if (!f) { ctx.fillStyle = TK.grad(0, Hh, '#8fd4ff', '#fbe7b4'); ctx.fillRect(0, 0, W, Hh); return; }
-  f.dh = Hh; f.dy = 0; const dw = f.dh * f.im.naturalWidth / f.im.naturalHeight, off = (scroll * 0.5) % (dw * 2);   // 높이에 맞추고 옆으로 이어 붙임 (하늘이 잘리지 않게)
+  f.dh = Hh; f.dy = 0; const dw = f.dh * f.im.naturalWidth / f.im.naturalHeight, off = (scroll * 0.5) % (dw * 2);   /* 높이에 맞추고 옆으로 이어 붙임 (하늘이 잘리지 않게) */
   for (let k = -1; k < Math.ceil(W / dw) + 2; k++) {
     const x = k * dw - off;
     ctx.save(); if (((k % 2) + 2) % 2) { ctx.translate(x + dw, f.dy); ctx.scale(-1, 1); ctx.drawImage(f.im, 0, 0, dw, f.dh); } else ctx.drawImage(f.im, x, f.dy, dw, f.dh); ctx.restore();
@@ -122,13 +145,13 @@ function drawBg() {
   const dash = th * 0.5; for (let x = -((scroll) % (dash * 2)); x < W; x += dash * 2) TK.rr(x, gy + th * 0.22, dash, Math.max(4, th * 0.05), th * 0.03), ctx.fill();
   if (phase === 'scene') { ctx.fillStyle = `rgba(255,255,255,${Math.sin(Math.PI * clamp(phaseT / 0.8, 0, 1))})`; ctx.fillRect(0, 0, W, Hh); }
 }
-const balloonCol = c => c[0] > 200 && c[1] > 190 ? 'y' : c[2] > 200 ? 'b' : c[1] > 190 ? 'g' : 'r';   // 색 → 손그림 풍선 4색
+const balloonCol = c => c[0] > 200 && c[1] > 190 ? 'y' : c[2] > 200 ? 'b' : c[1] > 190 ? 'g' : 'r';   /* 색 → 손그림 풍선 4색 */
 function drawBalloon(b) {
   const s = b.pop >= 0 ? 1 + b.pop * 0.6 : 1, a = b.pop >= 0 ? 1 - b.pop : 1, r = th * 0.36;
   ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
-  if (!HG.lazyImg('o_balloon_' + balloonCol(b.c))) { ctx.beginPath(); ctx.moveTo(b.x, b.y + r); ctx.quadraticCurveTo(b.x + Math.sin(TK.T * 3 + b.ph) * r * 0.3, b.y + r * 1.8, b.x, b.y + r * 2.5); ctx.strokeStyle = 'rgba(80,60,50,.6)'; ctx.lineWidth = 2; ctx.stroke(); }   // 줄
+  if (!HG.lazyImg('o_balloon_' + balloonCol(b.c))) { ctx.beginPath(); ctx.moveTo(b.x, b.y + r); ctx.quadraticCurveTo(b.x + Math.sin(TK.T * 3 + b.ph) * r * 0.3, b.y + r * 1.8, b.x, b.y + r * 2.5); ctx.strokeStyle = 'rgba(80,60,50,.6)'; ctx.lineWidth = 2; ctx.stroke(); }   /* 줄 */
   const bim = HG.lazyImg('o_balloon_' + balloonCol(b.c));
-  if (bim) { ctx.restore(); ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(b.x, b.y); ctx.rotate(Math.sin(TK.T * 2 + b.ph) * 0.06); ctx.scale(s, s); const hh = r * 3.15, ww = hh * bim.naturalWidth / bim.naturalHeight; ctx.drawImage(bim, -ww / 2, -r * 1.02, ww, hh); if (b.pop < 0 && word) HG.drawWord(ctx, word.syl[b.si], 0, r * 0.02, r * 0.95, { color: '#ffffff', outline: 'rgba(59,42,32,.55)' }); ctx.restore(); return; }   // 손그림 풍선 (줄 포함)
+  if (bim) { ctx.restore(); ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(b.x, b.y); ctx.rotate(Math.sin(TK.T * 2 + b.ph) * 0.06); ctx.scale(s, s); const hh = r * 3.15, ww = hh * bim.naturalWidth / bim.naturalHeight; ctx.drawImage(bim, -ww / 2, -r * 1.02, ww, hh); if (b.pop < 0 && word) HG.drawWord(ctx, word.syl[b.si], 0, r * 0.02, r * 0.95, { color: '#ffffff', outline: 'rgba(59,42,32,.55)' }); ctx.restore(); return; }   /* 손그림 풍선 (줄 포함) */
   ctx.translate(b.x, b.y); ctx.scale(s, s);
   TK.ink(Math.max(2, r * 0.06), () => { ell(0, 0, r * 0.9, r); ctx.fillStyle = TK.rgba(b.c, 1); ctx.fill(); });
   ctx.beginPath(); ctx.moveTo(-r * 0.12, r * 0.98); ctx.lineTo(r * 0.12, r * 0.98); ctx.lineTo(0, r * 1.15); ctx.closePath(); ctx.fillStyle = TK.rgba(b.c, 1); ctx.fill();
@@ -137,6 +160,7 @@ function drawBalloon(b) {
   ctx.restore();
 }
 function drawRock(r) {
+  if (HG.drawObj(ctx, 'o_rock', r.x, gy + r.r * 0.1, r.r * 2.2, r.r * 3.2)) return;   /* 손그림 웃는 돌 */
   TK.ink(Math.max(2, r.r * 0.12), () => { ell(r.x, gy - r.r * 0.55, r.r * 1.2, r.r * 0.75); ctx.fillStyle = '#a7a39b'; ctx.fill(); });
   ell(r.x - r.r * 0.4, gy - r.r * 0.85, r.r * 0.35, r.r * 0.18, -0.3); ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fill();
 }
@@ -149,7 +173,7 @@ function drawFlag(f) {
 function drawFinish() {
   if (!finish) return;
   const x = finish.x, h = th * 2.2;
-  if (HG.drawObj(ctx, 'o_finish', x, gy + th * 0.05, h * 1.1, th * 2.8)) return;   // 손그림 결승선
+  if (HG.drawObj(ctx, 'o_finish', x, gy + th * 0.05, h * 1.1, th * 2.8)) return;   /* 손그림 결승선 */
   TK.ink(2, () => { for (const dx of [-th * 1.2, th * 1.2]) { ctx.fillStyle = '#ffffff'; TK.rr(x + dx - 5 * U, gy - h, 10 * U, h, 4 * U); ctx.fill(); } });
   for (let i = 0; i < 8; i++) { const cx = x - th * 1.2 + i * th * 0.3; ctx.fillStyle = i % 2 ? '#ffffff' : '#ff5a5f'; ctx.fillRect(cx, gy - h, th * 0.3, th * 0.3); }
   ctx.strokeStyle = TK.INK; ctx.lineWidth = 2; ctx.strokeRect(x - th * 1.2, gy - h, th * 2.4, th * 0.3);
@@ -162,8 +186,8 @@ function draw() {
   twins.forEach((t, i) => {
     ell(t.x, gy, th * 0.32 * (1 - t.y / (th * 2.5)), th * 0.06); ctx.fillStyle = 'rgba(70,45,20,.22)'; ctx.fill();
     const bob = t.air ? 0 : TK.bob(i * 1.3, th * 0.05, 9), wob = t.bonk > 0 ? Math.sin(t.bonk * 40) * 0.12 : 0;
-    ctx.save(); ctx.translate(t.x, gy - t.y - bob); ctx.rotate(wob);
-    TK.twin(t.kind, t.air ? 'jump' : t.happy > 0 ? 'happy' : 'idle', 0, 0, th, { face: 'right' });
+    ctx.save(); ctx.translate(t.x, gy - t.y - bob);
+    TKP.drawTwin(i, 0, 0, th, { pose: t.air ? 'jump' : TKP.pose(i).pose, face: 'right', rot: wob });
     ctx.restore();
   });
   balloons.forEach(drawBalloon);
@@ -179,20 +203,22 @@ function draw() {
   TK.drawParts();
 }
 
-// 자동 확인·별 시범: 다가오는 풍선에 맞춰 그 아래 친구 쪽을 톡
+/* 자동 확인·별 시범: 아직 안 잡힌 풍선이 화면에 있으면 땅에 있는 친구 쪽을 톡 (자석이라 타이밍 필요 없음) */
 function nextHit() {
-  for (const b of balloons) { if (b.pop >= 0) continue; for (const t of twins) { const dx = b.x - t.x; if (!t.air && dx > 0 && dx < speed * 0.42) return t; } }
-  return null;
+  if (!balloons.some(b => b.pop < 0 && !b.tgt && b.x < TK.W)) return null;
+  return twins.find(t => !t.air) || null;
 }
 window.__g = {
-  get phase() { return phase; }, get rounds() { return rounds; }, get words() { return wordsDone; }, get word() { return word && word.w; }, get got() { return got.slice(); },
+  get phase() { return phase; }, get scene() { return scene; }, get rounds() { return rounds; }, get words() { return wordsDone; }, get word() { return word && word.w; }, get got() { return got.slice(); },
+  get th() { return th; }, get caught() { return caught; }, get missed() { return missed; }, get speed() { return speed; }, get gy() { return gy; },
+  get balloons() { return balloons.map(b => ({ x: b.x, y: b.y, popped: b.pop >= 0, tgt: !!b.tgt })); },
+  get twinX() { return twins.map(t => t.x); }, get air() { return twins.map(t => t.air); },
   actions() { if (phase !== 'play') return []; const t = nextHit(); if (!t) return []; return [{ type: 'tap', x: t === twins[0] ? TK.W * 0.15 : TK.W * 0.85, y: TK.H * 0.5, wait: 80 }]; },
 };
 window.__demo = () => {
   if (phase !== 'play') return null;
   const b = balloons.find(b => b.pop < 0 && b.x > TK.W * 0.4); if (!b) return null;
-  return { kind: 'tap', x: TK.W * 0.25, y: TK.H * 0.55, say: '톡 하면 폴짝 뛰어요' };
+  return { kind: 'tap', x: TK.W * 0.25, y: TK.H * 0.55, say: '톡 하면 폴짝 뛰어요', sayKey: 'jump' };
 };
-if (window.TKMusic) TKMusic.play('beach');
 TK.start({ resize: layout, init() { layout(); newWord(); }, update, draw });
 })();

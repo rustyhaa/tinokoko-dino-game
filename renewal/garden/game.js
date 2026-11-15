@@ -10,18 +10,20 @@ const ART = { tulip: '튤립', tulip2: '튤립', carrot: '당근', sunflower: '�
 const STAGE = [null, 'o_sprout', 'o_leaves', 'o_bud'];   // 자라는 단계 손그림 (흙더미 포함)
 let bee = { x: 0, y: 0, t: 0 };
 let setIdx = 0, phase = 'play', phaseT = 0, rounds = 0, lastGrow = 0, S = 50;
-let plots = [], basket = { x: 0, y: 0, w: 0, items: [] }, flying = [], twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }];
+let plots = [], basket = { x: 0, y: 0, w: 0, items: [] }, flying = [];
+/* 공용 놀이 틀: 쌍둥이 자세·톡 반응·발견·축하는 TKP 가 맡음 */
+TKP.init({ id: 'garden', twins: { port: { x0: 0.15, x1: 0.85, yb: 0.98, h: 0.19 }, land: { x0: 0.08, x1: 0.92, yb: 0.98, h: 0.36 } },
+  preload: ['bg_garden', 'o_soil', 'o_sprout', 'o_leaves', 'o_bud', 'o_dinoegg', 'o_basket', 'o_raincloud'] });
 
 function layout() {
   const W = TK.W, H = TK.H, port = W < H;
-  S = port ? Math.min(W * 0.15, H * 0.085) : Math.min(W * 0.08, H * 0.145);
-  const pos = port ? [[0.28, 0.5], [0.72, 0.5], [0.28, 0.75], [0.72, 0.75]] : [[0.25, 0.7], [0.42, 0.7], [0.58, 0.7], [0.75, 0.7]];
+  S = port ? Math.min(W * 0.19, H * 0.1) : Math.min(W * 0.09, H * 0.17);
+  const pos = port ? [[0.27, 0.47], [0.73, 0.47], [0.27, 0.73], [0.73, 0.73]] : [[0.25, 0.7], [0.42, 0.7], [0.58, 0.7], [0.75, 0.7]];
   plots.forEach((p, i) => { p.x = pos[i][0] * W; p.y = pos[i][1] * H; });
-  basket.x = W / 2; basket.y = H * 0.94; basket.w = port ? W * 0.44 : W * 0.22;
-  twins.forEach((t, i) => { t.h = port ? H * 0.19 : H * 0.36; t.x = i ? W * (port ? 0.85 : 0.92) : W * (port ? 0.15 : 0.08); t.yb = H * 0.98; });
+  basket.x = W / 2; basket.y = H * (port ? 0.94 : 0.9); basket.w = port ? W * 0.44 : Math.min(W * 0.22, H * 0.34);   /* 가로는 바구니가 화면 아래로 잘리지 않게 */
 }
 function newSet() {
-  plots = SETS[setIdx].map(k => (k === 'dino' && !HG.likes('공룡') ? 'pumpkin' : k)).map(kind => ({ kind, g: 0, stage: 0, wig: 0, rain: 0, pop: 0 }));
+  plots = SETS[setIdx].map(k => (k === 'dino' && !HG.likes('공룡') ? 'pumpkin' : k)).map(kind => ({ kind, g: 1, stage: 1, wig: 0, rain: 0, pop: 0 }));
   layout();
 }
 function grow(p, amt) {
@@ -32,18 +34,17 @@ function grow(p, amt) {
     p.stage = st; p.pop = 1;
     TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1], 0, 0.4, 'sine', 0.22); TK.tone([523.25, 659.25, 783.99, 1046.5][st - 1] * 2, 0.03, 0.2, 'sine', 0.05);
     if (st === 4 && p.kind === 'dino') { TK.tone(200, 0.1, 0.5, 'sawtooth', 0.07, 130); TK.noise(0.3, 900, 0.1, 0.05); }   // 알이 톡 깨지며 아기 공룡 크앙
-    if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.wordPop(NAME[p.kind], p.x, p.y - S * 2.9, S * 0.9); TK.spark(p.x, p.y - S * 1.6, TK.pick(TK.COLS), 12, 0.9); const tw = p.x < TK.W / 2 ? twins[0] : twins[1]; tw.hop = 0; sfx.giggle(tw.kind, 0.2); }
+    if (st === 4) { sfx.sparkle(); HG.read(NAME[p.kind]); TK.wordPop(NAME[p.kind], p.x, p.y - S * 2.9, S * 0.9); TKP.found(p.x, p.y - S * 1.6, { pose: 'sniff' }); }
   }
 }
 const plotAt = (x, y) => plots.find(p => Math.abs(x - p.x) < S * 1.1 && y > p.y - S * 3.2 && y < p.y + S * 0.6);
 
 TK.input({
   down(p) {
+    if (TKP.tap(p.x, p.y)) return;
     const q = plotAt(p.x, p.y);
     if (q && phase === 'play') { if (q.g >= 4) { q.wig = 0.5; HG.read(NAME[q.kind]); } else { grow(q, 1); sfx.splash(); } p.lx = p.x; return; }
-    const tw = twins.find(t => Math.abs(p.x - t.x) < t.h * 0.3 && p.y > t.yb - t.h);
-    if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - tw.h); return; }
-    TK.ring(p.x, p.y, 14 * TK.U, [255, 255, 255]); sfx.soft();
+    TKP.tapEmpty(p.x, p.y);
   },
   move(p) {   // 흙 위를 문지르면 쑥쑥
     if (!p.down) return;
@@ -55,8 +56,8 @@ TK.input({
 });
 
 function update(dt) {
+  TKP.update(dt);
   phaseT += dt;
-  twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.5; if (t.hop > 1) t.hop = -1; } });
   plots.forEach(p => {
     p.wig = Math.max(0, p.wig - dt); p.pop = Math.max(0, p.pop - dt * 2.5);
     if (p.rain > 0) { p.rain -= dt; if (Math.random() < dt * 30) TK.parts.push({ t: 'drop', x: p.x + rand(-S * 0.6, S * 0.6), y: p.y - S * (HG.lazyImg('bg_garden') ? 2.5 : 3.0), vx: 0, vy: rand(150, 220) * TK.U, r: rand(2.5, 4.5) * TK.U, life: 0.5, max: 0.5, c: [120, 190, 255], g: 300 }); }
@@ -65,11 +66,14 @@ function update(dt) {
   if (phase === 'harvest') {
     const k = Math.floor(phaseT / 0.35);
     plots.forEach((p, i) => { if (i <= k && !p.picked) { p.picked = true; flying.push({ kind: p.kind, x0: p.x, y0: p.y - S * 1.6, t: 0 }); sfx.pop(); } });
-    if (phaseT > 0.35 * plots.length + 0.6) { phase = 'party'; phaseT = 0; sfx.fanfare(); twins.forEach(t => t.hop = 0); }
+    if (phaseT > 0.35 * plots.length + 0.6) { phase = 'party'; phaseT = 0; TKP.celebrate({ onDone: nextSet }); }
   }
   flying.forEach(f => { f.t += dt / 0.6; if (f.t >= 1 && !f.done) { f.done = true; basket.items.push(f.kind); TK.spark(basket.x, basket.y - S, [255, 220, 120], 5, 0.5); } });
   flying = flying.filter(f => !f.done);
-  if (phase === 'party') { TK.confetti(dt); if (phaseT > 3.2) { phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; basket.items = []; newSet(); TK.flash(); lastGrow = TK.T; sfx.sparkle(); } }
+}
+/* 축하가 끝나면(하얀 번짐 아래에서) 다음 씨앗 세트 */
+function nextSet() {
+  phase = 'play'; phaseT = 0; rounds++; setIdx = (setIdx + 1) % SETS.length; basket.items = []; newSet(); lastGrow = TK.T; sfx.sparkle();
 }
 
 // 식물 그리기: 흙 위 (x,y), 단계 st(0~4), 크기 s
@@ -125,7 +129,17 @@ function plant(kind, x, y, st, s, sway) {
 }
 // 손그림이 있으면 그것으로 (없으면 false → 아래 코드 그림)
 function artPlant(kind, st, s) {
-  if (kind === 'dino') { if (st < 4) return false; return HG.drawObj(ctx, 'o_dinoegg', 0, s * 0.15, s * 2.2); }
+  if (kind === 'dino') {
+    if (st >= 4) return HG.drawObj(ctx, 'o_dinoegg', 0, s * 0.15, s * 2.2);
+    /* 1~3단계: 손그림 알에서 아래쪽 58%(껍데기)만 보임. 3단계는 흔들림 + 금 간 선 */
+    const im = HG.lazyImg('o_dinoegg'); if (!im) return false;
+    const h = s * [0, 1.3, 1.6, 1.9][st], dw = h * im.naturalWidth / im.naturalHeight, yb = s * 0.15;
+    ctx.save(); if (st === 3) ctx.rotate(Math.sin(TK.T * 14) * 0.06);
+    ctx.beginPath(); ctx.rect(-dw / 2, yb - h * 0.58, dw, h * 0.58 + 2); ctx.clip();
+    ctx.drawImage(im, -dw / 2, yb - h, dw, h);
+    if (st === 3) { ctx.beginPath(); ctx.moveTo(-dw * 0.4, yb - h * 0.56); ctx.lineTo(-dw * 0.2, yb - h * 0.46); ctx.lineTo(0, yb - h * 0.58); ctx.lineTo(dw * 0.2, yb - h * 0.47); ctx.lineTo(dw * 0.4, yb - h * 0.56); ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = s * 0.05; ctx.stroke(); }
+    ctx.restore(); return true;
+  }
   if (st < 4) return HG.drawObj(ctx, STAGE[st], 0, s * 0.25, s * [0, 1.3, 1.9, 2.3][st]);
   const w = ART[kind], im = HG.picImg(w); if (!im) return false;
   HG.drawPic(ctx, w, s * ({ sunflower: 2.9, tulip: 2.5, tulip2: 2.5, carrot: 2.1 }[kind] || 1.7)); return true;
@@ -159,7 +173,9 @@ function draw() {
     // 작은 비구름 (다 자란 곳은 사라짐)
     if (p.g < 4 && art) { if (p.rain <= 0) {} else { const cy = p.y - S * 2.9 + Math.sin(TK.T * 2 + p.x) * 3 - (p.wig > 0 ? Math.abs(Math.sin(p.wig * 20)) * S * 0.3 : 0); HG.drawObj(ctx, 'o_raincloud', p.x, cy, S * 1.2, S * 1.8); } }   /* 손그림 판: 구름은 비 올 때만 (두 줄 배치에서 윗줄 식물을 가리지 않게) */
     else if (p.g < 4) { const cy = p.y - S * 3.0 + Math.sin(TK.T * 2 + p.x) * 3 - (p.wig > 0 ? Math.abs(Math.sin(p.wig * 20)) * S * 0.3 : 0); ctx.fillStyle = p.rain > 0 ? '#c9d8ea' : '#ffffff'; ell(p.x, cy, S * 0.5, S * 0.3); ctx.fill(); ell(p.x - S * 0.4, cy + S * 0.08, S * 0.3, S * 0.22); ctx.fill(); ell(p.x + S * 0.4, cy + S * 0.08, S * 0.3, S * 0.22); ctx.fill(); }
-    if (!(art && (p.stage === 0 || p.stage === 4) && HG.drawObj(ctx, 'o_soil', p.x, p.y + S * 0.32, S * 0.85, S * 2.2)) && !(art && p.stage > 0 && p.stage < 4)) {
+    /* 흙더미는 모든 단계에 깔림 (새싹·잎·봉오리 손그림은 흙이 그림 안에 있음) */
+    const soilInArt = art && p.stage > 0 && p.stage < 4 && p.kind !== 'dino';
+    if (!(art && !soilInArt && HG.drawObj(ctx, 'o_soil', p.x, p.y + S * 0.32, S * 0.85, S * 2.2)) && !soilInArt) {
       ell(p.x, p.y, S * 1.0, S * 0.35); ctx.fillStyle = '#8c603c'; ctx.fill();
       ell(p.x, p.y - S * 0.06, S * 0.8, S * 0.22); ctx.fillStyle = '#a8794e'; ctx.fill();
     }
@@ -174,24 +190,24 @@ function draw() {
   ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5, b.y - b.w * 0.18); ctx.lineTo(b.x + b.w * 0.5, b.y - b.w * 0.18); ctx.lineTo(b.x + b.w * 0.4, b.y + b.w * 0.12); ctx.lineTo(b.x - b.w * 0.4, b.y + b.w * 0.12); ctx.closePath(); ctx.fill();
   }
   b.items.forEach((k, i) => icon(k, b.x - b.w * 0.3 + i * b.w * 0.2, b.y - b.w * 0.2, S * 0.7));
-  b.items.forEach((k, i) => { const nm = NAME[k], fs = Math.min(S * 0.24, b.w * 0.36 / ([...nm].length * 1.05)); HG.drawWord(ctx, nm, b.x - b.w * 0.3 + i * b.w * 0.2, b.y - b.w * 0.02 + (i % 2) * fs * 1.15, fs); });   // 바구니 단어 카드 (길이에 맞춰 크기, 두 줄 엇갈림)
-  if (!HG.lazyImg('o_basket')) { ctx.strokeStyle = '#a86e35'; ctx.lineWidth = 3; } else ctx.strokeStyle = 'rgba(0,0,0,0)'; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5 + k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.lineTo(b.x + b.w * 0.5 - k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.stroke(); }
+  if (!HG.lazyImg('o_basket')) { ctx.strokeStyle = '#a86e35'; ctx.lineWidth = 3; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(b.x - b.w * 0.5 + k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.lineTo(b.x + b.w * 0.5 - k * b.w * 0.03, b.y - b.w * 0.18 + k * b.w * 0.075); ctx.stroke(); } }
   flying.forEach(f => { const e = TK.ease(f.t); icon(f.kind, TK.lerp(f.x0, b.x, e), TK.lerp(f.y0, b.y - b.w * 0.2, e) - Math.sin(Math.PI * f.t) * S * 2, S * 0.7); });
   });
   if (art) { const bx = W * (0.5 + 0.38 * Math.sin(TK.T * 0.35)), by = H * (W < H ? 0.2 : 0.18) + Math.sin(TK.T * 2.3) * S * 0.4; ctx.save(); ctx.translate(bx, by + S * 0.4); if (Math.cos(TK.T * 0.35) < 0) ctx.scale(-1, 1); HG.drawPic(ctx, '벌', S * 0.8); ctx.restore(); }
-  twins.forEach((t, i) => TK.twin(t.kind, phase === 'party' ? TK.partyPose(i) : t.hop >= 0 ? 'sniff' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (phase === 'party' ? TK.bob(i * 1.5, t.h * 0.1, 7) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right', hop: t.hop }));
+  TKP.drawTwins();
   TK.drawParts();
 }
 
 window.__g = {
-  get phase() { return phase; }, get rounds() { return rounds; },
+  get phase() { return phase; }, get rounds() { return rounds; }, get S() { return S; },
+  plots() { return plots.map(p => ({ kind: p.kind, stage: p.stage, x: p.x, y: p.y })); },
   actions() { if (phase !== 'play') return []; const p = plots.find(p => p.g < 4); return p ? [{ type: 'tap', x: p.x, y: p.y - S * 0.2, wait: 160 }] : []; },
 };
 // 별 시범: 가장 덜 자란 흙더미를 톡
 window.__demo = () => {
   if (phase !== 'play') return null;
   const p = plots.filter(p => p.g < 4).sort((a, b) => a.g - b.g)[0]; if (!p) return null;
-  return { kind: 'tap', x: p.x, y: p.y - S * 0.2, say: '톡톡, 물 주자!' };
+  return { kind: 'tap', x: p.x, y: p.y - S * 0.2, say: '톡톡, 물 주자!', sayKey: 'water' };
 };
 TK.start({ resize: layout, init() { newSet(); lastGrow = TK.T; }, update, draw });
 })();

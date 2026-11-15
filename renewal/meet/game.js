@@ -11,11 +11,11 @@ const HG = window.H;   /* 한글 모듈 (이 파일 안의 H 는 화면 높이�
 
 const SCENES = {
   forest: { bg: 'bg_pk_forest', ax: 0.5, ay: 0.6, objs: ['o_bush', 'o_stump', 'o_mossrock', 'o_log', 'o_mushroom', 'o_tent'], sky: '#bfe9ff', ground: '#9fdc7c', blob: '#6fbf5a' },
-  sea: { bg: 'bg_sea', ax: 0.5, ay: 0.45, objs: ['o_rock', 'o_castle', 'o_shell', 'o_weed', 'o_bucket', 'o_cloud'], sky: '#9fdcff', ground: '#f6dfa4', blob: '#c9b48a' },
+  sea: { bg: 'bg_sea', ax: 0.5, ay: 0.45, objs: ['o_rock', 'o_castle', 'o_shell', 'o_weed', 'o_bucket', 'o_lifebuoy'], sky: '#9fdcff', ground: '#f6dfa4', blob: '#c9b48a' },
 };
-// 물건 자리 (화면 비율, 물건 밑변 가운데). p = 세로 화면, l = 가로 화면, 숫자 = 물건 수
+/* 물건 자리 (화면 비율, 물건 밑변 가운데). p = 세로 화면, l = 가로 화면, 숫자 = 물건 수 */
 const SLOTS = {
-  p4: [[0.28, 0.42], [0.72, 0.37], [0.28, 0.71], [0.72, 0.66]],
+  p4: [[0.27, 0.40], [0.73, 0.36], [0.27, 0.70], [0.73, 0.66]],
   p5: [[0.25, 0.39], [0.75, 0.34], [0.5, 0.54], [0.25, 0.73], [0.75, 0.69]],
   l4: [[0.18, 0.55], [0.39, 0.80], [0.61, 0.80], [0.82, 0.55]],
   l5: [[0.18, 0.53], [0.34, 0.80], [0.5, 0.53], [0.66, 0.80], [0.82, 0.53]],
@@ -25,15 +25,23 @@ const qs = new URLSearchParams(location.search).get('s');
 let scene = qs === 'forest' || qs === 'sea' ? qs : (HG.likes('고래') && !HG.likes('공룡') ? 'sea' : 'forest');
 const bags = { forest: [], sea: [] };
 let objs = [], focus = null, found = 0, rounds = 0, inScene = 0, phase = 'play', phaseT = 0, slideX = 0, swapped = false;
-let G = { port: true, cx: 0, cy: 0, R: 1, th: 1, tx: [0, 0], slotW: 1 };
-const twins = [{ kind: 'tino', hop: -1, react: 0, love: 0 }, { kind: 'coco', hop: -1, react: 0, love: 0 }];
+let G = { port: true, cx: 0, cy: 0, R: 1, slotW: 1 };
+let tagRects = [], partyHops = 0;
+const other = () => (scene === 'forest' ? 'sea' : 'forest');
+/* 놀이 틀: 쌍둥이 자세·톡 반응·축하는 TKP 가 맡음 */
+TKP.init({
+  id: 'meet', place: scene,
+  twins: { port: { x0: 0.14, x1: 0.86, yb: 0.985, h: 0.2 }, land: { x0: 0.07, x1: 0.93, yb: 0.985, h: 0.27 } },
+  preload: [SCENES[scene].bg].concat(SCENES[scene].objs, [SCENES[other()].bg]),
+  music: 'play',
+});
 
 const isWhale = w => HG.WHALES.includes(w) || w === '고래';
 function pool(sc) {
   const l = (sc === 'sea' ? HG.WHALES : HG.DINOS).filter(HG.hasPic);
   return l.length ? l : [sc === 'sea' ? '고래' : '공룡'];
 }
-// 섞은 주머니: 한 바퀴 다 나올 때까지 같은 친구가 다시 나오지 않음 (한 판 안에서도 겹치지 않게)
+/* 섞은 주머니: 한 바퀴 다 나올 때까지 같은 친구가 다시 나오지 않음 (한 판 안에서도 겹치지 않게) */
 function takeFriends(sc, n) {
   const out = [];
   let guard = 0;
@@ -49,32 +57,34 @@ function takeFriends(sc, n) {
 function layout() {
   const W = TK.W, H = TK.H, port = W < H, n = objs.length || 4, five = n >= 5;
   const slots = SLOTS[(port ? 'p' : 'l') + (five ? 5 : 4)];
-  const s = port ? Math.min(W * (five ? 0.27 : 0.32), H * (five ? 0.135 : 0.16)) : Math.min(W * (five ? 0.11 : 0.125), H * (five ? 0.22 : 0.24));
+  const s = port ? Math.min(W * (five ? 0.27 : 0.34), H * (five ? 0.135 : 0.16)) : Math.min(W * (five ? 0.11 : 0.125), H * (five ? 0.22 : 0.24));
   objs.forEach((o, i) => { const sl = slots[i % slots.length]; o.x = sl[0] * W; o.y = sl[1] * H; o.s = s; o.side = sl[0] < 0.5 ? -1 : 1; });
   G = {
     port, cx: W / 2, cy: H * (port ? 0.47 : 0.5),
     R: port ? Math.min(W * 0.42, H * 0.25) : Math.min(H * 0.40, W * 0.25),
-    th: H * (port ? 0.15 : 0.26),
-    tx: port ? [W * 0.14, W * 0.86] : [W * 0.07, W * 0.93],
-    slotW: port ? W * 0.44 : W * 0.15,
+    slotW: port ? W * 0.44 : W * 0.2,
   };
 }
 function newRound() {
   const n = TK.W >= TK.H ? 5 : 4, names = TK.shuffle(SCENES[scene].objs).slice(0, n), fr = takeFriends(scene, n);
   HG.preload(fr); HG.preload(bags[scene].slice(0, 5));
   objs = names.map((name, i) => ({ name, friend: fr[i], st: 'hid', inT: -i * 0.09, mv: 0, popT: 0, lv: 0, hop: -1, wig: 0,
-    nextWig: TK.T + TK.rand(1.2, 3.5), readT: 0, doneT: 0, from: null, x: 0, y: 0, s: 1, side: 1 }));
+    nextWig: TK.T + TK.rand(1.2, 3.5), partyN: 0, readT: 0, doneT: 0, from: null, x: 0, y: 0, s: 1, side: 1 }));
   found = 0; focus = null;
   layout();
 }
 
-// ---------- 친구 자리 (밑변 가운데 x, yb, 키 h) ----------
+/* ---------- 친구 자리 (밑변 가운데 x, yb, 키 h) ---------- */
 function peekPose(o) {
   const wig = o.wig > 0 ? Math.sin(Math.PI * Math.min(1, o.wig / 0.6)) : 0, h = o.s * (isWhale(o.friend) ? 0.8 : 1.0);
   return { x: o.x + o.side * o.s * 0.14, yb: o.y - o.s * (1.15 + 0.15 * wig) + h, h };
 }
 function centerPose(o) { const wh = isWhale(o.friend); return { x: G.cx, yb: G.cy + G.R * (wh ? 0.35 : 0.55), h: G.R * (wh ? 0.9 : 1.25) }; }
-function slotPose(o) { const wh = isWhale(o.friend); return { x: o.x - o.side * o.s * 0.12, yb: o.y - o.s * 0.04, h: o.s * (wh ? 0.85 : 1.15) }; }
+function slotPose(o) {
+  const wh = isWhale(o.friend), h = o.s * (wh ? 0.85 : 1.15), hw = h * (wh ? 0.75 : 0.45);
+  /* 친구 그림이 화면 밖으로 나가지 않게 */
+  return { x: TK.clamp(o.x - o.side * o.s * 0.12, hw, TK.W - hw), yb: o.y - o.s * 0.04, h };
+}
 function mix(a, b, t, tk) { return { x: TK.lerp(a.x, b.x, t), yb: TK.lerp(a.yb, b.yb, t), h: TK.lerp(a.h, b.h, tk == null ? t : tk) }; }
 function friendPose(o) {
   if (o.st === 'hid') return peekPose(o);
@@ -82,20 +92,24 @@ function friendPose(o) {
   if (o.lv < 1) return mix(o.from || centerPose(o), slotPose(o), TK.ease(o.lv));
   return slotPose(o);
 }
-// 이름표 글자 크기: 그려질 크기 a 를 폭 maxW 안에 맞추고, drawTag 가 긴 이름을 줄이는 만큼 미리 키워서 넘김
-function tagSize(w, maxW, cap) {
-  const n = [...w].length, a = Math.min(cap, maxW / (n * 1.02 + 0.7));
+/* 이름표 글자 크기: 그려질 크기 a 를 폭 maxW 안에 맞추고, drawTag 가 긴 이름을 줄이는 만큼 미리 키워서 넘김 */
+function tagSize(w, maxW, cap, floor) {
+  const n = [...w].length, a = Math.max(floor || 0, Math.min(cap, maxW / (n * 1.02 + 0.7)));
   return n > 4 ? a / Math.max(0.5, 4.5 / n) : a;
 }
+/* drawTag 가 실제로 그리는 이름표 폭 (손그림 이름표는 글자 폭의 1.08배) */
+function tagWidth(w, size) {
+  const n = [...w].length, a = n > 4 ? size * Math.max(0.5, 4.5 / n) : size;
+  return (n * a * 1.02 + a * 0.7) * 1.08;
+}
 
-// ---------- 동작 ----------
+/* ---------- 동작 ---------- */
 function readFriend(o) { HG.read(o.friend); o.readT = TK.T; o.doneT = 0; }
 function open(o) {
   o.st = 'pop'; o.popT = 0; o.mv = 0; o.hop = -1; focus = o;
   readFriend(o);
   sfx.rustle(); sfx.boing();
-  TK.spark(o.x, o.y - o.s * 0.8, TK.pick(TK.COLS), 12);
-  twins[o.x < TK.W / 2 ? 0 : 1].react = 2.1;
+  TKP.found(o.x, o.y - o.s * 0.8);
 }
 function dismiss(o) {
   if (!o || o.st !== 'pop') return;
@@ -112,22 +126,15 @@ function objAt(x, y) {
   });
   return best;
 }
-function twinAt(x, y) {
-  for (let i = 0; i < 2; i++) if (Math.abs(x - G.tx[i]) < G.th * 0.45 && y > TK.H - G.th * 1.05) return i;
-  return -1;
-}
-function cheerTwin(i) { const t = twins[i]; t.hop = 0; t.love = 1.0; sfx.giggle(t.kind); TK.hearts(G.tx[i], TK.H - G.th * 0.9, 6); }
-function bumpTwin(i) { if (twins[i].hop < 0) twins[i].hop = 0; }
 function tap(x, y) {
-  const ti = twinAt(x, y);
-  if (ti >= 0) { cheerTwin(ti); return; }
-  if (phase !== 'play') { TK.spark(x, y, TK.pick(TK.COLS), 8); sfx.soft(); bumpTwin(x < TK.W / 2 ? 0 : 1); return; }
+  if (TKP.tap(x, y)) return;
+  if (phase !== 'play') { TKP.tapEmpty(x, y); return; }
   if (focus && hitFocus(x, y)) { readFriend(focus); focus.hop = 0; sfx.boing(); TK.spark(x, y, TK.pick(TK.COLS), 10); return; }
   const o = objAt(x, y);
   if (focus) { dismiss(focus); sfx.soft(); }
   if (o && o.st === 'hid') { open(o); return; }
   if (o && o.st === 'out' && o.lv >= 1) { o.hop = 0; readFriend(o); sfx.boing(); TK.spark(o.x, o.y - o.s, TK.pick(TK.COLS), 8); return; }
-  TK.ring(x, y, 14 * TK.U, [255, 255, 255]); sfx.soft(); bumpTwin(x < TK.W / 2 ? 0 : 1);
+  TKP.tapEmpty(x, y);
 }
 TK.input({
   down(p) { tap(p.x, p.y); },
@@ -142,15 +149,11 @@ TK.input({
 function nextRound() {
   rounds++; inScene++;
   if (inScene >= 2) { phase = 'slide'; phaseT = 0; swapped = false; sfx.whoosh(); return; }
-  newRound(); phase = 'play'; phaseT = 0; TK.flash();
+  newRound(); phase = 'play'; phaseT = 0;
 }
 function update(dt) {
+  TKP.update(dt);
   phaseT += dt;
-  twins.forEach(t => {
-    t.react = Math.max(0, t.react - dt); t.love = Math.max(0, t.love - dt);
-    if (t.hop >= 0) { t.hop += dt * 2.4; if (t.hop > 1) t.hop = -1; }
-    if (phase === 'party' && t.hop < 0) t.hop = 0;
-  });
   objs.forEach(o => {
     o.inT += dt; o.wig = Math.max(0, o.wig - dt);
     if (o.hop >= 0) { o.hop += dt * 2.2; if (o.hop > 1) o.hop = -1; }
@@ -169,21 +172,27 @@ function update(dt) {
     }
   });
   if (phase === 'play' && objs.length && found >= objs.length && !focus) {
-    phase = 'party'; phaseT = 0; sfx.fanfare();
-    twins.forEach((t, i) => TK.hearts(G.tx[i], TK.H - G.th, 5));
+    phase = 'party'; phaseT = 0; partyHops = 0;
+    TKP.celebrate({ onDone: nextRound });
   }
-  if (phase === 'party') { TK.confetti(dt); if (phaseT > 2.5) nextRound(); }
+  /* 축하 동안 서 있는 친구들이 0.18초 간격으로 차례로 hop (두 바퀴, 이름은 다시 읽지 않음) */
+  if (phase === 'party') {
+    objs.forEach((o, k) => {
+      const t0 = 0.3 + k * 0.18, n = (phaseT > t0 ? 1 : 0) + (phaseT > t0 + 1.2 ? 1 : 0);
+      if (n > o.partyN) { o.partyN = n; o.hop = 0; }
+    });
+  }
   if (phase === 'slide') {
     if (phaseT < 0.45) slideX = -TK.ease(phaseT / 0.45) * TK.W;
     else {
-      if (!swapped) { swapped = true; scene = scene === 'forest' ? 'sea' : 'forest'; inScene = 0; newRound(); }
+      if (!swapped) { swapped = true; scene = other(); inScene = 0; TKP.setPlace(scene); newRound(); }
       slideX = TK.W * (1 - TK.ease((phaseT - 0.45) / 0.45));
       if (phaseT >= 0.9) { slideX = 0; phase = 'play'; phaseT = 0; }
     }
   }
 }
 
-// ---------- 그리기 ----------
+/* ---------- 그리기 ---------- */
 function drawBack() {
   const sc = SCENES[scene];
   if (!HG.drawBg(ctx, sc.bg, 0, 0, TK.W, TK.H, sc.ax, sc.ay)) { ctx.fillStyle = TK.grad(0, TK.H, sc.sky, sc.ground); ctx.fillRect(0, 0, TK.W, TK.H); }
@@ -191,16 +200,21 @@ function drawBack() {
 function drawThing(o, x, yb, sc, rot) {
   const h = o.s * sc;
   ctx.save(); ctx.translate(x, yb); if (rot) ctx.rotate(rot);
-  if (!HG.drawObj(ctx, o.name, 0, 0, h, h * 1.7)) { TK.ell(0, -h * 0.4, h * 0.62, h * 0.42); ctx.fillStyle = SCENES[scene].blob; ctx.fill(); }
+  if (!HG.drawObj(ctx, o.name, 0, 0, h, h * 1.7)) { ctx.globalAlpha = 0.5; TK.ell(0, -h * 0.4, h * 0.62, h * 0.42); ctx.fillStyle = SCENES[scene].blob; ctx.fill(); }
   ctx.restore();
 }
 function drawFriend(o, p) {
   ctx.save(); ctx.translate(p.x, p.yb - TK.hopY(o.hop, p.h * 0.2)); HG.drawPic(ctx, o.friend, p.h); ctx.restore();
 }
 function drawSmallTag(o) {
-  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24), hy = TK.hopY(o.hop, p.h * 0.2);
-  const y = Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9);
-  HG.drawTag(ctx, o.friend, p.x, y, size, { hi: HG.hi(o.friend) });
+  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24, 15), hy = TK.hopY(o.hop, p.h * 0.2);
+  const n = [...o.friend].length, fpx = size * (n > 4 ? Math.max(0.5, 4.5 / n) : 1);
+  /* 세로 화면은 친구 발 아래(얼굴을 가리지 않게), 가로 화면은 머리 위 */
+  const y = G.port ? Math.min(TK.H - fpx * 2, o.y + fpx * 1.1) : Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9), tw = tagWidth(o.friend, size);
+  /* 이름표가 화면 밖으로 잘리지 않게 */
+  const x = TK.clamp(p.x, tw / 2 + 6, Math.max(tw / 2 + 6, TK.W - tw / 2 - 6));
+  tagRects.push({ x, w: tw, y, f: fpx });
+  HG.drawTag(ctx, o.friend, x, y, size, { hi: HG.hi(o.friend) });
 }
 function drawObjects() {
   const order = objs.slice().sort((a, b) => a.y - b.y);
@@ -238,31 +252,22 @@ function drawFocus() {
     }
   });
 }
-function drawTwins() {
-  twins.forEach((t, i) => {
-    let pose = 'idle';
-    if (phase === 'party') pose = TK.partyPose(i);
-    else if (t.react > 1.2) pose = 'wow';
-    else if (t.react > 0) pose = 'clap';
-    else if (t.love > 0) pose = 'happy';
-    const yb = TK.H * 0.985 - TK.hopY(t.hop, G.th * 0.28) - TK.bob(i * 1.7, G.th * 0.02);
-    TK.twin(t.kind, pose, G.tx[i], yb, G.th, { face: i ? 'left' : 'right', hop: t.hop });
-  });
-}
 function draw() {
   const sc = SCENES[scene];
   if (slideX) { ctx.fillStyle = TK.grad(0, TK.H, sc.sky, sc.ground); ctx.fillRect(0, 0, TK.W, TK.H); }
   ctx.save(); ctx.translate(slideX, 0);
+  tagRects = [];
   drawBack(); drawObjects(); drawFocus();
   ctx.restore();
-  drawTwins();
+  TKP.drawTwins();
   TK.drawParts();
 }
 
-// ---------- 자동 확인·별 시범 ----------
+/* ---------- 자동 확인·별 시범 ---------- */
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get scene() { return scene; },
   get found() { return found; }, get total() { return objs.length; },
+  get objY() { return objs.map(o => o.y); }, get objs() { return objs.map(o => o.name); }, get tagRects() { return tagRects.slice(); },
   get focus() { return focus ? focus.friend : null; }, get friends() { return objs.map(o => o.friend); },
   actions() {
     if (phase !== 'play') return [];
@@ -276,8 +281,7 @@ window.__demo = () => {
   if (phase !== 'play' || focus) return null;
   const hid = objs.filter(o => o.st === 'hid'); if (!hid.length) return null;
   const o = TK.pick(hid);
-  return { kind: 'tap', x: o.x, y: o.y - o.s * 0.5, say: '톡! 누가 숨었을까?' };
+  return { kind: 'tap', x: o.x, y: o.y - o.s * 0.5, say: '톡! 누가 숨었을까?', sayKey: 'peek' };
 };
 TK.start({ resize: layout, init() { newRound(); }, update, draw });
-if (window.TKMusic) TKMusic.play('play');
 })();
