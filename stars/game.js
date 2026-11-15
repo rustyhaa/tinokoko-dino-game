@@ -157,7 +157,7 @@ function draw() {
     if (port) H.drawTag(ctx, fig || H.JAMO_NAME[jamo], W / 2, box.y + box.h + H2 * 0.05, m * 0.07, { hi: -1 });
     else H.drawTag(ctx, fig || H.JAMO_NAME[jamo], box.x + box.w + W * 0.1, box.y + box.h * 0.5, m * 0.07, { hi: -1 });   /* 가로: 대표 그림과 안 겹치게 별 옆에 */
     if (ex) {
-      const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.88, ph = port ? m * 0.3 : H2 * 0.24, sc = phase === 'fade' ? 1 : TK.back(k);
+      const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.905, ph = port ? m * 0.3 : H2 * 0.24, sc = phase === 'fade' ? 1 : TK.back(k);
       ctx.save(); ctx.translate(px, pyb); ctx.scale(sc, sc); H.drawPic(ctx, ex, ph); ctx.restore();
       /* 대표 단어 이름표: drawTag 가 5글자 넘으면 글자를 줄이므로 줄어든 뒤 글자가 16px 이상(가로 15px 이상)이 되게 키워서 넘김 */
       const n = [...ex].length, eff = Math.max(port ? 16 : 15, m * 0.04), ts = n > 4 ? eff / Math.max(0.5, 4.5 / n) : eff;
