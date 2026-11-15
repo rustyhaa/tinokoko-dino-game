@@ -154,7 +154,8 @@ function draw() {
   if (alive || phase === 'fade') {   // 완성: 자음 이름표 + 언덕 위 쌍둥이 사이에 그 자음으로 시작하는 그림
     const ex = fig || H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2, m = Math.min(W, H2);
     ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
-    H.drawTag(ctx, fig || H.JAMO_NAME[jamo], W / 2, box.y + box.h + H2 * 0.05, m * 0.07, { hi: -1 });
+    if (port) H.drawTag(ctx, fig || H.JAMO_NAME[jamo], W / 2, box.y + box.h + H2 * 0.05, m * 0.07, { hi: -1 });
+    else H.drawTag(ctx, fig || H.JAMO_NAME[jamo], box.x + box.w + W * 0.1, box.y + box.h * 0.5, m * 0.07, { hi: -1 });   /* 가로: 대표 그림과 안 겹치게 별 옆에 */
     if (ex) {
       const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.95, ph = port ? m * 0.2 : H2 * 0.28, sc = phase === 'fade' ? 1 : TK.back(k);
       ctx.save(); ctx.translate(px, pyb); ctx.scale(sc, sc); H.drawPic(ctx, ex, ph); ctx.restore();
