@@ -68,8 +68,8 @@ function waterEll() {
   return { cx: tub.x, wy: tub.rim + tub.h * 0.03, rx: tub.w * 0.46, ry: tub.h * 0.17 };
 }
 /* 욕조 속 친구 i (n마리 중) 의 가로 위치 */
-function tubSlotX(i, n) { const e = waterEll(); return e.cx + (n < 2 ? 0 : (i ? 1 : -1) * e.rx * 0.18 * 1.6); }
-const tubH = () => geom().h * 0.5;
+function tubSlotX(i, n) { const e = waterEll(); return e.cx + (n < 2 ? 0 : (i ? 1 : -1) * e.rx * 0.2); }
+const tubH = () => geom().h * 0.42;
 
 function rubAt(x, y, amount) {
   if (phase !== 'play' || !cur || cur.st !== 'dirty') return false;
@@ -257,7 +257,7 @@ function drawFriend(f, x, yb, h, rot) {
 /* 풍덩 도중 친구 위치·크기 */
 function jumpPose(f) {
   const g = geom(), e = waterEll(), k = TK.ease(clamp(f.t / 0.6, 0, 1)), n = tubs.length + 1;
-  const x1 = tubSlotX(tubs.length, n), y1 = e.wy + e.ry * 0.55, sc = 1 - 0.5 * k;
+  const x1 = tubSlotX(tubs.length, n), y1 = e.wy + e.ry * 0.55, sc = 1 - 0.58 * k;
   return { x: g.cx + (x1 - g.cx) * k, y: g.yb + (y1 - g.yb) * k - Math.sin(Math.PI * k) * g.h * 0.55, h: g.h * sc };
 }
 /* 욕조 속 친구: 머리만 (물 타원 clip 안에서 그림) */
@@ -281,9 +281,9 @@ function drawCurFriend() {
 }
 function drawTag() {
   if (!cur || cur.st !== 'clean') return;
-  const b = curBox(), size = friendTag(cur.w, TK.W * 0.8, b.h * 0.2), a = clamp(cur.t / 0.2, 0, 1);
+  const b = curBox(), size = friendTag(cur.w, TK.W * 0.8, b.h * 0.17), a = clamp(cur.t / 0.2, 0, 1);
   ctx.save(); ctx.globalAlpha = a;
-  HG.drawTag(ctx, cur.w, TK.W / 2, b.y + b.h + size * 1.05, size, { hi: HG.hi(cur.w) });
+  HG.drawTag(ctx, cur.w, TK.W / 2, b.y + b.h - size * 0.3, size, { hi: HG.hi(cur.w) });
   ctx.restore();
 }
 function drawSponge() {

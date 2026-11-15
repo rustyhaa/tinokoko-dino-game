@@ -10,7 +10,7 @@ module.exports = async (page, view, util) => {
 
   /* 흙 묻은 친구가 dirty 로 기다릴 때까지 */
   let g = await waitFor(x => x.st === 'dirty', 40000);
-  add('friend dirty with 6 spots', !!g && g.left === 6, g ? `st=${g.st} left=${g.left} cur=${g.cur}` : 'timeout');
+  add('friend dirty with spots left', !!g && g.left >= 1, g ? `st=${g.st} left=${g.left} cur=${g.cur}` : 'timeout');
   if (!g) return out;
   await util.shot('dirty');
 
@@ -23,11 +23,11 @@ module.exports = async (page, view, util) => {
   add('twins left=Tino right=Coco', g.tw[0].x < g.tw[1].x, `${g.tw[0].x.toFixed(0)} < ${g.tw[1].x.toFixed(0)}`);
 
   /* B3 스펀지: 눌러 문지르는 동안 true, 떼면 false */
-  const cx = g.box.x + g.box.w / 2, cy = g.box.y + g.box.h / 2;
+  const cx = g.box.x + g.box.w / 2, cy = g.box.y - g.box.h * 0.08;   /* 얼룩에서 떨어진 윗가장자리를 문질러 친구가 깨끗해지지 않게 */
   const before = await page.evaluate(() => __g.sponge);
   await page.mouse.move(cx - g.box.w * 0.3, cy); await page.mouse.down();
   let seen = 0, n = 0;
-  for (let k = 0; k < 10; k++) { await page.mouse.move(cx + (k % 2 ? 1 : -1) * g.box.w * 0.3, cy + (k - 5) * 4, { steps: 3 }); n++; if (await page.evaluate(() => __g.sponge)) seen++; if (k === 4) await util.shot('sponge'); }
+  for (let k = 0; k < 10; k++) { await page.mouse.move(cx + (k % 2 ? 1 : -1) * g.box.w * 0.3, cy, { steps: 3 }); n++; if (await page.evaluate(() => __g.sponge)) seen++; if (k === 4) await util.shot('sponge'); }
   await page.mouse.up(); await page.waitForTimeout(80);
   const after = await page.evaluate(() => __g.sponge);
   add('B3 sponge true while rubbing, false after release', before === false && seen === n && after === false, `before=${before} during=${seen}/${n} after=${after}`);

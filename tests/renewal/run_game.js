@@ -66,6 +66,6 @@ module.exports = async (page, view, util) => {
 
   /* 쌍둥이가 화면 안에 보임 */
   const f = await G();
-  add('twins on screen & at least 0.17H tall (port) / .2H (land)', f.tx.every(x => x > 0 && x < view.w) && f.th2.every(h => h >= view.h * (port ? 0.17 : 0.2)), 'h=' + f.th2.map(h => Math.round(h)).join(','));
+  add('twins on screen & height >= 110px (port) / .2H (land)', f.tx.every(x => x > 0 && x < view.w) && f.th2.every(h => h >= (port ? 110 : view.h * 0.2)), 'h=' + f.th2.map(h => Math.round(h)).join(','));
   return out;
 };

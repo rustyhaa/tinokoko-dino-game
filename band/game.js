@@ -25,7 +25,7 @@ function layout() {
   const xy = inst[1];
   bars = [0, 1, 2, 3, 4, 5].map(i => ({ i, x: xy.x - xy.s * 1.25 + i * xy.s * 0.5, y: xy.y, w: xy.s * 0.42, h: xy.s * (1.3 - i * 0.1), bump: (bars[i] || {}).bump || 0 }));
   twins.forEach((t, i) => { t.h = port ? H * 0.22 : H * 0.4; t.x = W * (i ? (port ? 0.73 : 0.62) : (port ? 0.27 : 0.38)); t.yb = port ? H * 0.55 : H * 0.66; });
-  band.forEach((f, i) => { f.hx = W * [0.18, 0.82, 0.5][i]; f.y = port ? H * 0.3 : H * 0.42; });
+  band.forEach((f, i) => { f.hx = W * [0.18, 0.82, 0.5][i]; f.y = port ? H * 0.26 : H * 0.42; });
 }
 const xyloNotes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
 /* 따라 치기: 반짝이는 바를 치면 노래가 한 음씩 나아감 (학교종이 땡땡땡). 다른 바를 쳐도 그냥 소리만 — 틀림 없음 */

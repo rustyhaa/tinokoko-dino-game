@@ -2,21 +2,22 @@
 //  크게 반짝이는 "다음 별"을 탭하면(또는 손가락으로 쓸고 지나가면) 선이 이어지고 음이 하나씩 올라간다.
 //  별은 자음을 쓰는 순서(획순) 그대로 놓여 있어서, 다 이으면 ㄱ·ㄴ·ㅇ… 자음이 밤하늘에 빛나고
 //  "이응! 오리의 이응" 하고 읽어주며 그 자음으로 시작하는 그림이 함께 나온다. 1단계는 ㄱ·ㄴ·ㅁ·ㅇ만.
+//  완성되면 공용 놀이 틀(TKP)이 3초 축하를 하고, 그 자음 그림이 언덕 위 쌍둥이 사이에 서서 이름표와 함께 나온다.
 //  다른 별을 눌러도 반짝일 뿐. 한참 멈추면 별 시범(frame.js)이 다음 별을 알려준다.
 //  긋기 판 (자음 판 두 번에 한 번): 별 대신 연한 자음 위를 손가락으로 따라가면 빛 길이 남는다.
 //   반짝이 별이 지금 그을 획의 머리에 있고, 손가락이 획 근처(넉넉하게)를 지나가면 그만큼 빛이 차오른다.
 //   멀리 그으면 손끝 반짝이만 남을 뿐(틀림 없음). 머리 별을 톡 해도 조금씩 나아간다.
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
-let phase = 'play', phaseT = 0, rounds = 0, done = 0, lastTap = 0, box = {}, R = 10;
+/* TKP = 공용 놀이 틀 (shared/play.js) */
+let phase = 'play', phaseT = 0, rounds = 0, done = 0, lastTap = 0, box = {}, R = 10, exPos = null;
 let jamo = 'ㄱ', strokes = [], flat = [], lines = [], queue = [], fig = null, figN = 0;
-let trace = false, tr = [], trS = 0, trail = [], jamoN = 0, lastNote = 0;   // 긋기 판: tr[획] = { pts(촘촘한 점), prog(빛난 점 수) }
+let trace = false, tr = [], trS = 0, trail = [], jamoN = 0, lastNote = 0; /* 긋기 판: tr[획] = { pts(촘촘한 점), prog(빛난 점 수) } */
 // 좋아하는 것 별자리 (세 판마다 하나): 고래·공룡 모양 점 — 한 바퀴 이어 닫힘
 const FIG = {
   '고래': [[.08, .55], [.22, .34], [.45, .28], [.68, .36], [.82, .5], [.93, .3], [.98, .62], [.84, .6], [.62, .72], [.32, .72]],
   '공룡': [[.08, .78], [.22, .58], [.3, .32], [.45, .18], [.6, .26], [.55, .42], [.72, .5], [.92, .72], [.62, .78], [.36, .82]],
 };
-let twins = [{ kind: 'tino', hop: -1 }, { kind: 'coco', hop: -1 }];
 const bgStars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random() * 0.8, s: 0.5 + Math.random() * 1.2, ph: Math.random() * 6 }));
 const COL = [255, 236, 150];
 
@@ -24,8 +25,7 @@ function layout() {
   const W = TK.W, H2 = TK.H, port = W < H2;
   const sz = port ? Math.min(W * 0.78, H2 * 0.42) : Math.min(W * 0.46, H2 * 0.6);
   box = { x: W / 2 - sz / 2, y: port ? H2 * 0.14 : H2 * 0.08, w: sz, h: sz };
-  R = Math.min(W, H2) * 0.022;
-  twins.forEach((t, i) => { t.h = port ? H2 * 0.2 : H2 * 0.3; t.x = i ? W * (port ? 0.78 : 0.86) : W * (port ? 0.22 : 0.14); t.yb = H2 * 0.97; });
+  R = Math.min(W, H2) * 0.03;
 }
 function newJamo() {
   const favs = (H.cfg().fav || []).filter(k => FIG[k]);
@@ -58,25 +58,25 @@ function traceAt(x, y, force = 0) {
   if (TK.T - lastNote > 0.09) { lastNote = TK.T; const f = TK.PENTA[(trS * 3 + (s.prog / 5 | 0)) % TK.PENTA.length]; TK.tone(f * 2, 0, 0.35, 'sine', 0.12); }
   if (s.prog >= s.pts.length) {   // 획 하나 끝
     const p = head(); TK.spark(p.x, p.y, [255, 245, 190], 10, 0.8); sfx.ting(TK.PENTA[(trS + 5) % TK.PENTA.length] * 2);
-    twins[trS % 2].hop = 0; trS++;
+    TKP.react(trS % 2, 'wow', 0.6); trS++;
     if (traceDone()) { phase = 'complete'; phaseT = 0; }
   }
   return true;
 }
 const P = i => { const p = flat[i].p; return { x: box.x + p[0] * box.w, y: box.y + p[1] * box.h }; };
 const N = () => flat.length;
-const hitR = () => Math.max(34, R * 3.2);
+const hitR = () => Math.max(40, R * 3.2);
 
 function connect() {
   if (phase !== 'play' || done >= N()) return;
   const i = done, f = TK.PENTA[i % TK.PENTA.length];
   TK.tone(f * 2, 0, 0.6, 'sine', 0.22); TK.tone(f * 4, 0.02, 0.3, 'sine', 0.05);
   const p = P(i); TK.spark(p.x, p.y, [255, 245, 190], 8, 0.7);
-  if (i > 0 && !flat[i].first) lines.push({ a: i - 1, b: i, t: 0 });   // 같은 획 안에서만 선으로 잇기
+  if (i > 0 && !flat[i].first) lines.push({ a: i - 1, b: i, t: 0 }); /* 같은 획 안에서만 선으로 잇기 */
   const s = strokes[flat[i].si], lastOfStroke = i === N() - 1 || flat[i + 1].first;
-  if (lastOfStroke && s.closed) { const first = flat.findIndex(q => q.si === flat[i].si); lines.push({ a: i, b: first, t: 0 }); }   // 동그라미 닫기
+  if (lastOfStroke && s.closed) { const first = flat.findIndex(q => q.si === flat[i].si); lines.push({ a: i, b: first, t: 0 }); } /* 동그라미 닫기 */
   done++; lastTap = TK.T;
-  if (done % 3 === 0) { const tw = twins[(done / 3) % 2 | 0]; tw.hop = 0; }
+  if (done % 3 === 0) TKP.react((done / 3) % 2 | 0, 'wow', 0.6);
   if (done === N()) { phase = 'complete'; phaseT = 0; }
 }
 function tapAt(x, y, isDown) {
@@ -84,15 +84,13 @@ function tapAt(x, y, isDown) {
   if (trace) {
     trail.push({ x, y, t: TK.T });
     if (traceAt(x, y)) return;
-    if (isDown && !traceDone()) { const h = head(); if (TK.dist(x, y, h.x, h.y) < hitR() * 1.3) { traceAt(x, y, 4); return; } }   // 머리 별 톡 = 조금 나아감
+    if (isDown && !traceDone()) { const h = head(); if (TK.dist(x, y, h.x, h.y) < hitR() * 1.3) { traceAt(x, y, 4); return; } } /* 머리 별 톡 = 조금 나아감 */
     if (!isDown) return;
   }
   if (!trace && done < N()) { const p = P(done); if (TK.dist(x, y, p.x, p.y) < hitR()) { connect(); return; } }
   if (!isDown) return;
   if (!trace) for (let i = 0; i < N(); i++) { const p = P(i); if (TK.dist(x, y, p.x, p.y) < hitR() * 0.8) { TK.spark(p.x, p.y, [200, 220, 255], 5, 0.5); sfx.soft(); return; } }
-  const tw = twins.find(t => Math.abs(x - t.x) < t.h * 0.3 && y > t.yb - t.h);
-  if (tw) { tw.hop = 0; sfx.giggle(tw.kind); TK.hearts(tw.x, tw.yb - tw.h); H.read(tw.kind === 'tino' ? '티노' : '코코'); return; }
-  TK.spark(x, y, [255, 255, 255], 4, 0.4); sfx.soft();
+  TKP.tapEmpty(x, y);
 }
 // 손가락이 빨라 이벤트 사이가 멀면 그 사이를 촘촘히 채워서 판정 (긋기가 중간에 멈추지 않게)
 const lastPt = new Map();
@@ -101,19 +99,23 @@ function moveTo(p) {
   for (let i = 1; i <= k; i++) tapAt(TK.lerp(q.x, p.x, i / k), TK.lerp(q.y, p.y, i / k), false);
   lastPt.set(p.id, { x: p.x, y: p.y });
 }
-TK.input({ down(p) { lastPt.set(p.id, { x: p.x, y: p.y }); tapAt(p.x, p.y, true); }, move(p) { if (p.down) moveTo(p); }, up(p) { lastPt.delete(p.id); }, key() { if (trace) { if (!traceDone()) { const h = head(); traceAt(h.x, h.y, 5); } } else connect(); } });
+TK.input({ down(p) { lastPt.set(p.id, { x: p.x, y: p.y }); if (TKP.tap(p.x, p.y)) return; tapAt(p.x, p.y, true); }, move(p) { if (p.down) moveTo(p); }, up(p) { lastPt.delete(p.id); }, key() { if (trace) { if (!traceDone()) { const h = head(); traceAt(h.x, h.y, 5); } } else connect(); } });
 
 function update(dt) {
+  TKP.update(dt);
   phaseT += dt;
-  twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.5; if (t.hop > 1) t.hop = -1; } });
   lines.forEach(l => l.t = Math.min(1, l.t + dt / 0.3));
   while (trail.length && (TK.T - trail[0].t > 0.6 || trail.length > 80)) trail.shift();
-  if (phase === 'complete' && phaseT > 0.5) { phase = 'party'; phaseT = 0; sfx.fanfare(); setTimeout(() => { if (fig) { H.read(fig); TK.wordPop(fig, TK.W / 2, TK.H * 0.2); } else H.readJamo(jamo); }, 600); twins.forEach(t => t.hop = 0); }
+  if (phase === 'complete' && phaseT > 0.5) {
+    phase = 'party'; phaseT = 0; const word = fig || jamo, isFig = !!fig, jm = jamo;
+    TKP.found(box.x + box.w / 2, box.y + box.h / 2, { side: rounds % 2 });
+    setTimeout(() => { if (isFig) H.read(word); else H.readJamo(jm); }, 600);
+    TKP.celebrate({ word, onDone: () => { phase = 'fade'; phaseT = 0; } });
+  }
   if (phase === 'party') {
     if (Math.random() < dt * 25) { const p = trace ? TP(TK.pick(TK.pick(tr).pts)) : P((Math.random() * N()) | 0); TK.spark(p.x, p.y, COL, 2, 0.5); }
-    if (phaseT > 4.2) { phase = 'fade'; phaseT = 0; }
   }
-  if (phase === 'fade' && phaseT > 0.8) { phase = 'play'; phaseT = 0; rounds++; newJamo(); TK.flash(); lastTap = TK.T; sfx.sparkle(); }
+  if (phase === 'fade' && phaseT > 0.5) { phase = 'play'; phaseT = 0; rounds++; newJamo(); TK.flash(); lastTap = TK.T; sfx.sparkle(); }
 }
 
 function draw() {
@@ -124,8 +126,8 @@ function draw() {
   const mr = Math.min(W, H2) * 0.05, mx = W * 0.9, my = H2 * 0.1;
   ell(mx, my, mr, mr); ctx.fillStyle = '#fff4c2'; ctx.fill(); ell(mx - mr * 0.45, my - mr * 0.2, mr * 0.88, mr * 0.88); ctx.fillStyle = '#18214f'; ctx.fill();
   ctx.fillStyle = '#2f5d5a'; ctx.beginPath(); ctx.moveTo(0, H2); ctx.lineTo(0, H2 * 0.88); ctx.quadraticCurveTo(W * 0.25, H2 * 0.8, W * 0.5, H2 * 0.87); ctx.quadraticCurveTo(W * 0.75, H2 * 0.93, W, H2 * 0.84); ctx.lineTo(W, H2); ctx.fill();
-  } else bgStars.forEach((s, i) => { if (i % 3) return; const a = 0.25 + 0.5 * Math.abs(Math.sin(TK.T * 1.3 + s.ph)); ell(s.x * W, s.y * H2 * 0.6, s.s * TK.U * 1.3, s.s * TK.U * 1.3); ctx.fillStyle = `rgba(255,255,230,${a})`; ctx.fill(); });   // 반짝임만 살짝
-  const alive = phase === 'party', fade = phase === 'fade' ? 1 - phaseT / 0.8 : 1;
+  } else bgStars.forEach((s, i) => { if (i % 3) return; const a = 0.25 + 0.5 * Math.abs(Math.sin(TK.T * 1.3 + s.ph)); ell(s.x * W, s.y * H2 * 0.6, s.s * TK.U * 1.3, s.s * TK.U * 1.3); ctx.fillStyle = `rgba(255,255,230,${a})`; ctx.fill(); }); /* 반짝임만 살짝 */
+  const alive = phase === 'party', fade = phase === 'fade' ? 1 - phaseT / 0.5 : 1;
   ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
   // 연한 안내선: 처음엔 아주 흐리게 자음 모양이 보임 (따라 긋기 느낌)
   if (fig) {   // 고래·공룡 별자리: 다 이으면 안쪽이 은은하게 채워짐
@@ -141,20 +143,27 @@ function draw() {
     const p = P(i), lit = i < done, next = i === done && phase === 'play';
     if (next) { const pr = (TK.T * 1.2) % 1; ell(p.x, p.y, R * (1.5 + pr * 2.5), R * (1.5 + pr * 2.5)); ctx.strokeStyle = `rgba(255,240,170,${0.8 * (1 - pr)})`; ctx.lineWidth = 3; ctx.stroke(); }
     const r = R * (next ? 1.5 + 0.25 * Math.sin(TK.T * 6) : lit ? 1.15 : 0.8);
-    if ((lit || next) && H.drawObj(ctx, 'o_star', p.x, p.y + r * 1.25, r * 2.5)) continue;   // 켜진 별은 손그림 별
+    if ((lit || next) && H.drawObj(ctx, 'o_star', p.x, p.y + r * 1.25, r * 2.5)) continue; /* 켜진 별은 손그림 별 */
     ctx.shadowColor = 'rgba(255,245,180,.95)'; ctx.shadowBlur = next || lit ? 16 : 4;
     TK.star(p.x, p.y, r, lit || next ? '#fff6c8' : 'rgba(220,225,255,.6)', TK.T * (next ? 1.5 : 0.3));
     ctx.shadowBlur = 0;
   }
   }
-  if (alive || phase === 'fade') {   // 완성: 자음 이름 + 그 자음으로 시작하는 그림
-    const ex = fig || H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2;
-    const ly = box.y + box.h + (port ? H2 * 0.05 : H2 * 0.06);
-    H.drawWord(ctx, fig || H.JAMO_NAME[jamo], W / 2, ly, Math.min(W, H2) * 0.06, { color: '#fff6c8', outline: 'rgba(20,28,68,.9)', hi: -1 });
-    if (ex) { ctx.save(); ctx.translate(port ? W / 2 : box.x + box.w + W * 0.1, port ? ly + H2 * 0.16 : box.y + box.h * 0.7); ctx.scale(TK.back(k), TK.back(k)); H.drawPic(ctx, ex, Math.min(W, H2) * 0.16); ctx.restore(); }
-  }
   ctx.restore();
-  twins.forEach((t, i) => TK.twin(t.kind, alive ? TK.partyPose(i) : t.hop >= 0 ? 'wow' : 'idle', t.x, t.yb - TK.hopY(t.hop, t.h * 0.2) - (alive ? TK.bob(i * 1.5, t.h * 0.1, 6) : TK.bob(i * 1.5, t.h * 0.02)), t.h, { face: i ? 'left' : 'right' }));
+  exPos = null;
+  if (alive || phase === 'fade') {   // 완성: 자음 이름표 + 언덕 위 쌍둥이 사이에 그 자음으로 시작하는 그림
+    const ex = fig || H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2, m = Math.min(W, H2);
+    ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
+    H.drawTag(ctx, fig || H.JAMO_NAME[jamo], W / 2, box.y + box.h + H2 * 0.05, m * 0.07, { hi: -1 });
+    if (ex) {
+      const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.95, ph = port ? m * 0.2 : H2 * 0.28, sc = phase === 'fade' ? 1 : TK.back(k);
+      ctx.save(); ctx.translate(px, pyb); ctx.scale(sc, sc); H.drawPic(ctx, ex, ph); ctx.restore();
+      const ts = m * 0.04; H.drawTag(ctx, ex, px, Math.min(pyb + ts * 0.6, H2 - ts * 0.9), ts, { hi: -1 });
+      exPos = { x: px, yb: pyb, h: ph };
+    }
+    ctx.restore();
+  }
+  TKP.drawTwins();
   TK.drawParts();
 }
 
@@ -178,7 +187,7 @@ function drawTrace(alive) {
 }
 
 window.__g = {
-  get trace() { return trace; },
+  get trace() { return trace; }, get R() { return R; }, get exPos() { return exPos; }, get fig() { return fig; },
   get phase() { return phase; }, get rounds() { return rounds; }, get done() { return done; }, get jamo() { return jamo; },
   actions() {
     if (trace) { if (phase !== 'play' || traceDone()) return []; const s = tr[trS]; return [{ type: 'path', pts: s.pts.slice(s.prog - 1).map((q, i) => { const p = TP(q); return { x: p.x + Math.sin(i) * 8, y: p.y + Math.cos(i) * 8 }; }), wait: 200 }]; }
@@ -186,10 +195,10 @@ window.__g = {
 };
 // 별 시범: 다음 별을 톡
 window.__demo = () => {
-  if (trace) { if (phase !== 'play' || traceDone()) return null; const s = tr[trS]; return { kind: 'path', pts: s.pts.slice(s.prog - 1, s.prog + 14).map(TP), say: '반짝이는 별을 따라 쓱!' }; }
+  if (trace) { if (phase !== 'play' || traceDone()) return null; const s = tr[trS]; return { kind: 'path', pts: s.pts.slice(s.prog - 1, s.prog + 14).map(TP), say: '반짝이는 별을 따라 쓱!', sayKey: 'trace' }; }
   if (phase !== 'play' || done >= N()) return null;
-  const p = P(done); return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 별을 톡!' };
+  const p = P(done); return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 별을 톡!', sayKey: 'star' };
 };
-if (window.TKMusic) TKMusic.play('night');   // 잔잔한 배경음악 (music.js)
+TKP.init({ id: 'stars', twins: { port: { x0: 0.2, x1: 0.8, yb: 0.97, h: 0.2 }, land: { x0: 0.12, x1: 0.88, yb: 0.97, h: 0.3 } }, preload: ['bg_stars', 'o_star'], music: 'night' });   /* 놀이 틀: 쌍둥이·축하·음악 */
 TK.start({ resize: layout, init() { layout(); newJamo(); lastTap = TK.T; }, update, draw });
 })();
