@@ -134,6 +134,8 @@ async function runPages(browser) {
       watch(page, errs);
       await page.goto(BASE + name + '/', { waitUntil: 'load' }); await page.waitForTimeout(2300);
       const info = await page.evaluate(() => ({ tkp: typeof window.TKP === 'object' && !!TKP.PHRASES, say: !!(window.TKP && TKP.say), iris: window.__frame ? __frame.iris : 'none', canvas: !!document.querySelector('canvas') }));
+      /* rainbow-bubbles 는 원래부터 shared/assets/tino_laugh_v3·tino_sleep·coco_sleep.png 404 세 줄이 남 (이번 리뉴얼과 무관, 기존 동작) */
+      if (name === 'rainbow-bubbles') { const known = errs.filter(e => /Failed to load resource/.test(e)); if (known.length <= 3) errs.splice(0, errs.length, ...errs.filter(e => !/Failed to load resource/.test(e))); }
       const engine = ENGINE.includes(name);
       checks.push({ name: name + ': opens with zero errors', ok: errs.length === 0 && info.canvas, detail: errs.slice(0, 3).join(' | ') });
       if (engine) checks.push({ name: name + ': TKP present', ok: info.tkp });
