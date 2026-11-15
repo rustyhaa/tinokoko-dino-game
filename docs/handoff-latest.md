@@ -53,3 +53,11 @@
 - 정원·목욕·이름 방울 손그림 연결 (sheet8·9, bgsheet3). H.drawObj(o_ 물건). 새 단어 딸기·당근·호박·튤립·해바라기·벌.
 - 고도화 1차: TK.flash(판 전환)·TK.wordPop(단어 완성)·TK.twin hop 찌그러짐. 실로폰 따라 치기(학교종), 자음 짝꿍 그림 크게 튀어나오기. 예전 게임 2개는 놀이터 '예전 게임' 카드로.
 - 동작 16(TK.twin 새 자세 clap·cheer·point·wow·splash·sniff·thumb·sleep, TK.partyPose)·부품(풍선·깃발·결승선·악기·음표·별·글자판·이름표 3분할·하트) 적용. 발자국(o_foot)·실로폰(o_xylo)·잠(sleep)은 아직 안 씀.
+
+## 2026-11-15 리뉴얼 (브랜치 claude/tinokoko-renewal)
+- 첫 화면 = 글자 없는 마을 지도(장소 7곳) + 톱니 1초 꾹 → 부모 화면(설정 전부, '다른 놀이 5개'·'예전 게임 3개' 카드에 숨긴 게임).
+- 지도 놀이 6개: meet(공룡·고래 만나기, 새 게임) / run(자석 점프) / bath(큰 친구 닦기) / garden(새싹 시작) / band(가나다 고정) / stars(책상, 부모가 켜야 열림 cfg.desk).
+- 공통 놀이 틀 shared/play.js (window.TKP): 쌍둥이 자세·톡 반응·찾음·축하 3초·힌트. 서명은 docs/renewal/wp0-notes.md. 지도↔게임 전환(크림 원), 방금 논 곳 표시(sessionStorage tk-last-place)는 frame.js·games/index.html.
+- 글씨체 Pretendard(shared/fonts, 'TKFont'). 음성 파일은 보류: H.pack 고리만 있고 꺼져 있음 (docs/renewal/gm-addendum.md).
+- 테스트: `node tests/renewal/run.js <hub|pages|meet|run|bath|garden|band|stars> --serve` (게임당 2~3분). 계획·판정 문서: docs/renewal/master-plan.md.
+- 미리보기: gh-pages 의 renewal/ 폴더 (sw.js 저장 이름만 tkpreview- 로 바꿔 올림). 기존 사이트(루트)는 예전 화면 그대로 — 바꾸려면 리뉴얼 브랜치에서 `bash common/deploy_pages.sh`.
