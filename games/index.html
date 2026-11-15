@@ -50,12 +50,18 @@
   .place.off{filter:saturate(.35) opacity(.72);animation:none;cursor:default}
   .place.go{animation:go .45s ease-out forwards}
   .place.wig{animation:wig .45s ease-in-out}
+  .place.hint{animation:hint .7s ease-in-out 2}
+  .place.back{animation:backglow .6s ease-out 3}
+  /* 크림색 막: 장소에서 퍼져 화면을 덮고(나갈 때), 돌아오면 그 장소로 접혀 사라짐 */
+  #wipe{position:fixed;inset:0;z-index:5;background:#fff8e7;pointer-events:none;clip-path:circle(0 at 50% 50%)}
   .twins{aspect-ratio:1.8/1;display:flex;justify-content:center;align-items:flex-end;gap:2%}
   .mt{display:block;height:100%;flex:none}
   .mt img{display:block;height:100%;width:auto;pointer-events:none;animation:bob 2.4s ease-in-out infinite}
   .mt.c img{animation-delay:-1.2s}
   .mt.hop{animation:hop .45s ease-out}
   .mt.c.hop{animation-delay:.08s}
+  @keyframes hint{0%,100%{transform:translateY(0)}50%{transform:translateY(-6%)}}
+  @keyframes backglow{0%{box-shadow:0 6px 0 #e3c98e,0 10px 16px rgba(60,40,10,.25),0 0 0 0 rgba(255,214,90,.95)}100%{box-shadow:0 6px 0 #e3c98e,0 10px 16px rgba(60,40,10,.25),0 0 0 26px rgba(255,214,90,0)}}
   @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
   @keyframes go{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1.06)}}
   @keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
@@ -80,7 +86,7 @@
 
   /* ---------- 부모 화면 ---------- */
   .wrap{max-width:1000px;margin:0 auto;display:grid;gap:16px}
-  .back{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:3;min-height:58px;width:100%;border:0;border-radius:18px;background:var(--accent);color:var(--accent-ink);
+  button.back{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:3;min-height:58px;width:100%;border:0;border-radius:18px;background:var(--accent);color:var(--accent-ink);
     font:inherit;font-weight:800;font-size:1.15rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   header{display:flex;align-items:center;gap:14px}
   header{justify-content:center;text-align:center}
@@ -134,11 +140,13 @@
   details .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
   details ul{padding-left:1.1em;margin:8px 0 0}
   details li{margin:4px 0}
+  body:not(.par) #upd{display:none}
   #upd{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;max-width:calc(100% - 32px);
     border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 </style>
 </head>
 <body>
+<div id="wipe" aria-hidden="true"></div>
 <main class="map" id="map" aria-label="놀이 마을 지도">
   <div class="board">
     <svg class="road port" viewBox="0 0 100 211" preserveAspectRatio="none" aria-hidden="true">
@@ -156,13 +164,13 @@
     <img class="deco" src="../shared/pics/o_mushroom.webp" alt="" style="--pl:4;--pt:72;--ps:11;--ll:93;--lt:86;--ls:5">
     <img class="deco p-only" src="../shared/pics/o_flowers.webp" alt="" style="--pl:44;--pt:71;--ps:12;--ll:0;--lt:0;--ls:0">
 
-    <a class="place" href="../meet/?s=forest" aria-label="숲 (공룡 만나기)" style="--pl:5;--pt:7.58;--ps:42;--ll:10;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_pk_forest.webp)"><img src="../shared/pics/티라노사우루스.webp" alt="" style="left:13%;top:24%;width:67%"></a>
-    <a class="place" href="../meet/?s=sea" aria-label="바다 (고래 만나기)" style="--pl:53;--pt:11.37;--ps:41;--ll:30;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_sea.webp)"><img src="../shared/pics/혹등고래.webp" alt="" style="left:9%;top:25%;width:75%"></a>
-    <a class="place" href="../bath/" aria-label="집 (글자 목욕)" style="--pl:52;--pt:34.12;--ps:38;--ll:50;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_bath.webp)"><img src="../shared/pics/o_tub.webp" alt="" style="left:11%;top:34%;width:69%"><img src="../shared/pics/o_duck.webp" alt="" style="left:47%;top:16%;width:30%"></a>
-    <a class="place" href="../run/" aria-label="길 (글자 달리기)" style="--pl:7;--pt:30.33;--ps:39;--ll:70;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_pk_beach.webp)"><img src="../shared/pics/o_balloon_r.webp" alt="" style="left:15%;top:9%;width:30%"><img src="../shared/pics/o_balloon_b.webp" alt="" style="left:47%;top:19%;width:27%"><img src="../shared/pics/o_finish.webp" alt="" style="left:18%;top:50%;width:58%"></a>
-    <a class="place" href="../garden/" aria-label="정원 (글자 정원)" style="--pl:53;--pt:54.98;--ps:38;--ll:45;--lt:61.18;--ls:17;background-image:url(../shared/pics/bg_garden.webp);background-position:30% 60%"><img src="../shared/pics/해바라기.webp" alt="" style="left:15%;top:12%;width:46%"><img src="../shared/pics/딸기.webp" alt="" style="left:56%;top:44%;width:31%"></a>
-    <a class="place" href="../band/" aria-label="무대 (가나다 실로폰)" style="--pl:6;--pt:52.13;--ps:38;--ll:26;--lt:56.96;--ls:17;background-image:url(../shared/pics/bg_band.webp)"><img src="../shared/pics/o_drum.webp" alt="" style="left:10%;top:38%;width:44%"><img src="../shared/pics/o_horn.webp" alt="" style="left:47%;top:26%;width:43%"></a>
-    <a class="place desk off" id="pDesk" href="../stars/" aria-label="책상 (글자 별자리)" aria-disabled="true" style="--pl:60;--pt:75.83;--ps:35;--ll:65;--lt:58.02;--ls:15;background-image:url(../shared/pics/bg_shapes.webp)"><img src="../shared/pics/o_tile.webp" alt="" style="left:24%;top:44%;width:46%"><img src="../shared/pics/o_star.webp" alt="" style="left:28%;top:10%;width:42%"></a>
+    <a class="place" data-place="forest" href="../meet/?s=forest" aria-label="숲 (공룡 만나기)" style="--pl:5;--pt:7.58;--ps:42;--ll:10;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_pk_forest.webp)"><img src="../shared/pics/티라노사우루스.webp" alt="" style="left:13%;top:24%;width:67%"></a>
+    <a class="place" data-place="sea" href="../meet/?s=sea" aria-label="바다 (고래 만나기)" style="--pl:53;--pt:11.37;--ps:41;--ll:30;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_sea.webp)"><img src="../shared/pics/혹등고래.webp" alt="" style="left:9%;top:25%;width:75%"></a>
+    <a class="place" data-place="bath" href="../bath/" aria-label="집 (글자 목욕)" style="--pl:52;--pt:34.12;--ps:38;--ll:50;--lt:10.55;--ls:17;background-image:url(../shared/pics/bg_bath.webp)"><img src="../shared/pics/o_tub.webp" alt="" style="left:11%;top:34%;width:69%"><img src="../shared/pics/o_duck.webp" alt="" style="left:47%;top:16%;width:30%"></a>
+    <a class="place" data-place="run" href="../run/" aria-label="길 (글자 달리기)" style="--pl:7;--pt:30.33;--ps:39;--ll:70;--lt:18.99;--ls:17;background-image:url(../shared/pics/bg_pk_beach.webp)"><img src="../shared/pics/o_balloon_r.webp" alt="" style="left:15%;top:9%;width:30%"><img src="../shared/pics/o_balloon_b.webp" alt="" style="left:47%;top:19%;width:27%"><img src="../shared/pics/o_finish.webp" alt="" style="left:18%;top:50%;width:58%"></a>
+    <a class="place" data-place="garden" href="../garden/" aria-label="정원 (글자 정원)" style="--pl:53;--pt:54.98;--ps:38;--ll:45;--lt:61.18;--ls:17;background-image:url(../shared/pics/bg_garden.webp);background-position:30% 60%"><img src="../shared/pics/해바라기.webp" alt="" style="left:15%;top:12%;width:46%"><img src="../shared/pics/딸기.webp" alt="" style="left:56%;top:44%;width:31%"></a>
+    <a class="place" data-place="band" href="../band/" aria-label="무대 (가나다 실로폰)" style="--pl:6;--pt:52.13;--ps:38;--ll:26;--lt:56.96;--ls:17;background-image:url(../shared/pics/bg_band.webp)"><img src="../shared/pics/o_drum.webp" alt="" style="left:10%;top:38%;width:44%"><img src="../shared/pics/o_horn.webp" alt="" style="left:47%;top:26%;width:43%"></a>
+    <a class="place desk off" id="pDesk" data-place="stars" href="../stars/" aria-label="책상 (글자 별자리)" aria-disabled="true" style="--pl:60;--pt:75.83;--ps:35;--ll:65;--lt:58.02;--ls:15;background-image:url(../shared/pics/bg_stars.webp)"><img src="../shared/pics/o_star.webp" alt="" style="left:18%;top:20%;width:34%"><img src="../shared/pics/o_star.webp" alt="" style="left:52%;top:44%;width:28%"></a>
 
     <div class="twins" id="twins" style="--pl:8;--pt:79.6;--ps:44;--ll:3;--lt:54;--ls:20">
       <span class="mt t"><img src="../shared/pics/o_tino_point.webp" alt="티노"></span>
@@ -297,18 +305,18 @@
     <li><a href="../meet/"><img src="../meet/icons/icon-192.png" alt=""><b>공룡·고래 만나기</b><small>숨은 친구를 톡! 이름을 읽어 줘요</small></a>
       <button class="help" aria-expanded="false" aria-label="공룡·고래 만나기 도움말">?</button>
       <div class="tip" hidden><p><em>노는 법</em> 지도의 숲(공룡)·바다(고래)에서 열려요. 덤불·바위 뒤에 친구가 숨어 살짝 보여요. 물건을 톡 하면 친구가 가운데로 까꿍 나와 "트, 리, 케…" 이름을 글자마다 읽어 줘요(읽는 글자가 커져요). 다 만나면 새 친구들, 두 판마다 숲과 바다가 바뀌어요.</p><p><em>익히는 것</em> 긴 이름을 글자마다 끊어 듣기, 공룡·고래 종류. '글자 까꿍'과 '그림책'을 합친 놀이예요.</p><p><em>같이 놀 때</em> 나온 친구를 다시 톡 하면 또 읽어 줘요. 이름표를 손가락으로 짚으며 따라 읽어 주세요.</p></div></li>
-    <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>쓱쓱 닦으면 단어가 나와요</small></a>
+    <li><a href="../bath/"><img src="../bath/icons/icon-192.png" alt=""><b>글자 목욕</b><small>흙 묻은 친구를 쓱쓱 씻겨요</small></a>
       <button class="help" aria-expanded="false" aria-label="글자 목욕 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 벽 타일의 얼룩을 손가락으로 쓱쓱 문지르면 그림과 단어가 드러나며 읽어줘요. 두 장 다 닦으면 샤워.</p><p><em>익히는 것</em> 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 타일을 누르면 다시 읽어줘요.</p></div></li>
+      <div class="tip" hidden><p><em>노는 법</em> 진흙·물감이 묻은 친구(공룡·고래·동물)를 손가락으로 쓱쓱 문지르면 스펀지 거품이 나며 깨끗해지고, 친구 이름을 글자마다 읽어 줘요. 깨끗해진 친구는 욕조로 풍덩! 두 친구를 씻기면 샤워.</p><p><em>익히는 것</em> 이름 통단어, 문지르기(끌기).</p><p><em>같이 놀 때</em> 깨끗해진 친구를 톡 하면 다시 읽어 줘요.</p></div></li>
     <li><a href="../run/"><img src="../run/icons/icon-192.png" alt=""><b>글자 달리기</b><small>폴짝! 풍선 글자를 모아 단어를</small></a>
       <button class="help" aria-expanded="false" aria-label="글자 달리기 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 티노와 코코가 달려요. 화면 왼쪽을 톡 하면 티노, 오른쪽을 톡 하면 코코가 폴짝 뛰어 글자 풍선을 터뜨려요. 글자가 다 모이면 "나, 비. 나비!" 하고 단어를 읽고, 그림 깃발이 길가에 꽂혀요. 단어 셋이면 결승선!</p><p><em>익히는 것</em> 글자 하나하나 → 단어로 잇기.</p><p><em>같이 놀 때</em> 두 아이가 왼쪽·오른쪽을 하나씩 맡아 보세요. 놓친 풍선은 다시 오고, 돌멩이에 부딪혀도 괜찮아요.</p></div></li>
+      <div class="tip" hidden><p><em>노는 법</em> 티노와 코코가 달려요. 풍선이 다가오면 아무 때나 톡! 왼쪽을 톡 하면 티노, 오른쪽을 톡 하면 코코가 폴짝 뛰고, 풍선이 쏙 날아와 잡혀요(놓치는 일 없음). 글자가 다 모이면 "나, 비. 나비!" 하고 읽고 그림 깃발이 꽂혀요. 단어 셋이면 결승선!</p><p><em>익히는 것</em> 글자 하나하나 → 단어로 잇기.</p><p><em>같이 놀 때</em> 두 아이가 왼쪽·오른쪽을 하나씩 맡아 보세요. 놓친 풍선은 다시 오고, 돌멩이에 부딪혀도 괜찮아요.</p></div></li>
     <li><a href="../garden/"><img src="../garden/icons/icon-192.png" alt=""><b>글자 정원</b><small>쑥쑥 자라면 이름표가 피어요</small></a>
       <button class="help" aria-expanded="false" aria-label="글자 정원 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 흙을 톡 누르거나 문지르면 비가 내려 자라고, 다 자라면 "당근" 이름표가 피어나요. 바구니에 단어 카드가 모여요.</p><p><em>익히는 것</em> 채소·꽃 이름, 원인과 결과.</p></div></li>
-    <li><a href="../band/"><img src="../band/icons/icon-192.png" alt=""><b>가나다 실로폰</b><small>두드리면 글자가 노래해요</small></a>
+      <div class="tip" hidden><p><em>노는 법</em> 새싹을 톡 누르거나 문지를 때마다 비가 와서 쑥쑥, 세 번이면 꽃·열매가 피고 "당근" 하고 이름을 읽어 줘요. 넷 다 피면 바구니로 쏙쏙.</p><p><em>익히는 것</em> 채소·꽃 이름, 원인과 결과.</p></div></li>
+    <li><a href="../band/"><img src="../band/icons/icon-192.png" alt=""><b>가나다 실로폰</b><small>가나다라마바, 치면 글자가 노래해요</small></a>
       <button class="help" aria-expanded="false" aria-label="가나다 실로폰 도움말">?</button>
-      <div class="tip" hidden><p><em>노는 법</em> 실로폰 바마다 글자가 있어 치면 그 글자를 소리 내요. 쓸면 차례로. 북·나팔·탬버린도 있고, 친구가 이름표를 달고 와요.</p><p><em>익히는 것</em> 글자 소리, 순서.</p><p><em>같이 놀 때</em> "가, 나, 다" 같이 불러 주세요.</p></div></li>
+      <div class="tip" hidden><p><em>노는 법</em> 실로폰 바마다 가·나·다·라·마·바 글자가 있어 치면 그 글자를 소리 내요. 쓸면 차례로. 반짝이는 바를 따라 치면 '학교종' 노래가 돼요. 북·나팔·탬버린도 있고, 친구가 이름표를 달고 와요.</p><p><em>익히는 것</em> 글자 소리, 순서.</p><p><em>같이 놀 때</em> "가, 나, 다" 같이 불러 주세요.</p></div></li>
     <li><a href="../stars/"><img src="../stars/icons/icon-192.png" alt=""><b>글자 별자리</b><small>별을 이으면 자음이 빛나요</small></a>
       <button class="help" aria-expanded="false" aria-label="글자 별자리 도움말">?</button>
       <div class="tip" hidden><p><em>노는 법</em> 크게 반짝이는 별을 차례로 톡 하면 선이 이어져 자음이 완성돼요. 별은 쓰는 순서(획순)대로 놓여 있어요. 두 판에 한 번은 '긋기' 판: 반짝이 별을 손가락으로 따라 쓱 그으면 빛 길이 남아요(삐뚤어도 괜찮아요).</p><p><em>익히는 것</em> 자음 모양, 쓰기 순서 감각, 손가락으로 따라 쓰기.</p><p><em>같이 놀 때</em> 잠자기 전 차분한 놀이로 좋아요.</p></div></li>
@@ -494,6 +502,7 @@ render(); setInterval(render, 15000);
 // ---------- 마을 지도 (아이 화면): 장소를 톡 → 콩 + 둘이 폴짝 → 0.45초 뒤 그 놀이로 ----------
 const mapEl = document.getElementById('map'), twinEls = document.querySelectorAll('.mt');
 let mapAc = null, going = false;
+const wipe = document.getElementById('wipe');
 function blip(f1, f2, delay) {
   try {
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
@@ -508,13 +517,32 @@ function blip(f1, f2, delay) {
 function restartAnim(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function hopTwins() { twinEls.forEach(el => restartAnim(el, 'hop')); }
 twinEls.forEach(el => el.addEventListener('animationend', e => { if (e.animationName === 'hop') el.classList.remove('hop'); }));
+/* 크림색 막: 장소 중심에서 퍼져 화면을 덮음 (0.42초) / 돌아오면 그 장소로 접혀 사라짐 (0.5초) */
+function center(a) { const r = a.getBoundingClientRect(); return `${Math.round(r.left + r.width / 2)}px ${Math.round(r.top + r.height / 2)}px`; }
+function wipeSet(clip, ms, ease) {
+  wipe.style.transition = 'none'; wipe.style.clipPath = clip.from; void wipe.offsetWidth;
+  wipe.style.transition = `clip-path ${ms}s ${ease}`; wipe.style.clipPath = clip.to;
+}
+function wipeOut(a) { const c = center(a); wipeSet({ from: `circle(0px at ${c})`, to: `circle(150vmax at ${c})` }, 0.42, 'ease-in'); }
+function wipeReset() { wipe.style.transition = 'none'; wipe.style.clipPath = 'circle(0px at 50% 50%)'; }
+/* 돌아옴: 방금 놀던 장소(sessionStorage tk-last-place)가 반짝이고 쌍둥이가 폴짝 */
+function arrive() {
+  let k = ''; try { k = sessionStorage.getItem('tk-last-place') || ''; sessionStorage.removeItem('tk-last-place'); } catch (e) {}
+  if (!k) return;
+  const a = document.querySelector('.place[data-place="' + k + '"]'); if (!a) return;
+  const c = center(a);
+  wipeSet({ from: `circle(150vmax at ${c})`, to: `circle(0px at ${c})` }, 0.5, 'ease-out');
+  restartAnim(a, 'back'); hopTwins();
+}
 document.querySelectorAll('.place').forEach(a => {
-  a.addEventListener('animationend', e => { if (e.animationName === 'wig') a.classList.remove('wig'); });
+  a.addEventListener('animationend', e => { if (e.animationName === 'wig') a.classList.remove('wig'); if (e.animationName === 'hint') a.classList.remove('hint'); if (e.animationName === 'backglow') a.classList.remove('back'); });
   a.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
     if (going) return;
     if (a.classList.contains('off')) { restartAnim(a, 'wig'); blip(330, 260); return; }
     going = true; a.classList.add('go'); hopTwins(); blip(523, 1046);
+    wipeOut(a);
+    try { if (a.dataset.place) sessionStorage.setItem('tk-last-place', a.dataset.place); } catch (err) {}   /* 놀이가 TKP 를 쓰기 전에도 돌아오면 이 장소가 반짝 */
     const href = a.getAttribute('href');
     setTimeout(() => { location.href = href; }, 450);
   });
@@ -524,7 +552,16 @@ mapEl.addEventListener('click', e => {
   hopTwins();
   if (e.target.closest('.twins')) { blip(500, 650); blip(640, 820, 0.12); } else blip(660, 880);
 });
-addEventListener('pageshow', () => { going = false; document.querySelectorAll('.place.go').forEach(a => a.classList.remove('go')); renderMap(); });
+addEventListener('pageshow', () => { going = false; document.querySelectorAll('.place.go').forEach(a => a.classList.remove('go')); wipeReset(); renderMap(); arrive(); lastTap = performance.now(); });
+/* 대기 힌트: 지도에서 8초 동안 톡이 없으면 열린 장소를 차례로 하나씩 위아래로 (소리 없음, 부모 화면이 열려 있으면 안 함) */
+let lastTap = performance.now(), hintIdx = 0, hintAt = 0;
+addEventListener('pointerdown', () => { lastTap = performance.now(); }, true);
+setInterval(() => {
+  const n = performance.now();
+  if (going || !parentEl.hidden || document.hidden || n - lastTap < 8000 || n - hintAt < 2500) return;
+  const open = Array.from(document.querySelectorAll('.place:not(.off)')); if (!open.length) return;
+  const a = open[hintIdx++ % open.length]; hintAt = n; restartAnim(a, 'hint');
+}, 250);
 // 지도 그림(나중에 shared/pics/bg_map.webp 가 생기면): 읽히면 그것을 배경으로, 코드로 그린 길·장식은 숨김 (장소 버튼은 그대로)
 { const bgm = new Image(); bgm.onload = () => document.body.classList.add('has-map'); bgm.src = '../shared/pics/bg_map.webp'; }
 // ---------- 부모 화면: 톱니를 1초 꾹 (짧게 톡은 흔들리기만) ----------

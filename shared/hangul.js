@@ -314,8 +314,9 @@ const calm = t => { t = String(t || '').replace(/[!?~]+/g, '.').replace(/\s*,\s*
 //  · 하던 말을 끊은 직후라 무시됐으면(시작 신호 없음) 0.12초 뒤 한 번 더 (cancel 직후 speak 를 버리는 브라우저)
 //  · 말 객체를 붙잡아 둠 (중간에 지워져 말이 끊기는 크롬 버그), 멈춰 있으면 resume
 //  · parts 가 여럿이면 하나씩 따로 이어 말함 (글자마다 같은 억양) — onStart(i) 로 몇 번째를 말하는지 알려 줌
-let speakT = 0;
+let speakT = 0, seqTok = 0;   /* seqTok: 조각 이어 말하기(목소리 파일)가 새 말에 끊겼는지 알아보는 번호 */
 H.speakSeq = (parts, onStart) => {
+  seqTok++;
   try {
     const ss = window.speechSynthesis; if (!ss || !parts.length) return;
     if (curAudio) { curAudio.pause(); curAudio = null; }
@@ -333,9 +334,62 @@ H.speakSeq = (parts, onStart) => {
 };
 H.speak = text => H.speakSeq([text]);   // 빠르기·높이는 늘 같음 (예전 rate 인자는 무시)
 function tts(text) { H.speak(text); }
+// 목소리 파일(선택): shared/voice/pack.json = {"v":1,"files":{"<키>":"<파일>"}}. 부모 화면 '목소리 파일 쓰기'(localStorage tk-voicepack = '1')가 켜져 있을 때만 한 번 읽음.
+//  키: 낱말 그대로, 음절 그대로, 자음 이름('기역'), 정해진 말 'p:<이름>'. 파일·폴더가 없거나 못 읽으면 조용히 기기 음성.
+let packFiles = null, packLoading = false;
+H.packOn = () => { try { return localStorage.getItem('tk-voicepack') === '1'; } catch (e) { return false; } };
+H.packLoad = () => {
+  if (packFiles || packLoading || !H.packOn() || !window.fetch) return;
+  packLoading = true;
+  try {
+    fetch(SHARED + 'voice/pack.json').then(r => (r.ok ? r.json() : null)).then(j => { if (j && j.files && typeof j.files === 'object') packFiles = j.files; }).catch(() => {}).then(() => { packLoading = false; });
+  } catch (e) { packLoading = false; }
+};
+H.pack = key => {
+  if (!packFiles || !H.packOn()) return null;
+  const f = Object.prototype.hasOwnProperty.call(packFiles, key) ? packFiles[key] : null;
+  return f ? SHARED + 'voice/' + encodeURIComponent(f) : null;
+};
+H.packInfo = () => ({ on: H.packOn(), loaded: !!packFiles, n: packFiles ? Object.keys(packFiles).length : 0 });
+H.packLoad();
+// 조각(음절·낱말)마다 목소리 파일이 있으면 그 파일로, 없으면 그 조각만 기기 음성으로 차례로 말함. onStart(i) / 끝나면 onStart(-1) 은 speakSeq 와 같음
+let packAu = null;
+function packSeq(parts, onStart) {
+  let my = ++seqTok, i = 0;
+  const alive = () => my === seqTok;
+  const next = () => { if (alive()) { i++; step(); } };
+  function step() {
+    if (!alive()) return;
+    if (i >= parts.length) { if (onStart) onStart(-1); return; }
+    const part = parts[i], url = H.pack(part);
+    if (onStart) onStart(i);
+    if (url) {
+      try {
+        if (window.speechSynthesis) speechSynthesis.cancel();
+        if (curAudio) { curAudio.pause(); curAudio = null; }
+        const a = packAu || (packAu = new Audio());
+        a.onended = next; a.onerror = () => speakPart(part);
+        a.src = url; const pr = a.play(); if (pr && pr.catch) pr.catch(() => { if (alive()) speakPart(part); });
+        return;
+      } catch (e) {}
+    }
+    speakPart(part);
+  }
+  function speakPart(part) {
+    if (!alive()) return;
+    if (packAu) { packAu.onended = packAu.onerror = null; try { packAu.pause(); } catch (e) {} }
+    let done = false;
+    H.speakSeq([part], j => { if (j === -1 && !done) { done = true; setTimeout(() => { if (my === seqTok) next(); }, 0); } });
+    my = seqTok;   /* speakSeq 가 번호를 올렸으므로 이 이어 말하기가 새 번호를 이어받음 */
+  }
+  step();
+}
+/* 조각 중 목소리 파일이 하나라도 있으면 조각별로, 없으면 예전처럼 한 번에 이어 말함 */
+function seqParts(parts, onStart) { if (parts.some(p => H.pack(p))) packSeq(parts, onStart); else H.speakSeq(parts, onStart); }
 // 부모 녹음 재생. 브라우저가 재생을 막으면(자동 재생 제한 등) 기기 음성으로 대신 말함
 function play(key, fallback) {
-  const url = H.voices.get(key); if (!url) return false;
+  const url = H.voices.get(key) || H.pack(key); if (!url) return false;
+  seqTok++;
   try {
     if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) curAudio.pause();
     const a = curAudio = new Audio(url);
@@ -351,7 +405,7 @@ function flushRead() { clearTimeout(pendingT); const f = pendingRead; pendingRea
 ['pointerup', 'touchend', 'mouseup', 'keyup'].forEach(ev => addEventListener(ev, flushRead, { passive: true }));
 H.speaking = () => !!(curAudio && !curAudio.paused && !curAudio.ended) || !!(window.speechSynthesis && speechSynthesis.speaking);   // 배경음악 줄이기용
 // 하던 말 멈추기 (화면이 가려질 때 frame.js 가 부름)
-H.hush = () => { try { clearTimeout(speakT); if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
+H.hush = () => { seqTok++; try { clearTimeout(speakT); if (packAu) packAu.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio = null; } } catch (e) {} H.reading = null; };
 H.say = (text, key) => { if (muted()) return; if (!play(key || text, () => tts(text))) tts(text); };
 // 단어 읽기: "나." "비." "나비." — 글자마다 따로, 같은 억양으로 (부모 녹음이 있으면 그 목소리로 단어만)
 H.reading = null;
@@ -361,9 +415,9 @@ H.read = (w, pre = '') => {
   H.log('w', w);
   if (muted()) return;
   const parts = (pre ? [pre] : []).concat(syl.length > 1 ? syl : [], [w]), off = pre ? 1 : 0;
-  const seq = () => H.speakSeq(parts, i => { if (H.reading !== r) return; if (i < 0) { r.idx = 'all'; r.end = now() + 1.0; } else if (i >= off) { const k = i - off; r.idx = syl.length > 1 && k < syl.length ? k : 'all'; } });   // 글자 차례면 그 글자, 단어 차례면 전부
-  if (play(w, seq)) return;
-  seq();
+  const seq = () => seqParts(parts, i => { if (H.reading !== r) return; if (i < 0) { r.idx = 'all'; r.end = now() + 1.0; } else if (i >= off) { const k = i - off; r.idx = syl.length > 1 && k < syl.length ? k : 'all'; } });   // 글자 차례면 그 글자, 단어 차례면 전부
+  if (H.voices.has(w) && play(w, seq)) return;   /* 부모 녹음이 먼저 (단어 녹음만 재생) */
+  seq();   /* 목소리 파일이 켜져 있어도 글자 하나씩 → 낱말 순서 (조각마다 파일 또는 기기 음성) */
 };
 // 지금 강조할 음절 (게임이 그릴 때 물어봄): 말하는 글자에 맞춰. 음성 신호가 없으면 시간으로 짐작
 H.hi = w => {
@@ -378,8 +432,8 @@ H.hi = w => {
 H.readJamo = j => {
   H.log('j', j); if (muted()) return;
   const ex = H.example(j).w, parts = [H.JAMO_NAME[j]].concat(ex ? [ex] : []);
-  if (play(j, () => H.speakSeq(parts))) return;
-  H.speakSeq(parts);
+  if (H.voices.has(j) && play(j, () => H.speakSeq(parts))) return;
+  seqParts(parts);
 };
 H.saySyl = s => { H.log('s', s); if (!muted() && !play(s, () => tts(s))) tts(s); };
 

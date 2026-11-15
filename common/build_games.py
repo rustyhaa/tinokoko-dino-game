@@ -2,11 +2,11 @@
 """티노코코 놀이터 조립기 (저장소 루트에서 실행: python3 common/build_games.py)
 
 구조
-  shared/tk.js, shared/frame.js   공통 엔진 / 공통 틀(집 버튼·별 시범·잘 시간·인사·모바일 보정)  ← 직접 작성
+  shared/tk.js, shared/frame.js, shared/play.js   공통 엔진 / 공통 틀 / 지도 놀이 틀(TKP)(집 버튼·별 시범·잘 시간·인사·모바일 보정)  ← 직접 작성
   shared/assets/*.png             저장소 assets/ 의 *_v2 스프라이트 5장을 원본 그대로 복사         ← 이 스크립트
   shared/icons/icon-*.png         놀이터 앱 아이콘 (코드로 그림)                                    ← 이 스크립트
   <게임>/game.js                  게임 규칙                                                           ← 직접 작성
-  <게임>/index.html               공통 틀 HTML (tk.js + frame.js + game.js)                           ← 이 스크립트
+  <게임>/index.html               공통 틀 HTML (tk.js + play.js + frame.js + game.js)                           ← 이 스크립트
   <게임>/icons/icon-192.png       놀이터 카드용 그림                                                  ← 이 스크립트
   rainbow-bubbles/, peekaboo/     엔진 이전에 만든 단독 게임 (index.html 직접 작성, frame.js 연결)
   <게임>/sw.js                    예전 게임별 오프라인 저장을 지우는 정리용                          ← 이 스크립트
@@ -61,6 +61,7 @@ HTML = """<!doctype html>
 <script src="../shared/tk.js"></script>
 <script src="../shared/hangul.js"></script>
 <script src="../shared/music.js"></script>
+<script src="../shared/play.js"></script>
 <script src="game.js"></script>
 <script src="../shared/frame.js"></script>
 </body>
@@ -320,10 +321,16 @@ def build():
                      {'src': '../shared/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
     write(os.path.join(ROOT, 'games', 'manifest.webmanifest'), json.dumps(man, ensure_ascii=False, indent=2) + '\n')
     # 사이트 맨 위 sw.js: 놀이터에 필요한 파일 전부
-    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js',
+    files = ['index.html', 'games/', 'games/index.html', 'games/manifest.webmanifest', 'shared/tk.js', 'shared/frame.js', 'shared/hangul.js', 'shared/music.js', 'shared/play.js',
              'shared/fonts/Pretendard-ExtraBold.woff2', 'shared/fonts/Pretendard-Medium.woff2']
     files += sorted('assets/' + f for f in os.listdir(os.path.join(ROOT, 'assets')) if f.endswith('.png'))   # 러너 그림
     files += pics + ['shared/assets/%s.webp' % s for s in SPRITES] + ['shared/icons/icon-%d.png' % n for n in (180, 192, 512)]
+    voice = os.path.join(ROOT, 'shared', 'voice')   # 목소리 파일(선택): 폴더가 있을 때만 미리 저장 목록에 넣음
+    if os.path.isdir(voice):
+        for dp, dn, fn in os.walk(voice):
+            dn.sort()
+            for f in sorted(fn):
+                if not f.startswith('.'): files.append(os.path.relpath(os.path.join(dp, f), ROOT).replace(os.sep, '/'))
     for name in THREE_D:
         files += [name + '/', name + '/index.html', name + '/game.js']
     vend = os.path.join(ROOT, 'shared', 'vendor', 'three')
