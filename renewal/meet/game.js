@@ -26,7 +26,7 @@ let scene = qs === 'forest' || qs === 'sea' ? qs : (HG.likes('고래') && !HG.li
 const bags = { forest: [], sea: [] };
 let objs = [], focus = null, found = 0, rounds = 0, inScene = 0, phase = 'play', phaseT = 0, slideX = 0, swapped = false;
 let G = { port: true, cx: 0, cy: 0, R: 1, slotW: 1 };
-let tagRects = [], partyHops = 0;
+let tagRects = [], partyHops = 0, layers = [];
 const other = () => (scene === 'forest' ? 'sea' : 'forest');
 /* 놀이 틀: 쌍둥이 자세·톡 반응·축하는 TKP 가 맡음 */
 TKP.init({
@@ -206,15 +206,35 @@ function drawThing(o, x, yb, sc, rot) {
 function drawFriend(o, p) {
   ctx.save(); ctx.translate(p.x, p.yb - TK.hopY(o.hop, p.h * 0.2)); HG.drawPic(ctx, o.friend, p.h); ctx.restore();
 }
-function drawSmallTag(o) {
-  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24, 15), hy = TK.hopY(o.hop, p.h * 0.2);
-  const n = [...o.friend].length, fpx = size * (n > 4 ? Math.max(0.5, 4.5 / n) : 1);
-  /* 세로 화면은 친구 발 아래(얼굴을 가리지 않게), 가로 화면은 머리 위 */
-  const y = G.port ? Math.min(TK.H - fpx * 2, o.y + fpx * 1.1) : Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9), tw = tagWidth(o.friend, size);
-  /* 이름표가 화면 밖으로 잘리지 않게 */
-  const x = TK.clamp(p.x, tw / 2 + 6, Math.max(tw / 2 + 6, TK.W - tw / 2 - 6));
-  tagRects.push({ x, w: tw, y, f: fpx });
-  HG.drawTag(ctx, o.friend, x, y, size, { hi: HG.hi(o.friend) });
+/* 작은 이름표: 모든 친구·물건 그림을 다 그린 뒤 맨 위 층에서 그림. 서로 겹치면 세로로 비킴 */
+function drawTags() {
+  const list = [];
+  objs.forEach(o => {
+    if (!(o.st === 'out' && o.lv >= 1)) return;
+    const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.16, 15), hy = TK.hopY(o.hop, p.h * 0.2);
+    const n = [...o.friend].length, fpx = size * (n > 4 ? Math.max(0.5, 4.5 / n) : 1), tw = tagWidth(o.friend, size), th = fpx * 1.45 * 1.22;
+    /* 세로 화면은 친구 발 아래(얼굴을 가리지 않게), 가로 화면은 머리 위 */
+    const y = G.port ? Math.min(TK.H - fpx * 2, o.y + fpx * 1.1) : Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9);
+    const x = TK.clamp(p.x, tw / 2 + 6, Math.max(tw / 2 + 6, TK.W - tw / 2 - 6));
+    list.push({ o, size, x, y, w: tw, h: th, f: fpx });
+  });
+  const hit = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+  const done = [], top = 70;
+  list.sort((a, b) => a.y - b.y).forEach(t => {
+    let dir = G.port ? 1 : -1;
+    for (let k = 0; k < 40; k++) {
+      const c = done.find(d => hit(t, d)); if (!c) break;
+      let ny = t.y + dir * (t.h * 0.6);
+      if (ny < t.h / 2 || ny > TK.H - t.h / 2) { dir = -dir; ny = t.y + dir * (t.h * 0.6); }
+      t.y = TK.clamp(ny, t.h / 2, TK.H - t.h / 2);
+    }
+    done.push(t);
+  });
+  done.forEach(t => {
+    tagRects.push({ x: t.x, w: t.w, y: t.y, h: t.h, f: t.f });
+    HG.drawTag(ctx, t.o.friend, t.x, t.y, t.size, { hi: HG.hi(t.o.friend) });
+  });
+  layers.push('tags');
 }
 function drawObjects() {
   const order = objs.slice().sort((a, b) => a.y - b.y);
@@ -232,7 +252,6 @@ function drawObjects() {
     ctx.fillStyle = 'rgba(40,30,10,.16)'; TK.ell(ox, o.y, o.s * 0.55 * osc, o.s * 0.1 * osc); ctx.fill();
     drawThing(o, ox, o.y, osc, rot);
   });
-  order.forEach(o => { if (o.st === 'out' && o.lv >= 1) drawSmallTag(o); });
 }
 function drawFocus() {
   objs.filter(o => o.st === 'pop' || (o.st === 'out' && o.lv < 1)).forEach(o => {
@@ -256,8 +275,8 @@ function draw() {
   const sc = SCENES[scene];
   if (slideX) { ctx.fillStyle = TK.grad(0, TK.H, sc.sky, sc.ground); ctx.fillRect(0, 0, TK.W, TK.H); }
   ctx.save(); ctx.translate(slideX, 0);
-  tagRects = [];
-  drawBack(); drawObjects(); drawFocus();
+  tagRects = []; layers = [];
+  drawBack(); drawObjects(); layers.push('pictures'); drawFocus(); layers.push('focus'); drawTags();
   ctx.restore();
   TKP.drawTwins();
   TK.drawParts();
@@ -267,7 +286,7 @@ function draw() {
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get scene() { return scene; },
   get found() { return found; }, get total() { return objs.length; },
-  get objY() { return objs.map(o => o.y); }, get objs() { return objs.map(o => o.name); }, get tagRects() { return tagRects.slice(); },
+  get layers() { return layers.slice(); }, get objY() { return objs.map(o => o.y); }, get objs() { return objs.map(o => o.name); }, get tagRects() { return tagRects.slice(); },
   get focus() { return focus ? focus.friend : null; }, get friends() { return objs.map(o => o.friend); },
   actions() {
     if (phase !== 'play') return [];

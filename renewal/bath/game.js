@@ -27,7 +27,8 @@ function twinPos(i) {
 /* 지금 친구가 서는 자리: 밑변 가운데 (cx, yb), 키 h */
 function geom() {
   const W = TK.W, H2 = TK.H, port = W < H2;
-  return port ? { cx: W / 2, yb: H2 * 0.5, h: Math.min(W * 0.55, H2 * 0.28) } : { cx: W / 2, yb: H2 * 0.52, h: Math.min(H2 * 0.4, W * 0.26) };
+  /* 가로: 친구를 작게·위로 올려 매트 아래 가장자리와 쌍둥이 머리 사이를 비우고 이름표 자리(위)를 만듦 */
+  return port ? { cx: W / 2, yb: H2 * 0.5, h: Math.min(W * 0.55, H2 * 0.28) } : { cx: W / 2, yb: H2 * 0.43, h: H2 * 0.31 };
 }
 /* 친구 그림 상자 폭: 그림 비율대로 (고래는 1.4 정도) */
 function boxW(w, h) {
@@ -268,22 +269,36 @@ function drawTubFriends() {
     drawFriend(f, f.tx + wob, e.wy + e.ry * 0.55 - TK.bob(i, tubH() * 0.03, 2.5) - up, tubH(), Math.sin(TK.T * 1.8 + i) * 0.03);
   });
 }
-function drawMat() {
-  const g = geom(), tw = H_towelW(g.h);
-  HG.drawObj(ctx, 'o_towel', g.cx, g.yb + tw * 0.648 * 0.3, tw * 0.648, tw);
-}
 const H_towelW = h => h * 1.05;
+/* 매트 그림 자리 (가로는 친구가 없는 동안 치움: 축하 때 쌍둥이가 뛰어도 안 닿게) */
+function matRect() {
+  const g = geom(), land = TK.W > TK.H;
+  if (land && phase !== 'play') return null;
+  const tw = land ? g.h * 0.9 : H_towelW(g.h), th = tw * 0.648, yb = land ? g.yb + 2 : g.yb + th * 0.3;
+  return { x: g.cx - tw / 2, y: yb - th, w: tw, h: th, yb };
+}
+function drawMat() {
+  const m = matRect(); if (m) HG.drawObj(ctx, 'o_towel', m.x + m.w / 2, m.yb, m.h, m.w);
+}
 function drawCurFriend() {
   if (!cur || cur.st === 'jump' || cur.st === 'tub') return;
   const b = curBox(), hy = TK.hopY(cur.hop, b.h * 0.12), bob = cur.st === 'in' ? Math.abs(Math.sin(cur.t * 18)) * b.h * 0.04 : 0;
   const rot = rubWig > 0 ? Math.sin(TK.T * 34) * 0.035 : 0, k = cur.st === 'clean' ? 1 + 0.025 * Math.sin(cur.t * 9) : 1;
   ctx.save(); ctx.translate(b.cx, b.y + b.h - hy - bob); ctx.scale(k, k); if (rot) ctx.rotate(rot); HG.drawPic(ctx, cur.w, b.h); ctx.restore();
 }
+/* 이름표 자리: 세로는 친구 아래쪽, 가로는 친구 위 (버튼 띠 아래·화면 안) */
+function tagRect() {
+  if (!cur || cur.st !== 'clean') return null;
+  const b = curBox(), land = TK.W > TK.H, n = [...cur.w].length;
+  const size = friendTag(cur.w, TK.W * 0.8, land ? b.h * 0.16 : b.h * 0.17);
+  const dn = n > 4 ? Math.max(0.5, 4.5 / n) : 1, ss = size * dn, th = ss * 1.45 * 1.22, tw = Math.max((n * ss * 1.02 + ss * 0.7) * 1.08, th * 2.2);
+  const cy = land ? Math.max(th / 2 + 4, b.y - th / 2 - 4) : b.y + b.h - size * 0.3;
+  return { size, cx: TK.W / 2, cy, x: TK.W / 2 - tw / 2, y: cy - th / 2, w: tw, h: th };
+}
 function drawTag() {
-  if (!cur || cur.st !== 'clean') return;
-  const b = curBox(), size = friendTag(cur.w, TK.W * 0.8, b.h * 0.17), a = clamp(cur.t / 0.2, 0, 1);
-  ctx.save(); ctx.globalAlpha = a;
-  HG.drawTag(ctx, cur.w, TK.W / 2, b.y + b.h - size * 0.3, size, { hi: HG.hi(cur.w) });
+  const r = tagRect(); if (!r) return;
+  ctx.save(); ctx.globalAlpha = clamp(cur.t / 0.2, 0, 1);
+  HG.drawTag(ctx, cur.w, r.cx, r.cy, r.size, { hi: HG.hi(cur.w) });
   ctx.restore();
 }
 function drawSponge() {
@@ -336,6 +351,8 @@ window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get spots() { return spots.map(s => ({ d: s.d, ...spotXY(s) })); }, get words() { return friends.slice(); },
   get cur() { return cur ? cur.w : ''; }, get st() { return cur ? cur.st : (phase === 'play' ? 'none' : phase); }, get inTub() { return tubs.length; },
   get sponge() { return !!spongeOn(); },
+  get tag() { const r = tagRect(); return r ? { x: r.x, y: r.y, w: r.w, h: r.h } : null; },
+  get mat() { const m = matRect(); return m ? { x: m.x, y: m.y, w: m.w, h: m.h } : null; },
   get box() { const b = curBox(); return { x: b.x, y: b.y, w: b.w, h: b.h }; },
   actions() {   /* 자동 확인용: 남은 얼룩 하나를 좌우로 문지르는 경로 */
     if (phase !== 'play' || !cur || cur.st !== 'dirty') return [];
