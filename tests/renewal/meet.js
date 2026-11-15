@@ -25,6 +25,11 @@ module.exports = async (page, view, util) => {
   const hs = samples.flatMap(s => s.tw.map(t => t.h / H)).filter(h => h > 0);
   const want = view.name === 'port' ? 0.15 : 0.26;
   ok('twins size >= spec', hs.length && Math.min(...hs) >= want - 0.005, 'min h/H=' + Math.min(...hs).toFixed(3));
+  const fs = samples.flatMap(s => s.rects.map(r => r.f));
+  if (view.name === 'land') ok('tag font >= 15px in landscape', fs.length > 4 && Math.min(...fs) >= 14.99, 'min=' + Math.min(...fs).toFixed(1));
+  else ok('tag font >= 15px in portrait', fs.length > 4 && Math.min(...fs) >= 14.99, 'min=' + Math.min(...fs).toFixed(1));
+  const oy = await util.g(() => __g.objY);
+  if (view.name === 'port') ok('object bottoms reach 0.6H (portrait)', Math.max(...oy) >= 0.6 * H, 'max=' + (Math.max(...oy) / H).toFixed(2) + 'H');
   /* M4: 바다 장면 물건에 o_cloud 없음, o_lifebuoy 가능 */
   const ctx = await page.context().browser().newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const p2 = await ctx.newPage(), errs = [];

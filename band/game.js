@@ -24,8 +24,9 @@ function layout() {
   if (port) inst[3].s = s * 0.8;
   const xy = inst[1];
   bars = [0, 1, 2, 3, 4, 5].map(i => ({ i, x: xy.x - xy.s * 1.25 + i * xy.s * 0.5, y: xy.y, w: xy.s * 0.42, h: xy.s * (1.3 - i * 0.1), bump: (bars[i] || {}).bump || 0 }));
-  twins.forEach((t, i) => { t.h = port ? H * 0.22 : H * 0.4; t.x = W * (i ? (port ? 0.73 : 0.62) : (port ? 0.27 : 0.38)); t.yb = port ? H * 0.55 : H * 0.66; });
-  band.forEach((f, i) => { f.hx = W * [0.18, 0.82, 0.5][i]; f.y = port ? H * 0.26 : H * 0.42; });
+  twins.forEach((t, i) => { t.h = port ? H * 0.22 : H * 0.4; t.x = W * (i ? (port ? 0.73 : 0.62) : (port ? 0.27 : 0.38)); t.yb = port ? H * 0.57 : H * 0.66; });
+  /* 친구는 쌍둥이 머리 위/옆 칸에 선다: 세로는 위 한 줄, 가로는 왼쪽·오른쪽·두 쌍둥이 사이 */
+  band.forEach((f, i) => { f.hx = W * (port ? [0.17, 0.83, 0.5] : [0.12, 0.88, 0.5])[i]; f.y = port ? H * 0.22 : H * [0.46, 0.46, 0.55][i]; });
 }
 const xyloNotes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
 /* 따라 치기: 반짝이는 바를 치면 노래가 한 음씩 나아감 (학교종이 땡땡땡). 다른 바를 쳐도 그냥 소리만 — 틀림 없음 */
@@ -53,7 +54,7 @@ function hit(k, barI = 0) {
   band.forEach(f => f.hop = 0);
   if (phase === 'play' && hits >= 12) {   /* 친구 합류 */
     hits = 0;
-    if (band.length < 3) { const pool = friendPool(), kind = pool[friendIdx++ % pool.length]; band.push({ kind, x: 0, hx: 0, y: 0, t: 0, hop: -1, side: band.length % 2 ? 1 : -1 }); layout(); sfx.sparkle(); const f = band[band.length - 1]; TKP.found(f.hx, f.y, { side: f.hx < TK.W / 2 ? 0 : 1 }); setTimeout(() => HG.read(kind), 400); }
+    if (band.length < 3) { const pool = friendPool(), kind = pool[friendIdx++ % pool.length]; band.push({ kind, x: 0, hx: 0, y: 0, oy: 0, up: 0, t: 0, hop: -1, side: band.length % 2 ? 1 : -1, drop: band.length === 2 }); layout(); sfx.sparkle(); const f = band[band.length - 1]; TKP.found(f.hx, f.y, { side: f.hx < TK.W / 2 ? 0 : 1 }); setTimeout(() => HG.read(kind), 400); }
     if (band.length === 3) { phase = 'party'; phaseT = 0; TKP.celebrate({ onDone: () => { phase = 'leave'; phaseT = 0; band.forEach(f => { f.leaving = true; }); } }); }
   }
 }
@@ -78,12 +79,14 @@ function update(dt) {
   inst.forEach(i => i.hit = Math.max(0, i.hit - dt * 4));
   bars.forEach(b => b.bump = Math.max(0, b.bump - dt * 5)); songGlow = Math.max(0, songGlow - dt * 3);
   twins.forEach(t => { if (t.hop >= 0) { t.hop += dt / 0.4; if (t.hop > 1) t.hop = -1; } });
-  band.forEach(f => { f.t = Math.min(1, f.t + dt / 0.8); f.x = TK.lerp(f.side < 0 ? -80 : TK.W + 80, f.hx, TK.ease(f.t)); if (f.hop >= 0) { f.hop += dt / 0.4; if (f.hop > 1) f.hop = -1; } });
+  band.forEach(f => {
+    if (!f.leaving) { f.t = Math.min(1, f.t + dt / 0.8); const e = TK.ease(f.t); f.x = f.drop ? f.hx : TK.lerp(f.side < 0 ? -80 : TK.W + 80, f.hx, e); f.oy = f.drop ? -(1 - e) * TK.H * 0.7 : 0; }
+    if (f.hop >= 0) { f.hop += dt / 0.4; if (f.hop > 1) f.hop = -1; } });
   notes.forEach(n => { n.t += dt; n.x += n.vx * dt + Math.sin(n.t * 5) * 0.6; n.y -= 70 * TK.U * dt; });
   notes = notes.filter(n => n.t < 1.6);
   if (phase === 'party' && Math.random() < dt * 3) band.forEach(f => f.hop = 0);   /* 축하 중 깡충은 친구들만 (쌍둥이는 틀이 처리) */
   if (phase === 'leave') {
-    band.forEach(f => { f.x += f.side * 500 * TK.U * dt; });
+    band.forEach(f => { if (f.drop) f.oy -= 600 * TK.U * dt; else f.x += f.side * 500 * TK.U * dt; });
     if (phaseT > 1.2) { band = []; phase = 'play'; phaseT = 0; rounds++; hits = 0; }
   }
 }
@@ -180,20 +183,22 @@ function draw() {
   // 커튼
   if (!art) for (const sd of [0, 1]) { ctx.fillStyle = '#c0392b'; ctx.beginPath(); const x0 = sd ? W : 0, dx = sd ? -1 : 1; ctx.moveTo(x0, 0); ctx.lineTo(x0 + dx * W * 0.12, 0); ctx.quadraticCurveTo(x0 + dx * W * 0.05, floor * 0.5, x0 + dx * W * 0.09, floor); ctx.lineTo(x0, floor); ctx.fill(); }
   ctx.fillStyle = '#a93226'; if (!art) for (let x = 0; x < W; x += 40 * TK.U) { ell(x + 20 * TK.U, 0, 24 * TK.U, 26 * TK.U); ctx.fill(); }
-  tagRects = [];
-  band.forEach((f, i) => {
-    ctx.save(); ctx.translate(f.x, f.y - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); HG.drawPic(ctx, f.kind, port ? H * 0.09 : H * 0.15); ctx.restore();
-    const nm = f.kind, n = [...nm].length, ts = (port ? H * 0.026 : H * 0.034) * (n > 4 ? Math.max(0.5, 4.5 / n) : 1), tw = n * ts * 1.02 + ts * 0.7;
-    const tx = clamp(f.x, tw * 0.55 + 4, W - tw * 0.55 - 4), ty = f.y + ts * 1.1;   /* 이름표는 화면 안으로 */
-    HG.drawTag(ctx, nm, tx, ty, port ? H * 0.026 : H * 0.034, { hi: HG.hi(nm) });
-    tagRects.push({ x: tx, w: tw, y: ty, size: ts });
-  });
+  band.forEach((f, i) => { ctx.save(); ctx.translate(f.x, f.y + f.oy - TK.hopY(f.hop, H * 0.04)); ctx.rotate(Math.sin(TK.T * 4 + i) * 0.1); HG.drawPic(ctx, f.kind, port ? H * 0.09 : H * 0.21); ctx.restore(); });
   twins.forEach((t, i) => {
     const P = TKP.pose(i), lean = Math.sin(TK.T * 3 + i * 1.6) * 0.06 + (t.move === 3 ? (i ? -0.12 : 0.12) : 0);
     if (TKP.busy) { TKP.drawTwin(i, t.x, t.yb, t.h, { rot: lean, face: i ? 'left' : 'right' }); return; }   /* 축하: 틀이 자세·깡충·흔들림을 정함 */
     /* 평소엔 박자에 따라 jump/happy 춤, 반응·힌트 자세(clap·wow·point 등)가 있으면 그것을 우선 */
     const pose = P.pose !== 'happy' ? P.pose : (t.move % 2 ? 'jump' : 'happy');
     TKP.drawTwin(i, t.x, t.yb - TK.hopY(t.hop, t.h * 0.18) - P.lift - TK.bob(i * 1.5, t.h * 0.02), t.h, { pose, rot: lean, face: i ? 'left' : 'right' });
+  });
+  /* 친구 이름표: 쌍둥이 뒤에 그려 가려지지 않게. 다 들어온 뒤에만 (화면 안·쌍둥이 위쪽 칸) */
+  tagRects = [];
+  band.forEach(f => {
+    if (f.t < 1 || f.leaving) return;
+    const nm = f.kind, n = [...nm].length, base = port ? H * 0.026 : H * 0.042, ts = base * (n > 4 ? Math.max(0.5, 4.5 / n) : 1), tw = n * ts * 1.02 + ts * 0.7;
+    const tx = clamp(f.x, tw * 0.55 + 4, W - tw * 0.55 - 4), ty = f.y + ts * 1.1;
+    HG.drawTag(ctx, nm, tx, ty, base, { hi: HG.hi(nm) });
+    tagRects.push({ x: tx, w: tw, h: ts * 1.8, y: ty, size: ts });
   });
   inst.forEach(drawInst);
   if (phase === 'play' && bars.length) {   /* 다음에 칠 바: 빛 + 통통 뛰는 별 */
@@ -208,7 +213,7 @@ function draw() {
 }
 
 window.__g = {
-  get phase() { return phase; }, get rounds() { return rounds; }, get band() { return band.length; }, get syls() { return syls.slice(); }, get tags() { return tagRects.map(t => ({ x: t.x, w: t.w, y: t.y, size: t.size })); },
+  get phase() { return phase; }, get rounds() { return rounds; }, get band() { return band.length; }, get syls() { return syls.slice(); }, get tags() { return tagRects.map(t => ({ x: t.x, w: t.w, h: t.h, y: t.y, size: t.size })); },
   actions() {
     if (phase !== 'play') return [];
     const k = beat % 4, it = inst[k];

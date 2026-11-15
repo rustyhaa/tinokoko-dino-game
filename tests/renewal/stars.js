@@ -2,13 +2,13 @@
 module.exports = async (page, view, util) => {
   const { W, H } = util, checks = [], m = Math.min(W, H);
   const ck = (name, ok, detail) => checks.push({ name, ok: !!ok, detail: detail == null ? '' : String(detail) });
-  const S = () => page.evaluate(() => ({ ph: __g.phase, r: __g.rounds, trace: __g.trace, fig: __g.fig, jamo: __g.jamo, ex: __g.exPos, tp: __tkp.phase, tw: __tkp.twins.map(t => ({ pose: t.pose, x: t.x, yb: t.yb, h: t.h })) })).catch(() => null);
+  const S = () => page.evaluate(() => ({ ph: __g.phase, r: __g.rounds, trace: __g.trace, fig: __g.fig, jamo: __g.jamo, ex: __g.exPos, tag: __g.tagRect, tp: __tkp.phase, tw: __tkp.twins.map(t => ({ pose: t.pose, x: t.x, yb: t.yb, h: t.h })) })).catch(() => null);
 
   const r0 = await util.g(() => __g.R);
   ck('S1 R >= 0.03*min(W,H) - 0.5', r0 >= 0.03 * m - 0.5, 'R=' + r0.toFixed(2) + ' need ' + (0.03 * m).toFixed(2));
 
   /* 별 시범은 러너가 끝낸 뒤라 여기선 새 판을 계속 두드리며 한 사이클씩 관찰 */
-  let sawTrace = false, sawFig = false, cyc = 0, exOk = 0, exBad = 0, exN = 0, maxGap = 0, tCompl = 0, shotCele = false, shotTrace = false, shotDone = false, shotNext = false, idle = 0, order = 0, samples = 0, tagShot = false, minH = 1e9;
+  let tagN = 0, tagOff = 0, tagMin = 999, sawTrace = false, sawFig = false, cyc = 0, exOk = 0, exBad = 0, exN = 0, maxGap = 0, tCompl = 0, shotCele = false, shotTrace = false, shotDone = false, shotNext = false, idle = 0, order = 0, samples = 0, tagShot = false, minH = 1e9;
   const T0 = Date.now();
   while (Date.now() - T0 < 90000 && !(sawTrace && sawFig && cyc >= 3)) {
     const s = await S(); if (!s) break;
@@ -23,6 +23,7 @@ module.exports = async (page, view, util) => {
     if (s.ph === 'party' || s.ph === 'fade') {
       if (s.ex) {
         exN++;
+        if (s.tag) { tagN++; tagMin = Math.min(tagMin, s.tag.px); if (s.tag.x < 0 || s.tag.y < 0 || s.tag.x + s.tag.w > W || s.tag.y + s.tag.h > H) tagOff++; }
         const x0 = Math.min(s.tw[0].x, s.tw[1].x), x1 = Math.max(s.tw[0].x, s.tw[1].x);
         if (s.ex.yb >= 0.9 * H && s.ex.x > x0 && s.ex.x < x1) exOk++; else exBad++;
       }
@@ -38,11 +39,13 @@ module.exports = async (page, view, util) => {
   ck('S2 exPos seen during celebration', exN > 0, 'samples=' + exN);
   ck('S2 exPos.yb >= 0.9H and x between twins (every sample)', exN > 0 && exBad === 0, `ok=${exOk} bad=${exBad}`);
   ck('S3 complete -> next play <= 4.2s (+poll slack)', cyc >= 1 && maxGap <= 4200 + 350, `cycles=${cyc} maxGap=${maxGap}ms`);
+  ck('example tag rect fully on screen (every sample)', tagN > 0 && tagOff === 0, `n=${tagN} off=${tagOff}`);
+  ck('example tag font px >= ' + (view.w < view.h ? 16 : 15), tagN > 0 && tagMin >= (view.w < view.h ? 16 : 15) - 0.01, 'min=' + tagMin.toFixed(1));
   ck('trace round (긋기 판) occurred', sawTrace, '');
   ck('favorite-figure round (고래·공룡 별자리) occurred', sawFig, '(needs cfg fav; skipped-ok if none)');
   ck('twin pose never idle (run picture)', idle === 0, `idle samples=${idle}/${samples}`);
   ck('Tino left of Coco in every sample', order === 0, `bad=${order}`);
-  ck('twin height >= ' + (view.w < view.h ? '0.2' : '0.3') + 'H', minH >= H * (view.w < view.h ? 0.2 : 0.3) - 1, 'minH=' + Math.round(minH));
+  ck('twin height >= ' + (view.w < view.h ? '0.2' : '0.38') + 'H', minH >= H * (view.w < view.h ? 0.2 : 0.38) - 1, 'minH=' + Math.round(minH));
 
   /* 다음 판이 시작된 뒤: 쌍둥이 톡 -> clap, 빈 곳 톡 -> 반응 */
   for (let i = 0; i < 40; i++) { const s = await S(); if (s && s.ph === 'play' && s.tp === 'play') break; await page.waitForTimeout(150); }

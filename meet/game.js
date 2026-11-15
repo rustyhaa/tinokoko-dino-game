@@ -15,7 +15,7 @@ const SCENES = {
 };
 /* 물건 자리 (화면 비율, 물건 밑변 가운데). p = 세로 화면, l = 가로 화면, 숫자 = 물건 수 */
 const SLOTS = {
-  p4: [[0.28, 0.42], [0.72, 0.37], [0.28, 0.71], [0.72, 0.66]],
+  p4: [[0.27, 0.40], [0.73, 0.36], [0.27, 0.70], [0.73, 0.66]],
   p5: [[0.25, 0.39], [0.75, 0.34], [0.5, 0.54], [0.25, 0.73], [0.75, 0.69]],
   l4: [[0.18, 0.55], [0.39, 0.80], [0.61, 0.80], [0.82, 0.55]],
   l5: [[0.18, 0.53], [0.34, 0.80], [0.5, 0.53], [0.66, 0.80], [0.82, 0.53]],
@@ -31,7 +31,7 @@ const other = () => (scene === 'forest' ? 'sea' : 'forest');
 /* 놀이 틀: 쌍둥이 자세·톡 반응·축하는 TKP 가 맡음 */
 TKP.init({
   id: 'meet', place: scene,
-  twins: { port: { x0: 0.14, x1: 0.86, yb: 0.985, h: 0.16 }, land: { x0: 0.07, x1: 0.93, yb: 0.985, h: 0.27 } },
+  twins: { port: { x0: 0.14, x1: 0.86, yb: 0.985, h: 0.2 }, land: { x0: 0.07, x1: 0.93, yb: 0.985, h: 0.27 } },
   preload: [SCENES[scene].bg].concat(SCENES[scene].objs, [SCENES[other()].bg]),
   music: 'play',
 });
@@ -57,12 +57,12 @@ function takeFriends(sc, n) {
 function layout() {
   const W = TK.W, H = TK.H, port = W < H, n = objs.length || 4, five = n >= 5;
   const slots = SLOTS[(port ? 'p' : 'l') + (five ? 5 : 4)];
-  const s = port ? Math.min(W * (five ? 0.27 : 0.32), H * (five ? 0.135 : 0.16)) : Math.min(W * (five ? 0.11 : 0.125), H * (five ? 0.22 : 0.24));
+  const s = port ? Math.min(W * (five ? 0.27 : 0.34), H * (five ? 0.135 : 0.16)) : Math.min(W * (five ? 0.11 : 0.125), H * (five ? 0.22 : 0.24));
   objs.forEach((o, i) => { const sl = slots[i % slots.length]; o.x = sl[0] * W; o.y = sl[1] * H; o.s = s; o.side = sl[0] < 0.5 ? -1 : 1; });
   G = {
     port, cx: W / 2, cy: H * (port ? 0.47 : 0.5),
     R: port ? Math.min(W * 0.42, H * 0.25) : Math.min(H * 0.40, W * 0.25),
-    slotW: port ? W * 0.44 : W * 0.15,
+    slotW: port ? W * 0.44 : W * 0.2,
   };
 }
 function newRound() {
@@ -93,8 +93,8 @@ function friendPose(o) {
   return slotPose(o);
 }
 /* 이름표 글자 크기: 그려질 크기 a 를 폭 maxW 안에 맞추고, drawTag 가 긴 이름을 줄이는 만큼 미리 키워서 넘김 */
-function tagSize(w, maxW, cap) {
-  const n = [...w].length, a = Math.min(cap, maxW / (n * 1.02 + 0.7));
+function tagSize(w, maxW, cap, floor) {
+  const n = [...w].length, a = Math.max(floor || 0, Math.min(cap, maxW / (n * 1.02 + 0.7)));
   return n > 4 ? a / Math.max(0.5, 4.5 / n) : a;
 }
 /* drawTag 가 실제로 그리는 이름표 폭 (손그림 이름표는 글자 폭의 1.08배) */
@@ -207,11 +207,13 @@ function drawFriend(o, p) {
   ctx.save(); ctx.translate(p.x, p.yb - TK.hopY(o.hop, p.h * 0.2)); HG.drawPic(ctx, o.friend, p.h); ctx.restore();
 }
 function drawSmallTag(o) {
-  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24), hy = TK.hopY(o.hop, p.h * 0.2);
-  const y = Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9), tw = tagWidth(o.friend, size);
+  const p = slotPose(o), size = tagSize(o.friend, G.slotW, o.s * 0.24, 15), hy = TK.hopY(o.hop, p.h * 0.2);
+  const n = [...o.friend].length, fpx = size * (n > 4 ? Math.max(0.5, 4.5 / n) : 1);
+  /* 세로 화면은 친구 발 아래(얼굴을 가리지 않게), 가로 화면은 머리 위 */
+  const y = G.port ? Math.min(TK.H - fpx * 2, o.y + fpx * 1.1) : Math.max(size * 0.9, p.yb - p.h - hy - size * 0.9), tw = tagWidth(o.friend, size);
   /* 이름표가 화면 밖으로 잘리지 않게 */
   const x = TK.clamp(p.x, tw / 2 + 6, Math.max(tw / 2 + 6, TK.W - tw / 2 - 6));
-  tagRects.push({ x, w: tw, y });
+  tagRects.push({ x, w: tw, y, f: fpx });
   HG.drawTag(ctx, o.friend, x, y, size, { hi: HG.hi(o.friend) });
 }
 function drawObjects() {
@@ -265,7 +267,7 @@ function draw() {
 window.__g = {
   get phase() { return phase; }, get rounds() { return rounds; }, get scene() { return scene; },
   get found() { return found; }, get total() { return objs.length; },
-  get objs() { return objs.map(o => o.name); }, get tagRects() { return tagRects.slice(); },
+  get objY() { return objs.map(o => o.y); }, get objs() { return objs.map(o => o.name); }, get tagRects() { return tagRects.slice(); },
   get focus() { return focus ? focus.friend : null; }, get friends() { return objs.map(o => o.friend); },
   actions() {
     if (phase !== 'play') return [];

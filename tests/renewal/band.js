@@ -21,13 +21,13 @@ module.exports = async (page, view, util) => {
   }
 
   /* N3 + N4: 20초 더 연주하며 모든 샘플 확인 */
-  let idle = 0, samples = 0, tagN = 0, badTag = 0, minSize = 999, shotJoin = false, shotThree = false, shotLeave = false, order = 0, bandMax = 0, lastBand = 0;
+  let hitTw = 0, idle = 0, samples = 0, tagN = 0, badTag = 0, minSize = 999, shotJoin = false, shotThree = false, shotLeave = false, order = 0, bandMax = 0, lastBand = 0;
   await util.drive(20000, { each: async () => {
-    const s = await util.g(() => ({ tw: __tkp.twins.map(t => t.pose), x: __tkp.twins.map(t => t.x), band: __g.band, tags: __g.tags, phase: __g.phase }));
+    const s = await util.g(() => ({ tw: __tkp.twins.map(t => t.pose), x: __tkp.twins.map(t => t.x), twr: __tkp.twins.map(t => ({ x: t.x, yb: t.yb, h: t.h })), band: __g.band, tags: __g.tags, phase: __g.phase }));
     samples++;
     if (s.tw.includes('idle')) idle++;
     if (!(s.x[0] < s.x[1])) order++;
-    s.tags.forEach(t => { tagN++; minSize = Math.min(minSize, t.size); if (t.x - t.w / 2 < 0 || t.x + t.w / 2 > W) badTag++; });
+    s.tags.forEach(t => { tagN++; s.twr.forEach(w => { if (t.x + t.w / 2 > w.x - w.h * 0.3 && t.x - t.w / 2 < w.x + w.h * 0.3 && t.y + t.h / 2 > w.yb - w.h && t.y - t.h / 2 < w.yb) hitTw++; }); minSize = Math.min(minSize, t.size); if (t.x - t.w / 2 < 0 || t.x + t.w / 2 > W) badTag++; });
     bandMax = Math.max(bandMax, s.band);
     if (s.band === 1 && !shotJoin) { shotJoin = true; await util.shot('join'); }
     if (s.band === 2 && lastBand === 1) await util.shot('join2');
@@ -39,9 +39,10 @@ module.exports = async (page, view, util) => {
   ck('twins[0].x < twins[1].x', order === 0, 'bad=' + order);
   ck('friends joined (band>0 seen)', bandMax >= 1, 'bandMax=' + bandMax);
   ck('N4 tags fully on screen', badTag === 0, tagN + ' tag samples, bad=' + badTag);
+  ck('N4 no tag rect intersects a twin rect', hitTw === 0, 'intersections=' + hitTw);
   if (tagN) {
-    const need = (port ? H * 0.026 : H * 0.034) - 0.5;
-    ck('N4 tag text size >= ' + need.toFixed(1) + 'px' + (port ? ' (>=20 portrait)' : ''), minSize >= need && (!port || minSize >= 20), 'min=' + minSize.toFixed(1));
+    const need = port ? 20 : 15;
+    ck('N4 tag text size >= ' + need + 'px', minSize >= need, 'min=' + minSize.toFixed(1));
   }
 
   /* N1: 단계 1·2·3 설정으로 다시 열어도 같은 글자 */

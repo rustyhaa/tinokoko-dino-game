@@ -10,7 +10,7 @@
 (() => {
 const { ctx, ell, rand, clamp, sfx } = TK;
 /* TKP = 공용 놀이 틀 (shared/play.js) */
-let phase = 'play', phaseT = 0, rounds = 0, done = 0, lastTap = 0, box = {}, R = 10, exPos = null;
+let phase = 'play', phaseT = 0, rounds = 0, done = 0, lastTap = 0, box = {}, R = 10, exPos = null, tagRect = null;
 let jamo = 'ㄱ', strokes = [], flat = [], lines = [], queue = [], fig = null, figN = 0;
 let trace = false, tr = [], trS = 0, trail = [], jamoN = 0, lastNote = 0; /* 긋기 판: tr[획] = { pts(촘촘한 점), prog(빛난 점 수) } */
 // 좋아하는 것 별자리 (세 판마다 하나): 고래·공룡 모양 점 — 한 바퀴 이어 닫힘
@@ -23,7 +23,7 @@ const COL = [255, 236, 150];
 
 function layout() {
   const W = TK.W, H2 = TK.H, port = W < H2;
-  const sz = port ? Math.min(W * 0.78, H2 * 0.42) : Math.min(W * 0.46, H2 * 0.6);
+  const sz = port ? Math.min(W * 0.78, H2 * 0.42) : Math.min(W * 0.46, H2 * 0.52);
   box = { x: W / 2 - sz / 2, y: port ? H2 * 0.14 : H2 * 0.08, w: sz, h: sz };
   R = Math.min(W, H2) * 0.03;
 }
@@ -150,16 +150,20 @@ function draw() {
   }
   }
   ctx.restore();
-  exPos = null;
+  exPos = null; tagRect = null;
   if (alive || phase === 'fade') {   // 완성: 자음 이름표 + 언덕 위 쌍둥이 사이에 그 자음으로 시작하는 그림
     const ex = fig || H.example(jamo).w, k = clamp(phaseT / 0.5, 0, 1), port = W < H2, m = Math.min(W, H2);
     ctx.save(); ctx.globalAlpha = clamp(fade, 0, 1);
     if (port) H.drawTag(ctx, fig || H.JAMO_NAME[jamo], W / 2, box.y + box.h + H2 * 0.05, m * 0.07, { hi: -1 });
     else H.drawTag(ctx, fig || H.JAMO_NAME[jamo], box.x + box.w + W * 0.1, box.y + box.h * 0.5, m * 0.07, { hi: -1 });   /* 가로: 대표 그림과 안 겹치게 별 옆에 */
     if (ex) {
-      const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.95, ph = port ? m * 0.2 : H2 * 0.28, sc = phase === 'fade' ? 1 : TK.back(k);
+      const px = W / 2, pyb = port ? H2 * 0.93 : H2 * 0.88, ph = port ? m * 0.3 : H2 * 0.24, sc = phase === 'fade' ? 1 : TK.back(k);
       ctx.save(); ctx.translate(px, pyb); ctx.scale(sc, sc); H.drawPic(ctx, ex, ph); ctx.restore();
-      const ts = m * 0.04; H.drawTag(ctx, ex, px, Math.min(pyb + ts * 0.6, H2 - ts * 0.9), ts, { hi: -1 });
+      /* 대표 단어 이름표: drawTag 가 5글자 넘으면 글자를 줄이므로 줄어든 뒤 글자가 16px 이상(가로 15px 이상)이 되게 키워서 넘김 */
+      const n = [...ex].length, eff = Math.max(port ? 16 : 15, m * 0.04), ts = n > 4 ? eff / Math.max(0.5, 4.5 / n) : eff;
+      const hh = eff * 1.45 * 1.22, ty = Math.min(pyb + eff * 0.9, H2 - hh / 2 - 4), tw = Math.max((n * eff * 1.02 + eff * 0.7) * 1.08, hh * 1.1);
+      H.drawTag(ctx, ex, px, ty, ts, { hi: -1 });
+      tagRect = { x: px - tw / 2, y: ty - hh / 2, w: tw, h: hh, px: eff };
       exPos = { x: px, yb: pyb, h: ph };
     }
     ctx.restore();
@@ -188,7 +192,7 @@ function drawTrace(alive) {
 }
 
 window.__g = {
-  get trace() { return trace; }, get R() { return R; }, get exPos() { return exPos; }, get fig() { return fig; },
+  get trace() { return trace; }, get R() { return R; }, get exPos() { return exPos; }, get tagRect() { return tagRect; }, get fig() { return fig; },
   get phase() { return phase; }, get rounds() { return rounds; }, get done() { return done; }, get jamo() { return jamo; },
   actions() {
     if (trace) { if (phase !== 'play' || traceDone()) return []; const s = tr[trS]; return [{ type: 'path', pts: s.pts.slice(s.prog - 1).map((q, i) => { const p = TP(q); return { x: p.x + Math.sin(i) * 8, y: p.y + Math.cos(i) * 8 }; }), wait: 200 }]; }
@@ -200,6 +204,6 @@ window.__demo = () => {
   if (phase !== 'play' || done >= N()) return null;
   const p = P(done); return { kind: 'tap', x: p.x, y: p.y, say: '반짝이는 별을 톡!', sayKey: 'star' };
 };
-TKP.init({ id: 'stars', twins: { port: { x0: 0.2, x1: 0.8, yb: 0.97, h: 0.2 }, land: { x0: 0.12, x1: 0.88, yb: 0.97, h: 0.3 } }, preload: ['bg_stars', 'o_star'], music: 'night' });   /* 놀이 틀: 쌍둥이·축하·음악 */
+TKP.init({ id: 'stars', twins: { port: { x0: 0.2, x1: 0.8, yb: 0.97, h: 0.2 }, land: { x0: 0.12, x1: 0.88, yb: 0.97, h: 0.38 } }, preload: ['bg_stars', 'o_star'], music: 'night' });   /* 놀이 틀: 쌍둥이·축하·음악 */
 TK.start({ resize: layout, init() { layout(); newJamo(); lastTap = TK.T; }, update, draw });
 })();
